@@ -13,6 +13,8 @@ function itemBase(sobrescrever: Partial<ItemCarrinho> = {}): ItemCarrinho {
     produtoId: "p1",
     nome: "Vaso Voronoi",
     foto: "https://blob.example/vaso.jpg",
+    categoria: "decoracao",
+    slug: "vaso-voronoi",
     preco: 4990,
     estoque: 10,
     quantidade: 1,

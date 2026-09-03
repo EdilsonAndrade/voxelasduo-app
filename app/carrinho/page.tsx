@@ -32,7 +32,7 @@ export default function CarrinhoPage() {
                   <img className={styles.itemFoto} src={item.foto} alt={item.nome} />
                   <div className={styles.itemInfo}>
                     <Link
-                      href={`/produtos/${encodeURIComponent(item.produtoId)}`}
+                      href={`/produtos/${encodeURIComponent(item.categoria)}/${encodeURIComponent(item.slug)}`}
                       className={styles.itemNome}
                     >
                       {item.nome}

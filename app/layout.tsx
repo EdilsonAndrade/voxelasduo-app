@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   title: "Voxelas Duo",
   description: "E-commerce de produtos impressos em 3D",
   icons: {
-    icon: "/images/logo.jpeg",
-    apple: "/images/logo.jpeg",
+    icon: "/images/logo.png",
+    apple: "/images/logo.png",
   },
 };
 

@@ -2,6 +2,9 @@ export interface ItemCarrinho {
   produtoId: string;
   nome: string;
   foto: string;
+  /** Usados para montar o link de volta ao detalhe: /produtos/[categoria]/[slug]. */
+  categoria: string;
+  slug: string;
   /** Preço unitário em centavos (informativo — o pedido sempre recalcula no servidor). */
   preco: number;
   /** Estoque visto no momento da adição (limite máximo da quantidade no carrinho). */
@@ -46,6 +49,8 @@ export function adicionarItem(
     produtoId: novo.produtoId,
     nome: novo.nome,
     foto: novo.foto,
+    categoria: novo.categoria,
+    slug: novo.slug,
     preco: novo.preco,
     estoque: novo.estoque,
     quantidade,
@@ -110,6 +115,10 @@ function isItemCarrinhoValido(valor: unknown): valor is ItemCarrinho {
     item.produtoId.length > 0 &&
     typeof item.nome === "string" &&
     typeof item.foto === "string" &&
+    typeof item.categoria === "string" &&
+    item.categoria.length > 0 &&
+    typeof item.slug === "string" &&
+    item.slug.length > 0 &&
     typeof item.preco === "number" &&
     item.preco > 0 &&
     typeof item.estoque === "number" &&

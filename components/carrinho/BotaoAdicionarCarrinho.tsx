@@ -8,6 +8,8 @@ interface BotaoAdicionarCarrinhoProps {
   produtoId: string;
   nome: string;
   foto: string;
+  categoria: string;
+  slug: string;
   preco: number;
   estoque: number;
 }
@@ -16,6 +18,8 @@ export default function BotaoAdicionarCarrinho({
   produtoId,
   nome,
   foto,
+  categoria,
+  slug,
   preco,
   estoque,
 }: BotaoAdicionarCarrinhoProps) {
@@ -35,7 +39,7 @@ export default function BotaoAdicionarCarrinho({
   const semEstoque = estoque === 0;
 
   function confirmarAdicao() {
-    adicionar({ produtoId, nome, foto, preco, estoque, quantidade });
+    adicionar({ produtoId, nome, foto, categoria, slug, preco, estoque, quantidade });
     setAdicionado(true);
     if (temporizador.current) {
       clearTimeout(temporizador.current);

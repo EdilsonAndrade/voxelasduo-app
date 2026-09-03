@@ -9,13 +9,15 @@ export default function SiteHeader() {
     <header className={styles.header}>
       <div className={`container ${styles.bar}`}>
         <Link href="/" className={styles.brand}>
-          <Image src="/images/logo.jpeg" alt="Voxelas Duo" width={110} height={110} className={styles.logo} priority />
+          <Image src="/images/logo.png" alt="Voxelas Duo" width={68} height={68} className={styles.logo} priority />
         </Link>
         <nav className={styles.nav}>
           <Link href="/produtos">Produtos</Link>
         </nav>
-        <CarrinhoIcone />
-        <ThemeToggle />
+        <div className={styles.actions}>
+          <CarrinhoIcone />
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );

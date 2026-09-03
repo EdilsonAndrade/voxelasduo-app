@@ -63,6 +63,8 @@ export default async function ProdutoDetalhePage({
             produtoId={produto._id!.toString()}
             nome={produto.nome}
             foto={produto.fotos[0] ?? ""}
+            categoria={produto.categoria}
+            slug={produto.slug}
             preco={produto.preco}
             estoque={produto.estoque}
           />
