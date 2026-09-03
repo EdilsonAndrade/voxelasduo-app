@@ -43,6 +43,11 @@ export interface Pedido {
   /** Valor total do pedido, em centavos. */
   valorTotal: number;
   pagamento: PagamentoPedido;
+  /**
+   * Token de idempotência gerado pelo checkout (uma compra = um token).
+   * Índice único esparso — garante que um mesmo envio nunca gere dois pedidos.
+   */
+  idempotencia?: string;
   criadoEm: Date;
   atualizadoEm: Date;
 }

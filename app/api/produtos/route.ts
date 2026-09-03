@@ -1,16 +1,42 @@
 import { NextResponse } from "next/server";
-import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
-import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
+import { criarProduto, listarProdutos, slugDisponivel } from "@/lib/produtos/repository";
+import { gerarSlug } from "@/lib/produtos/slug";
+import { validarProduto, type ProdutoPayload } from "@/lib/produtos/validation";
 
-// Esqueleto da rota: lista produtos sem paginação, filtro ou busca.
-// CRUD completo é escopo da Tarefa 2 (EDI-75).
-export async function GET() {
-  const client = await getMongoClient();
-  const produtos = await client
-    .db(DB_NAME)
-    .collection<Produto>(PRODUTOS_COLLECTION)
-    .find({})
-    .toArray();
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const q = searchParams.get("q") ?? undefined;
+  const categoria = searchParams.get("categoria") ?? undefined;
 
+  const produtos = await listarProdutos({ q, categoria });
   return NextResponse.json({ produtos });
+}
+
+export async function POST(request: Request) {
+  const payload = (await request.json()) as ProdutoPayload;
+  const erros = validarProduto(payload);
+
+  if (Object.keys(erros).length > 0) {
+    return NextResponse.json({ erro: "Payload inválido.", campos: erros }, { status: 400 });
+  }
+
+  const nome = payload.nome as string;
+  const categoria = payload.categoria as string;
+  let slug = gerarSlug(nome);
+
+  if (!(await slugDisponivel(categoria, slug))) {
+    slug = `${slug}-${Date.now().toString(36)}`;
+  }
+
+  const produto = await criarProduto({
+    nome,
+    slug,
+    descricao: payload.descricao as string,
+    preco: payload.preco as number,
+    estoque: payload.estoque as number,
+    categoria,
+    fotos: payload.fotos as string[],
+  });
+
+  return NextResponse.json({ produto }, { status: 201 });
 }
