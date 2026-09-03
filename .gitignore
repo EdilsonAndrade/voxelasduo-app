@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build/misc
+.vercel/
+*.log
+.DS_Store
+atlas-credentials.env
