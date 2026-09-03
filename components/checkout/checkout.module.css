@@ -1,0 +1,267 @@
+.pagina {
+  padding: 2.25rem 0 4rem;
+}
+
+.eyebrow {
+  font-family: var(--font-hand);
+  font-size: 1.3rem;
+  color: var(--rosa);
+  margin: 0 0 0.4rem;
+}
+
+.titulo {
+  font-size: clamp(2rem, 4.2vw, 3rem);
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 1.75rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 820px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.secao {
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 18px;
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.secaoTitulo {
+  font-family: var(--font-hand);
+  font-size: 1.35rem;
+  color: var(--turquesa);
+  margin: 0;
+}
+
+.secaoTituloRosa {
+  color: var(--rosa);
+}
+
+.campos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem 1rem;
+}
+
+@media (max-width: 560px) {
+  .campos {
+    grid-template-columns: 1fr;
+  }
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.campoLargo {
+  grid-column: 1 / -1;
+}
+
+.rotulo {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--texto-soft);
+}
+
+.rotulo span {
+  color: var(--rosa);
+}
+
+.input {
+  border: 2px solid var(--surface-line);
+  border-radius: 12px;
+  background: var(--creme);
+  padding: 0.65rem 0.85rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  width: 100%;
+}
+
+.input:focus {
+  outline: 3px solid var(--roxo);
+  outline-offset: 1px;
+}
+
+.erroCampo {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: #d64545;
+  margin: 0;
+}
+
+.erroGeral {
+  border: 2px dashed var(--rosa);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 1rem 1.2rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #d64545;
+}
+
+.erroGeral ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.submit {
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--roxo), var(--rosa));
+  border-radius: 999px;
+  padding: 0.95rem 1.8rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -12px rgba(255, 91, 174, 0.55);
+}
+
+.submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submit {
+    transition: none;
+  }
+  .submit:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+.resumo {
+  background: var(--surface);
+  border: 2px dashed var(--surface-line);
+  border-radius: 18px;
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 1.25rem;
+}
+
+.resumoTitulo {
+  font-family: var(--font-hand);
+  font-size: 1.3rem;
+  color: var(--turquesa);
+  margin: 0;
+}
+
+.resumoLinhas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--texto-soft);
+}
+
+.resumoLinha {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.resumoTotal {
+  border-top: 2px solid var(--surface-line);
+  padding-top: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.resumoTotalValor {
+  color: var(--roxo);
+}
+
+.confirmacao {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 3rem 1.4rem;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.confirmacaoBadge {
+  display: inline-block;
+  align-self: center;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  background: var(--amarelo);
+  color: var(--preto);
+  border-radius: 999px;
+  padding: 0.4rem 0.95rem;
+}
+
+.confirmacaoTexto {
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  color: var(--texto-soft);
+  margin: 0;
+}
+
+.confirmacaoLink {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--roxo);
+}
+
+.notFound {
+  text-align: center;
+  padding: 5rem 1rem;
+}
+
+.notFound h1 {
+  font-size: 1.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.notFound a {
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--roxo);
+  text-decoration: underline;
+}
