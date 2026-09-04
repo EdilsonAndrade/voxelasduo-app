@@ -52,6 +52,14 @@
   margin-left: auto;
 }
 
+@media (max-width: 500px) {
+  .logo {
+    top:-2px;
+    left:162px;
+  }
+
+}
+
 @media (max-width: 640px) {
   .bar {
     padding: 0.5rem 1.25rem;
@@ -61,6 +69,7 @@
   .logo {
     width: 48px;
     height: 48px;
+    
   }
 
   .nav {
@@ -68,3 +77,5 @@
     font-size: 0.85rem;
   }
 }
+
+
