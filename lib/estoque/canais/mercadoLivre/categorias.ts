@@ -1,25 +1,18 @@
 /**
- * Mapeamento estático `categoria do site → category_id do Mercado Livre`
- * (research.md #5). As categorias do site (ver `scripts/seed.ts`) são um
- * conjunto pequeno e fixo — não compensa consultar a árvore de categorias do
- * Mercado Livre dinamicamente a cada publicação.
- *
- * `MLB1574` ("Casa, Móveis e Decoração") é uma categoria de nível 1 (raiz) —
- * o Mercado Livre normalmente exige uma subcategoria mais específica para
- * `POST /items`. Se a publicação começar a falhar com erro de categoria
- * (visível em `GET /api/anuncios/pendencias`), troque o valor abaixo por uma
- * subcategoria de `MLB1574` (consultar `GET /sites/MLB/categories/MLB1574`
- * ou o previsor `GET /sites/MLB/domain_discovery/search?q=<termo>` em
- * developers.mercadolivre.com.br) — o restante do fluxo não muda.
+ * Override manual, opcional, `categoria do site → category_id do Mercado
+ * Livre` (research.md #5, revisado após teste em produção). Por padrão a
+ * categoria é descoberta automaticamente pelo previsor do Mercado Livre
+ * (`previsorCategoria.ts`), a partir do título do produto — mais confiável
+ * do que uma lista fixa, já que `POST /items` exige uma subcategoria válida
+ * (categorias de nível 1, como "Casa, Móveis e Decoração" / `MLB1574`, são
+ * rejeitadas). Preencha uma entrada aqui só se o previsor errar
+ * consistentemente para uma categoria do site — o valor aqui sempre tem
+ * prioridade sobre o previsor.
  */
-const MAPEAMENTO_CATEGORIAS: Record<string, string> = {
-  decoracao: "MLB1574",
-  organizacao: "MLB1574",
-  personalizados: "MLB1574",
-};
+const OVERRIDE_CATEGORIAS: Record<string, string> = {};
 
-/** Retorna o `category_id` do Mercado Livre para a categoria do site, ou `undefined` se não houver mapeamento configurado. */
+/** Category_id fixado manualmente para a categoria do site, se houver; `undefined` caso o previsor deva decidir. */
 export function resolverCategoriaMercadoLivre(categoria: string): string | undefined {
-  const categoryId = MAPEAMENTO_CATEGORIAS[categoria];
+  const categoryId = OVERRIDE_CATEGORIAS[categoria];
   return categoryId ? categoryId : undefined;
 }
