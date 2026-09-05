@@ -27,11 +27,28 @@ export interface ClientePedido {
   };
 }
 
+export type StatusTentativaPagamento = "pendente" | "aprovado" | "recusado" | "expirado";
+
+export interface TentativaPagamento {
+  /** ID do pagamento no Mercado Pago — chave usada para casar com o webhook. */
+  referenciaExterna: string;
+  /** `payment_method_id` retornado pelo Mercado Pago (ex: "visa", "pix"). */
+  metodo: string;
+  status: StatusTentativaPagamento;
+  /** Valor em centavos no momento da tentativa — DEVE bater com `Pedido.valorTotal`. */
+  valor: number;
+  criadoEm: Date;
+  atualizadoEm: Date;
+}
+
 export interface PagamentoPedido {
-  /** Detalhado na Tarefa 4 (integração Mercado Pago). */
+  /** Método da tentativa aprovada ou mais recente. */
   metodo?: string;
-  status?: string;
+  /** Status da tentativa mais recente/relevante (leitura rápida sem varrer `tentativas`). */
+  status?: StatusTentativaPagamento;
+  /** ID do pagamento no Mercado Pago da tentativa aprovada (ou mais recente). */
   referenciaExterna?: string;
+  tentativas: TentativaPagamento[];
 }
 
 export interface Pedido {
