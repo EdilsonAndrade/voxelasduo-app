@@ -6,7 +6,7 @@ import { ErroEstoque, validarEstoque } from "./estoque";
 
 let indicesGarantidos: Promise<void> | undefined;
 
-async function colecaoPedidos() {
+export async function colecaoPedidos() {
   const client = await getMongoClient();
   const colecao = client.db(DB_NAME).collection<Pedido>(PEDIDOS_COLLECTION);
 
@@ -129,7 +129,7 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
     status: "pendente",
     canalOrigem: "site",
     valorTotal,
-    pagamento: {},
+    pagamento: { tentativas: [] },
     idempotencia: input.idempotencia,
     criadoEm: agora,
     atualizadoEm: agora,
