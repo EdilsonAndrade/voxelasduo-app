@@ -46,7 +46,7 @@ async function colecaoSincronizacoes() {
 /** Cria um item de fila `"pendente"`, pronto para a tentativa imediata do chamador. */
 export async function criarPendencia(
   produtoId: ObjectId,
-  pedidoId: ObjectId,
+  pedidoId: ObjectId | undefined,
   canal: Canal,
   quantidade: number
 ): Promise<RegistroSincronizacaoEstoque> {

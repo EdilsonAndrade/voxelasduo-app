@@ -8,6 +8,7 @@ import {
 import { gerarSlug } from "@/lib/produtos/slug";
 import { removerFotoProduto } from "@/lib/storage/blob";
 import { validarProduto, type ProdutoPayload } from "@/lib/produtos/validation";
+import { sincronizarAnuncioProduto } from "@/lib/estoque/sincronizacao";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -49,6 +50,15 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const produto = await atualizarProduto(id, dados);
+
+  // Mantém o anúncio já publicado (Tarefa 7/EDI-80) refletindo preço/estoque
+  // após uma edição no admin — best-effort, nunca trava a resposta do PATCH.
+  const mercadoLivreId = produto?.integracoes?.mercadoLivreId;
+  const precoOuEstoqueMudou = "preco" in payload || "estoque" in payload;
+  if (produto && mercadoLivreId && precoOuEstoqueMudou) {
+    sincronizarAnuncioProduto(id, undefined).catch(() => undefined);
+  }
+
   return NextResponse.json({ produto });
 }
 

@@ -9,10 +9,10 @@ const { criarPendencia, marcarSincronizado, marcarFalha } = vi.hoisted(() => ({
   marcarFalha: vi.fn(),
 }));
 const { mercadoLivreClient } = vi.hoisted(() => ({
-  mercadoLivreClient: { atualizarQuantidade: vi.fn() },
+  mercadoLivreClient: { atualizarAnuncio: vi.fn() },
 }));
 const { shopeeClient } = vi.hoisted(() => ({
-  shopeeClient: { atualizarQuantidade: vi.fn() },
+  shopeeClient: { atualizarAnuncio: vi.fn() },
 }));
 
 vi.mock("@/lib/produtos/repository", () => ({ buscarProdutoPorId }));
@@ -20,7 +20,7 @@ vi.mock("./fila", () => ({ criarPendencia, marcarSincronizado, marcarFalha }));
 vi.mock("./canais/mercadoLivre/client", () => ({ mercadoLivreClient }));
 vi.mock("./canais/shopee", () => ({ shopeeClient }));
 
-const { sincronizarEstoqueProduto } = await import("./sincronizacao");
+const { sincronizarAnuncioProduto } = await import("./sincronizacao");
 
 const produtoBase: Produto = {
   _id: new ObjectId(),
@@ -37,7 +37,7 @@ const produtoBase: Produto = {
 
 const pedidoId = new ObjectId();
 
-describe("sincronizarEstoqueProduto", () => {
+describe("sincronizarAnuncioProduto", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.MERCADOLIVRE_CLIENT_ID;
@@ -47,19 +47,22 @@ describe("sincronizarEstoqueProduto", () => {
     criarPendencia.mockResolvedValue({ _id: new ObjectId() });
   });
 
-  it("canal com credencial e mapeamento: cria pendência e chama o client", async () => {
+  it("canal com credencial e mapeamento: cria pendência e chama o client com quantidade e preço", async () => {
     process.env.MERCADOLIVRE_CLIENT_ID = "id";
     process.env.MERCADOLIVRE_CLIENT_SECRET = "secret";
     buscarProdutoPorId.mockResolvedValue({
       ...produtoBase,
       integracoes: { mercadoLivreId: "MLB123" },
     });
-    mercadoLivreClient.atualizarQuantidade.mockResolvedValue(undefined);
+    mercadoLivreClient.atualizarAnuncio.mockResolvedValue(undefined);
 
-    await sincronizarEstoqueProduto(produtoBase._id!.toString(), pedidoId);
+    await sincronizarAnuncioProduto(produtoBase._id!.toString(), pedidoId);
 
     expect(criarPendencia).toHaveBeenCalledWith(produtoBase._id, pedidoId, "mercado_livre", 8);
-    expect(mercadoLivreClient.atualizarQuantidade).toHaveBeenCalledWith("MLB123", 8);
+    expect(mercadoLivreClient.atualizarAnuncio).toHaveBeenCalledWith("MLB123", {
+      quantidade: 8,
+      preco: 5000,
+    });
     expect(marcarSincronizado).toHaveBeenCalled();
     expect(marcarFalha).not.toHaveBeenCalled();
   });
@@ -70,10 +73,10 @@ describe("sincronizarEstoqueProduto", () => {
       integracoes: { mercadoLivreId: "MLB123" },
     });
 
-    await sincronizarEstoqueProduto(produtoBase._id!.toString(), pedidoId);
+    await sincronizarAnuncioProduto(produtoBase._id!.toString(), pedidoId);
 
     expect(criarPendencia).not.toHaveBeenCalled();
-    expect(mercadoLivreClient.atualizarQuantidade).not.toHaveBeenCalled();
+    expect(mercadoLivreClient.atualizarAnuncio).not.toHaveBeenCalled();
   });
 
   it("canal com credencial configurada mas sem mapeamento no produto: é ignorado", async () => {
@@ -81,10 +84,10 @@ describe("sincronizarEstoqueProduto", () => {
     process.env.MERCADOLIVRE_CLIENT_SECRET = "secret";
     buscarProdutoPorId.mockResolvedValue({ ...produtoBase, integracoes: undefined });
 
-    await sincronizarEstoqueProduto(produtoBase._id!.toString(), pedidoId);
+    await sincronizarAnuncioProduto(produtoBase._id!.toString(), pedidoId);
 
     expect(criarPendencia).not.toHaveBeenCalled();
-    expect(mercadoLivreClient.atualizarQuantidade).not.toHaveBeenCalled();
+    expect(mercadoLivreClient.atualizarAnuncio).not.toHaveBeenCalled();
   });
 
   it("falha do client vira item de fila (marcarFalha), sem lançar exceção", async () => {
@@ -94,13 +97,35 @@ describe("sincronizarEstoqueProduto", () => {
       ...produtoBase,
       integracoes: { mercadoLivreId: "MLB123" },
     });
-    mercadoLivreClient.atualizarQuantidade.mockRejectedValue(new Error("HTTP 500"));
+    mercadoLivreClient.atualizarAnuncio.mockRejectedValue(new Error("HTTP 500"));
 
     await expect(
-      sincronizarEstoqueProduto(produtoBase._id!.toString(), pedidoId)
+      sincronizarAnuncioProduto(produtoBase._id!.toString(), pedidoId)
     ).resolves.toBeUndefined();
 
     expect(marcarFalha).toHaveBeenCalledWith(expect.anything(), "HTTP 500");
     expect(marcarSincronizado).not.toHaveBeenCalled();
+  });
+
+  it("canalOrigem informado: pula esse canal e sincroniza os demais (research.md #8)", async () => {
+    process.env.MERCADOLIVRE_CLIENT_ID = "id";
+    process.env.MERCADOLIVRE_CLIENT_SECRET = "secret";
+    process.env.SHOPEE_PARTNER_ID = "partner";
+    process.env.SHOPEE_PARTNER_KEY = "key";
+    buscarProdutoPorId.mockResolvedValue({
+      ...produtoBase,
+      integracoes: { mercadoLivreId: "MLB123", shopeeItemId: "SHP123" },
+    });
+    shopeeClient.atualizarAnuncio.mockResolvedValue(undefined);
+
+    await sincronizarAnuncioProduto(produtoBase._id!.toString(), pedidoId, {
+      canalOrigem: "mercado_livre",
+    });
+
+    expect(mercadoLivreClient.atualizarAnuncio).not.toHaveBeenCalled();
+    expect(shopeeClient.atualizarAnuncio).toHaveBeenCalledWith("SHP123", {
+      quantidade: 8,
+      preco: 5000,
+    });
   });
 });

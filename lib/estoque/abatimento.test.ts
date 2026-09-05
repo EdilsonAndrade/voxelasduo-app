@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pedido } from "@/lib/models/pedido";
 
 const { abaterEstoqueAtomico } = vi.hoisted(() => ({ abaterEstoqueAtomico: vi.fn() }));
-const { sincronizarEstoqueProduto } = vi.hoisted(() => ({
-  sincronizarEstoqueProduto: vi.fn().mockResolvedValue(undefined),
+const { sincronizarAnuncioProduto } = vi.hoisted(() => ({
+  sincronizarAnuncioProduto: vi.fn().mockResolvedValue(undefined),
 }));
 const { insertOne, createIndex } = vi.hoisted(() => ({
   insertOne: vi.fn().mockResolvedValue({ insertedId: "mock-id" }),
@@ -12,7 +12,7 @@ const { insertOne, createIndex } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/produtos/repository", () => ({ abaterEstoqueAtomico }));
-vi.mock("./sincronizacao", () => ({ sincronizarEstoqueProduto }));
+vi.mock("./sincronizacao", () => ({ sincronizarAnuncioProduto }));
 vi.mock("@/lib/db/mongodb", () => ({
   default: vi.fn().mockResolvedValue({
     db: () => ({ collection: () => ({ insertOne, createIndex }) }),
@@ -22,7 +22,10 @@ vi.mock("@/lib/db/mongodb", () => ({
 
 const { abaterEstoquePedido } = await import("./abatimento");
 
-function criarPedido(itens: { produtoId: ObjectId; quantidade: number }[]): Pedido {
+function criarPedido(
+  itens: { produtoId: ObjectId; quantidade: number }[],
+  canalOrigem: Pedido["canalOrigem"] = "site"
+): Pedido {
   return {
     _id: new ObjectId(),
     itens: itens.map((item) => ({ ...item, precoUnitario: 1000 })),
@@ -39,7 +42,7 @@ function criarPedido(itens: { produtoId: ObjectId; quantidade: number }[]): Pedi
       },
     },
     status: "pago",
-    canalOrigem: "site",
+    canalOrigem,
     valorTotal: 1000,
     pagamento: { tentativas: [] },
     criadoEm: new Date(),
@@ -50,10 +53,10 @@ function criarPedido(itens: { produtoId: ObjectId; quantidade: number }[]): Pedi
 describe("abaterEstoquePedido", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    sincronizarEstoqueProduto.mockResolvedValue(undefined);
+    sincronizarAnuncioProduto.mockResolvedValue(undefined);
   });
 
-  it("abate com sucesso e dispara a sincronização do produto", async () => {
+  it("abate com sucesso e dispara a sincronização do produto (pedido do site: sem canalOrigem)", async () => {
     const produtoId = new ObjectId();
     abaterEstoqueAtomico.mockResolvedValue({ sucesso: true, produto: { _id: produtoId } });
     const pedido = criarPedido([{ produtoId, quantidade: 2 }]);
@@ -61,8 +64,22 @@ describe("abaterEstoquePedido", () => {
     await abaterEstoquePedido(pedido);
 
     expect(abaterEstoqueAtomico).toHaveBeenCalledWith(produtoId.toString(), 2);
-    expect(sincronizarEstoqueProduto).toHaveBeenCalledWith(produtoId.toString(), pedido._id);
+    expect(sincronizarAnuncioProduto).toHaveBeenCalledWith(produtoId.toString(), pedido._id, {
+      canalOrigem: undefined,
+    });
     expect(insertOne).not.toHaveBeenCalled();
+  });
+
+  it("pedido nascido no Mercado Livre: sincroniza excluindo o canal de origem (research.md #8 da Tarefa 7)", async () => {
+    const produtoId = new ObjectId();
+    abaterEstoqueAtomico.mockResolvedValue({ sucesso: true, produto: { _id: produtoId } });
+    const pedido = criarPedido([{ produtoId, quantidade: 1 }], "mercado_livre");
+
+    await abaterEstoquePedido(pedido);
+
+    expect(sincronizarAnuncioProduto).toHaveBeenCalledWith(produtoId.toString(), pedido._id, {
+      canalOrigem: "mercado_livre",
+    });
   });
 
   it("estoque insuficiente: registra inconsistência e não sincroniza, sem lançar exceção", async () => {
@@ -72,7 +89,7 @@ describe("abaterEstoquePedido", () => {
 
     await expect(abaterEstoquePedido(pedido)).resolves.toBeUndefined();
 
-    expect(sincronizarEstoqueProduto).not.toHaveBeenCalled();
+    expect(sincronizarAnuncioProduto).not.toHaveBeenCalled();
     expect(insertOne).toHaveBeenCalledWith(
       expect.objectContaining({ produtoId, motivo: "estoque_insuficiente" })
     );
@@ -105,7 +122,9 @@ describe("abaterEstoquePedido", () => {
 
     await abaterEstoquePedido(pedido);
 
-    expect(sincronizarEstoqueProduto).toHaveBeenCalledWith(produtoOk.toString(), pedido._id);
+    expect(sincronizarAnuncioProduto).toHaveBeenCalledWith(produtoOk.toString(), pedido._id, {
+      canalOrigem: undefined,
+    });
     expect(insertOne).toHaveBeenCalledTimes(1);
   });
 });

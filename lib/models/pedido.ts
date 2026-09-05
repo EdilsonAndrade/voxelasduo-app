@@ -65,6 +65,15 @@ export interface Pedido {
    * Índice único esparso — garante que um mesmo envio nunca gere dois pedidos.
    */
   idempotencia?: string;
+  /**
+   * Presente apenas em pedidos originados fora do site (Tarefa 7/EDI-80).
+   * `pedidoExternoId` é a chave de idempotência do webhook do canal — índice
+   * único esparso, mesmo papel que `idempotencia` tem para o checkout do site.
+   */
+  origemExterna?: {
+    canal: "mercado_livre" | "shopee";
+    pedidoExternoId: string;
+  };
   criadoEm: Date;
   atualizadoEm: Date;
 }

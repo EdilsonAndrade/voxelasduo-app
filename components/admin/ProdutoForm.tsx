@@ -39,8 +39,11 @@ export default function ProdutoForm({
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [publicandoMercadoLivre, setPublicandoMercadoLivre] = useState(false);
+  const [despublicandoMercadoLivre, setDespublicandoMercadoLivre] = useState(false);
   const [camposErro, setCamposErro] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [erroPublicacao, setErroPublicacao] = useState<string | null>(null);
 
   const editando = Boolean(valoresIniciais.id);
 
@@ -116,6 +119,53 @@ export default function ProdutoForm({
       router.refresh();
     } finally {
       setSalvando(false);
+    }
+  }
+
+  async function handlePublicarMercadoLivre() {
+    if (!valoresIniciais.id) return;
+
+    setPublicandoMercadoLivre(true);
+    setErroPublicacao(null);
+    try {
+      const resposta = await fetch(`/api/produtos/${valoresIniciais.id}/mercado-livre/publicar`, {
+        method: "POST",
+      });
+      const dados = await resposta.json();
+
+      if (!resposta.ok) {
+        setErroPublicacao(dados.erro ?? "Não foi possível publicar no Mercado Livre.");
+        return;
+      }
+
+      atualizarCampo("mercadoLivreId", dados.mercadoLivreId as string);
+      router.refresh();
+    } finally {
+      setPublicandoMercadoLivre(false);
+    }
+  }
+
+  async function handleDespublicarMercadoLivre() {
+    if (!valoresIniciais.id) return;
+    if (!window.confirm("Despublicar (fechar) este anúncio no Mercado Livre?")) return;
+
+    setDespublicandoMercadoLivre(true);
+    setErroPublicacao(null);
+    try {
+      const resposta = await fetch(`/api/produtos/${valoresIniciais.id}/mercado-livre/publicar`, {
+        method: "DELETE",
+      });
+      const dados = await resposta.json();
+
+      if (!resposta.ok) {
+        setErroPublicacao(dados.erro ?? "Não foi possível despublicar do Mercado Livre.");
+        return;
+      }
+
+      atualizarCampo("mercadoLivreId", "");
+      router.refresh();
+    } finally {
+      setDespublicandoMercadoLivre(false);
     }
   }
 
@@ -207,6 +257,27 @@ export default function ProdutoForm({
             value={valores.mercadoLivreId ?? ""}
             onChange={(e) => atualizarCampo("mercadoLivreId", e.target.value)}
           />
+          {editando && !valores.mercadoLivreId?.trim() && (
+            <button
+              type="button"
+              className={styles.btnGhost}
+              onClick={handlePublicarMercadoLivre}
+              disabled={publicandoMercadoLivre}
+            >
+              {publicandoMercadoLivre ? "Publicando…" : "Publicar no Mercado Livre"}
+            </button>
+          )}
+          {editando && valores.mercadoLivreId?.trim() && (
+            <button
+              type="button"
+              className={styles.btnGhost}
+              onClick={handleDespublicarMercadoLivre}
+              disabled={despublicandoMercadoLivre}
+            >
+              {despublicandoMercadoLivre ? "Despublicando…" : "Despublicar do Mercado Livre"}
+            </button>
+          )}
+          {erroPublicacao && <span className={styles.fieldError}>{erroPublicacao}</span>}
         </div>
         <div className={styles.field}>
           <label htmlFor="shopeeItemId">ID do anúncio na Shopee (opcional)</label>

@@ -2,7 +2,7 @@ import type { CanalEstoqueClient } from "./tipos";
 
 /**
  * Stub até a aprovação do app na Shopee Open Platform (perfil em análise —
- * ver spec.md, Assumptions). `sincronizarEstoqueProduto` só chama este client
+ * ver spec.md, Assumptions). `sincronizarAnuncioProduto` só chama este client
  * quando `SHOPEE_PARTNER_ID`/`SHOPEE_PARTNER_KEY` estiverem configurados
  * (research.md #6, #8); até lá, o canal Shopee é ignorado silenciosamente e
  * este client nunca é invocado.
@@ -12,7 +12,7 @@ import type { CanalEstoqueClient } from "./tipos";
  * requisição, mantendo a mesma interface `CanalEstoqueClient`.
  */
 export const shopeeClient: CanalEstoqueClient = {
-  async atualizarQuantidade(): Promise<void> {
+  async atualizarAnuncio(): Promise<void> {
     throw new Error(
       "Client da Shopee ainda não implementado — app pendente de aprovação na Shopee Open Platform."
     );
