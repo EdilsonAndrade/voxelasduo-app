@@ -45,22 +45,31 @@ function mensagemErro(erro: unknown): string {
   return erro instanceof Error ? erro.message : "Erro desconhecido";
 }
 
+interface OpcoesSincronizacao {
+  /** Canal que originou a venda (Tarefa 7/EDI-80) — excluído da lista a sincronizar (research.md #8): já reflete a baixa no próprio canal. */
+  canalOrigem?: Canal;
+}
+
 /**
- * Função reutilizável de "atualizar estoque em todos os canais" (ticket
- * EDI-78). Chamada logo após o abatimento no MongoDB (tentativa imediata,
- * best-effort). Para cada canal com credencial de ambiente **e** anúncio
- * mapeado no produto, cria um item de fila e tenta sincronizar na hora;
- * falha vira item de fila para o reprocessamento (`reprocessarPendencia`),
- * nunca uma exceção para quem chamou (FR-006).
+ * Função reutilizável de "atualizar estoque e preço em todos os canais"
+ * (ticket EDI-78, estendida na Tarefa 7/EDI-80 para incluir preço e permitir
+ * excluir o canal de origem da venda). Chamada logo após o abatimento no
+ * MongoDB (tentativa imediata, best-effort). Para cada canal com credencial
+ * de ambiente **e** anúncio mapeado no produto, cria um item de fila e tenta
+ * sincronizar na hora; falha vira item de fila para o reprocessamento
+ * (`reprocessarPendencia`), nunca uma exceção para quem chamou (FR-006).
  */
-export async function sincronizarEstoqueProduto(
+export async function sincronizarAnuncioProduto(
   produtoId: string,
-  pedidoId: ObjectId
+  pedidoId: ObjectId | undefined,
+  opcoes: OpcoesSincronizacao = {}
 ): Promise<void> {
   const produto = await buscarProdutoPorId(produtoId);
   if (!produto || !produto._id) return;
 
   for (const config of CANAIS) {
+    if (config.canal === opcoes.canalOrigem) continue;
+
     const anuncioId = config.anuncioId(produto);
     if (!anuncioId || !config.credencialConfigurada()) {
       // Canal sem credencial configurada ou sem anúncio mapeado neste produto — ignorado (FR-007).
@@ -71,7 +80,10 @@ export async function sincronizarEstoqueProduto(
 
     try {
       await comTimeout(
-        config.client.atualizarQuantidade(anuncioId, produto.estoque),
+        config.client.atualizarAnuncio(anuncioId, {
+          quantidade: produto.estoque,
+          preco: produto.preco,
+        }),
         TIMEOUT_TENTATIVA_IMEDIATA_MS
       );
       await marcarSincronizado(pendencia._id!);
@@ -102,7 +114,10 @@ export async function reprocessarPendencia(registro: RegistroSincronizacaoEstoqu
   }
 
   try {
-    await config.client.atualizarQuantidade(anuncioId, registro.quantidade);
+    await config.client.atualizarAnuncio(anuncioId, {
+      quantidade: registro.quantidade,
+      preco: produto.preco,
+    });
     await marcarSincronizado(registro._id!);
     return true;
   } catch (erro) {

@@ -60,6 +60,12 @@ export async function buscarProdutoPorId(id: string): Promise<Produto | null> {
   return colecao.findOne({ _id: new ObjectId(id) });
 }
 
+/** Busca reversa anúncio → produto, usada pelo webhook de pedidos do Mercado Livre (Tarefa 7/EDI-80). */
+export async function buscarProdutoPorMercadoLivreId(itemId: string): Promise<Produto | null> {
+  const colecao = await colecaoProdutos();
+  return colecao.findOne({ "integracoes.mercadoLivreId": itemId });
+}
+
 export async function buscarProdutoPorCategoriaESlug(
   categoria: string,
   slug: string

@@ -1,9 +1,17 @@
 import type { CanalEstoqueClient } from "../tipos";
 import { obterAccessTokenValido } from "./auth";
 
-/** Client real do Mercado Livre — atualiza `available_quantity` do anúncio (research.md #7). */
+/** `Produto.preco` é armazenado em centavos; a API do Mercado Livre espera o valor na unidade da moeda (reais). */
+export function centavosParaReais(centavos: number): number {
+  return centavos / 100;
+}
+
+/** Client real do Mercado Livre — atualiza `available_quantity` e `price` do anúncio (research.md #6, estende #7 da Tarefa 5). */
 export const mercadoLivreClient: CanalEstoqueClient = {
-  async atualizarQuantidade(itemId: string, quantidade: number): Promise<void> {
+  async atualizarAnuncio(
+    itemId: string,
+    { quantidade, preco }: { quantidade: number; preco: number }
+  ): Promise<void> {
     const token = await obterAccessTokenValido();
 
     const resposta = await fetch(`https://api.mercadolibre.com/items/${itemId}`, {
@@ -12,11 +20,14 @@ export const mercadoLivreClient: CanalEstoqueClient = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ available_quantity: quantidade }),
+      body: JSON.stringify({
+        available_quantity: quantidade,
+        price: centavosParaReais(preco),
+      }),
     });
 
     if (!resposta.ok) {
-      throw new Error(`Falha ao atualizar estoque no Mercado Livre (HTTP ${resposta.status}).`);
+      throw new Error(`Falha ao atualizar anúncio no Mercado Livre (HTTP ${resposta.status}).`);
     }
   },
 };

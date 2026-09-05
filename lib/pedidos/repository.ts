@@ -16,6 +16,11 @@ export async function colecaoPedidos() {
       // Anti-duplicação de checkout: só indexa documentos com o campo.
       colecao.createIndex({ idempotencia: 1 }, { unique: true, sparse: true }),
       colecao.createIndex({ criadoEm: -1 }),
+      // Anti-duplicação de pedido nascido em canal externo (Tarefa 7/EDI-80, data-model.md #4).
+      colecao.createIndex(
+        { "origemExterna.pedidoExternoId": 1 },
+        { unique: true, sparse: true }
+      ),
     ]).then(() => undefined);
   }
   await indicesGarantidos;

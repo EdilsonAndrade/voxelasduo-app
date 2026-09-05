@@ -25,7 +25,9 @@ export async function GET() {
 
   const idsProdutos = [
     ...new Set(
-      [...sincronizacoes, ...inconsistencias].map((registro) => registro.produtoId.toString())
+      [...sincronizacoes, ...inconsistencias]
+        .map((registro) => registro.produtoId?.toString())
+        .filter((id): id is string => Boolean(id))
     ),
   ];
   const produtos = await buscarProdutosPorIds(idsProdutos);
@@ -40,10 +42,15 @@ export async function GET() {
       ultimoErro: registro.ultimoErro,
       atualizadoEm: registro.atualizadoEm,
     })),
+    // Item de pedido de canal externo sem produto correspondente (Tarefa 7/EDI-80, FR-012):
+    // não tem produtoId/pedidoId locais — `origemExterna` identifica o item nesse caso.
     inconsistenciasEstoque: inconsistencias.map((registro) => ({
-      produtoId: registro.produtoId.toString(),
-      nomeProduto: produtos.get(registro.produtoId.toString())?.nome ?? "Produto não encontrado",
-      pedidoId: registro.pedidoId.toString(),
+      produtoId: registro.produtoId?.toString(),
+      nomeProduto: registro.produtoId
+        ? produtos.get(registro.produtoId.toString())?.nome ?? "Produto não encontrado"
+        : undefined,
+      pedidoId: registro.pedidoId?.toString(),
+      origemExterna: registro.origemExterna,
       quantidadeSolicitada: registro.quantidadeSolicitada,
       motivo: registro.motivo,
       criadoEm: registro.criadoEm,
