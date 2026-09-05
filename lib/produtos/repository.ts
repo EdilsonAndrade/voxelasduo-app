@@ -114,3 +114,41 @@ export async function removerProduto(id: string): Promise<Produto | null> {
   const resultado = await colecao.findOneAndDelete({ _id: new ObjectId(id) });
   return resultado ?? null;
 }
+
+export interface ResultadoAbatimentoEstoque {
+  sucesso: boolean;
+  motivoFalha?: "estoque_insuficiente" | "produto_removido";
+  produto?: Produto;
+}
+
+/**
+ * Abate `quantidade` do estoque de forma atômica: `$inc` só é aplicado se
+ * `estoque >= quantidade` no momento exato da operação — resolve corrida
+ * entre vendas simultâneas do mesmo produto sem transação multi-documento
+ * (research.md #2, Tarefa 5).
+ */
+export async function abaterEstoqueAtomico(
+  id: string,
+  quantidade: number
+): Promise<ResultadoAbatimentoEstoque> {
+  if (!ObjectId.isValid(id)) return { sucesso: false, motivoFalha: "produto_removido" };
+
+  const colecao = await colecaoProdutos();
+  const objectId = new ObjectId(id);
+
+  const resultado = await colecao.findOneAndUpdate(
+    { _id: objectId, estoque: { $gte: quantidade } },
+    { $inc: { estoque: -quantidade }, $set: { atualizadoEm: new Date() } },
+    { returnDocument: "after" }
+  );
+
+  if (resultado) {
+    return { sucesso: true, produto: resultado };
+  }
+
+  const existente = await colecao.findOne({ _id: objectId });
+  return {
+    sucesso: false,
+    motivoFalha: existente ? "estoque_insuficiente" : "produto_removido",
+  };
+}
