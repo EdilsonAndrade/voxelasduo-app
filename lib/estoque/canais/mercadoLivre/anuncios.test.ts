@@ -8,7 +8,7 @@ vi.mock("./categorias", () => ({
   resolverCategoriaMercadoLivre: vi.fn(),
 }));
 
-const { enviarImagem, criarAnuncio, despublicarAnuncio } = await import("./anuncios");
+const { criarAnuncio, despublicarAnuncio } = await import("./anuncios");
 const { resolverCategoriaMercadoLivre } = await import("./categorias");
 
 const produtoBase: Produto = {
@@ -24,34 +24,6 @@ const produtoBase: Produto = {
   atualizadoEm: new Date(),
 };
 
-describe("enviarImagem", () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("envia a URL pública da foto e retorna o id da imagem", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ id: "img-123" }),
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const id = await enviarImagem("https://exemplo.com/foto1.jpg");
-
-    expect(id).toBe("img-123");
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.mercadolibre.com/pictures/items/upload",
-      expect.objectContaining({
-        method: "POST",
-        headers: expect.objectContaining({ Authorization: "Bearer token-valido" }),
-      })
-    );
-  });
-
-  it("lança erro quando o upload falha", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400 }));
-    await expect(enviarImagem("https://exemplo.com/foto1.jpg")).rejects.toThrow("HTTP 400");
-  });
-});
-
 describe("criarAnuncio", () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -64,13 +36,10 @@ describe("criarAnuncio", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("cria o anúncio com título, categoria, preço em reais, estoque, fotos e descrição", async () => {
+  it("cria o anúncio com título, categoria, preço em reais, estoque, fotos (por URL) e descrição", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
     const fetchMock = vi
       .fn()
-      // enviarImagem x2 (uma por foto)
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "img-1" }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "img-2" }) })
       // POST /items
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "MLB999" }) })
       // POST /items/{id}/description
@@ -81,7 +50,7 @@ describe("criarAnuncio", () => {
 
     expect(itemId).toBe("MLB999");
 
-    const chamadaItem = fetchMock.mock.calls[2];
+    const chamadaItem = fetchMock.mock.calls[0];
     expect(chamadaItem[0]).toBe("https://api.mercadolibre.com/items");
     const corpoItem = JSON.parse(chamadaItem[1].body as string);
     expect(corpoItem).toMatchObject({
@@ -90,24 +59,21 @@ describe("criarAnuncio", () => {
       price: 129.9,
       currency_id: "BRL",
       available_quantity: 5,
-      pictures: [{ id: "img-1" }, { id: "img-2" }],
+      pictures: [
+        { source: "https://exemplo.com/foto1.jpg" },
+        { source: "https://exemplo.com/foto2.jpg" },
+      ],
     });
 
-    const chamadaDescricao = fetchMock.mock.calls[3];
+    const chamadaDescricao = fetchMock.mock.calls[1];
     expect(chamadaDescricao[0]).toBe("https://api.mercadolibre.com/items/MLB999/description");
   });
 
   it("falha ao criar o item: lança erro sem tentar definir descrição", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "img-1" }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "img-2" }) })
-      .mockResolvedValueOnce({ ok: false, status: 400 });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: false, status: 400 }));
 
     await expect(criarAnuncio(produtoBase)).rejects.toThrow("HTTP 400");
-    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
 

@@ -11,37 +11,17 @@ import { resolverCategoriaMercadoLivre } from "./categorias";
 const LISTING_TYPE_ID = "gold_special";
 
 /**
- * Envia uma foto já pública (Vercel Blob) para o Mercado Livre por URL —
- * o Mercado Livre busca a imagem diretamente, sem o servidor da aplicação
- * precisar baixar e reenviar bytes (research.md #3). Retorna o id da imagem,
- * usado no `pictures` da criação do anúncio.
- */
-export async function enviarImagem(urlPublica: string): Promise<string> {
-  const token = await obterAccessTokenValido();
-
-  const form = new FormData();
-  form.append("source", urlPublica);
-
-  const resposta = await fetch("https://api.mercadolibre.com/pictures/items/upload", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: form,
-  });
-
-  if (!resposta.ok) {
-    throw new Error(`Falha ao enviar imagem para o Mercado Livre (HTTP ${resposta.status}).`);
-  }
-
-  const dados = (await resposta.json()) as { id: string };
-  return dados.id;
-}
-
-/**
  * Cria o anúncio no Mercado Livre a partir do produto (US1): resolve a
- * categoria (research.md #5), envia as fotos e publica título, preço,
- * estoque e descrição. Retorna o `item_id` criado — quem chama é
- * responsável por gravá-lo em `produto.integracoes.mercadoLivreId`
- * (contracts/mercado-livre-api.md).
+ * categoria (research.md #5) e publica título, preço, estoque, fotos e
+ * descrição. Retorna o `item_id` criado — quem chama é responsável por
+ * gravá-lo em `produto.integracoes.mercadoLivreId` (contracts/mercado-livre-api.md).
+ *
+ * As fotos são enviadas como `pictures: [{ source: url }]` direto no corpo
+ * de criação do item — o Mercado Livre busca cada URL pública sozinho
+ * (research.md #3). **Não existe upload de imagem por URL em endpoint
+ * separado**: `POST /pictures/items/upload` só aceita arquivo binário
+ * (`multipart/form-data` com campo `file`), rejeitando `source` com HTTP 400
+ * (descoberto durante o teste em produção — corrigido aqui).
  */
 export async function criarAnuncio(produto: Produto): Promise<string> {
   const categoryId = resolverCategoriaMercadoLivre(produto.categoria);
@@ -50,7 +30,6 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
   }
 
   const token = await obterAccessTokenValido();
-  const pictureIds = await Promise.all(produto.fotos.map((url) => enviarImagem(url)));
 
   const respostaItem = await fetch("https://api.mercadolibre.com/items", {
     method: "POST",
@@ -66,7 +45,7 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
       available_quantity: produto.estoque,
       condition: "new",
       listing_type_id: LISTING_TYPE_ID,
-      pictures: pictureIds.map((id) => ({ id })),
+      pictures: produto.fotos.map((source) => ({ source })),
     }),
   });
 

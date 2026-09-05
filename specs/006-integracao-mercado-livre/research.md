@@ -18,13 +18,15 @@ Resultados da Fase 0 — decisões técnicas com alternativas consideradas. Part
 
 **Alternatives considered**: Deduplicar por `pedidoExternoId` em memória/cache antes de gravar — descartado; não sobrevive a reinício de instância serverless nem a duas instâncias concorrentes, ao contrário de um índice único no MongoDB.
 
-## 3. Upload de imagens: URL pública em vez de binário
+## 3. Upload de imagens: URL pública direto no `pictures` da criação do item
 
-**Decision**: As fotos do produto já são hospedadas como URLs públicas no Vercel Blob (Tarefa 2). O upload para o Mercado Livre usa o parâmetro `source` do endpoint `POST /pictures/items/upload` da API do Mercado Livre, passando a própria URL pública — o Mercado Livre busca a imagem diretamente, sem o servidor da aplicação precisar baixar e reenviar bytes.
+**Decision**: As fotos do produto já são hospedadas como URLs públicas no Vercel Blob (Tarefa 2). Cada foto é enviada como `{ "source": "<url>" }` dentro do array `pictures` do próprio `POST /items` (criação do anúncio, #4) — o Mercado Livre busca cada URL sozinho no momento da criação, sem chamada HTTP separada.
 
-**Rationale**: Elimina uma etapa de transferência (download do Blob + upload multipart), reduzindo tempo de resposta e uso de memória da função serverless. É um modo de uso documentado pela própria API do Mercado Livre para imagens já públicas na web.
+**Correção pós-implementação (2026-09-05)**: a primeira versão chamava `POST /pictures/items/upload` com o campo `source` num corpo `multipart/form-data`, supondo que esse endpoint aceitasse upload por URL. Testado em produção, a API rejeitou com HTTP 400 — `POST /pictures/items/upload` só aceita arquivo binário direto (`multipart/form-data` com campo `file`); o modo por URL só existe embutido no `pictures` de `POST`/`PUT /items`, confirmado na documentação oficial do Mercado Livre. `enviarImagem` foi removida; `criarAnuncio` agora monta `pictures: produto.fotos.map((source) => ({ source }))` direto no corpo de criação.
 
-**Alternatives considered**: Baixar cada foto do Blob e reenviar como `multipart/form-data` — mantido como fallback apenas se o modo por URL for rejeitado pelo Mercado Livre para algum caso (ex: bloqueio de hotlink); não é o caminho principal por adicionar latência e complexidade sem necessidade no caso comum.
+**Rationale**: Elimina qualquer chamada extra — uma única requisição de criação do item já resolve upload das fotos, título, preço e estoque juntos.
+
+**Alternatives considered**: Baixar cada foto do Blob e reenviar como `multipart/form-data` para `POST /pictures/items/upload` (fluxo "com ID") — desnecessário agora que se sabe que o modo por `source` embutido funciona; ficaria como opção só se o Mercado Livre um dia deixar de aceitar `source` no `pictures` (não documentado como caminho de descontinuação).
 
 ## 4. Criação de anúncio a partir do produto
 
