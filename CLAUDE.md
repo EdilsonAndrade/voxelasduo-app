@@ -8,6 +8,7 @@ at specs/006-integracao-mercado-livre/plan.md
 
 1. Always speak in Portugese in the chat
 2. EVITE ao máximo detalhar muito, SOMENTE quando solicito ou não compreensivo pelo usuário
+3. Não esconda erros que deveria ser mostrados na aba network
 
 ## GUARDRAILS
 

@@ -1,4 +1,5 @@
 import { obterAccessTokenValido } from "./auth";
+import { erroMercadoLivre } from "./erros";
 
 export interface ItemPedidoMercadoLivre {
   itemId: string;
@@ -27,7 +28,7 @@ export async function buscarPedidoMercadoLivre(orderId: string): Promise<PedidoM
   });
 
   if (!resposta.ok) {
-    throw new Error(`Falha ao consultar pedido no Mercado Livre (HTTP ${resposta.status}).`);
+    throw await erroMercadoLivre(resposta, "Falha ao consultar pedido no Mercado Livre");
   }
 
   const dados = (await resposta.json()) as OrderMercadoLivreResponse;
