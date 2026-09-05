@@ -12,6 +12,10 @@ export interface ProdutoFormValores {
   estoque: string;
   categoria: string;
   fotos: string[];
+  /** ID do anúncio correspondente no Mercado Livre — vazio = sem anúncio nesse canal (Tarefa 5). */
+  mercadoLivreId?: string;
+  /** ID do anúncio correspondente na Shopee — vazio = sem anúncio nesse canal (Tarefa 5). */
+  shopeeItemId?: string;
 }
 
 const VAZIO: ProdutoFormValores = {
@@ -21,6 +25,8 @@ const VAZIO: ProdutoFormValores = {
   estoque: "",
   categoria: "",
   fotos: [],
+  mercadoLivreId: "",
+  shopeeItemId: "",
 };
 
 export default function ProdutoForm({
@@ -84,6 +90,10 @@ export default function ProdutoForm({
       estoque: parseInt(valores.estoque, 10),
       categoria: valores.categoria,
       fotos: valores.fotos,
+      integracoes: {
+        mercadoLivreId: valores.mercadoLivreId?.trim() || undefined,
+        shopeeItemId: valores.shopeeItemId?.trim() || undefined,
+      },
     };
 
     try {
@@ -187,6 +197,28 @@ export default function ProdutoForm({
         />
         {camposErro.categoria && <span className={styles.fieldError}>{camposErro.categoria}</span>}
       </div>
+
+      <div className={styles.row}>
+        <div className={styles.field}>
+          <label htmlFor="mercadoLivreId">ID do anúncio no Mercado Livre (opcional)</label>
+          <input
+            id="mercadoLivreId"
+            placeholder="Ex: MLB1234567890"
+            value={valores.mercadoLivreId ?? ""}
+            onChange={(e) => atualizarCampo("mercadoLivreId", e.target.value)}
+          />
+        </div>
+        <div className={styles.field}>
+          <label htmlFor="shopeeItemId">ID do anúncio na Shopee (opcional)</label>
+          <input
+            id="shopeeItemId"
+            placeholder="Ex: 123456789"
+            value={valores.shopeeItemId ?? ""}
+            onChange={(e) => atualizarCampo("shopeeItemId", e.target.value)}
+          />
+        </div>
+      </div>
+      {camposErro.integracoes && <p className={styles.formError}>{camposErro.integracoes}</p>}
 
       <div className={styles.field}>
         <label htmlFor="fotos">Fotos</label>

@@ -29,6 +29,8 @@ export default async function EditarProdutoPage({
           estoque: String(produto.estoque),
           categoria: produto.categoria,
           fotos: produto.fotos,
+          mercadoLivreId: produto.integracoes?.mercadoLivreId ?? "",
+          shopeeItemId: produto.integracoes?.shopeeItemId ?? "",
         }}
       />
     </div>

@@ -5,6 +5,8 @@ export interface ProdutoPayload {
   estoque?: unknown;
   categoria?: unknown;
   fotos?: unknown;
+  /** IDs do anúncio em cada canal externo (Tarefa 5) — opcional, sem anúncio ainda em nenhum canal por padrão. */
+  integracoes?: unknown;
 }
 
 export type ErrosValidacao = Record<string, string>;
@@ -48,6 +50,13 @@ export function validarProduto(
     const estoque = payload.estoque;
     if (typeof estoque !== "number" || !Number.isInteger(estoque) || estoque < 0) {
       erros.estoque = "O estoque não pode ser negativo.";
+    }
+  }
+
+  if (presente("integracoes") && payload.integracoes !== undefined) {
+    const integracoes = payload.integracoes;
+    if (typeof integracoes !== "object" || integracoes === null || Array.isArray(integracoes)) {
+      erros.integracoes = "Formato de integrações inválido.";
     }
   }
 

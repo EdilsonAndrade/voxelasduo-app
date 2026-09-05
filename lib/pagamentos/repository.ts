@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { buscarPedidoPorId, colecaoPedidos } from "@/lib/pedidos/repository";
 import type { StatusTentativaPagamento, TentativaPagamento } from "@/lib/models/pedido";
+import { abaterEstoquePedido } from "@/lib/estoque/abatimento";
 
 /** Janela em que uma tentativa "pendente" é considerada ativa (evita cobrança dupla em abas simultâneas). */
 const JANELA_TENTATIVA_ATIVA_MS = 10 * 60 * 1000;
@@ -25,6 +26,11 @@ export async function existeTentativaAtivaRecente(pedidoId: string): Promise<boo
  * Promove o pedido para "pago" de forma condicional/idempotente — só tem
  * efeito se o pedido ainda não estiver "pago" (data-model.md #3). Reprocessar
  * a mesma aprovação (resposta síncrona + webhook posterior) não duplica efeito.
+ *
+ * O abatimento de estoque (Tarefa 5/EDI-78) é amarrado a esta mesma condição
+ * via `findOneAndUpdate`: só dispara quando esta chamada foi de fato quem
+ * promoveu o pedido, reaproveitando a idempotência já resolvida aqui em vez
+ * de um mecanismo próprio (research.md #1 da Tarefa 5).
  */
 async function promoverPedidoSeAprovado(
   objectId: ObjectId,
@@ -32,7 +38,7 @@ async function promoverPedidoSeAprovado(
   referenciaExterna: string
 ): Promise<void> {
   const colecao = await colecaoPedidos();
-  await colecao.updateOne(
+  const pedidoPromovido = await colecao.findOneAndUpdate(
     { _id: objectId, status: { $ne: "pago" } },
     {
       $set: {
@@ -42,8 +48,13 @@ async function promoverPedidoSeAprovado(
         "pagamento.referenciaExterna": referenciaExterna,
         atualizadoEm: new Date(),
       },
-    }
+    },
+    { returnDocument: "after" }
   );
+
+  if (pedidoPromovido) {
+    await abaterEstoquePedido(pedidoPromovido);
+  }
 }
 
 /**

@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/004-pagamento-mercado-pago/plan.md
+at specs/005-estoque-sincronizacao-canais/plan.md
 
 ## RULES
 
