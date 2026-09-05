@@ -10,10 +10,15 @@ vi.mock("./categorias", () => ({
 vi.mock("./previsorCategoria", () => ({
   preverCategoriaMercadoLivre: vi.fn(),
 }));
+vi.mock("./atributos", () => ({
+  buscarAtributosObrigatorios: vi.fn().mockResolvedValue([]),
+  valorPadraoAtributo: vi.fn((atributo) => ({ id: atributo.id, value_name: "valor-padrao" })),
+}));
 
 const { criarAnuncio, despublicarAnuncio } = await import("./anuncios");
 const { resolverCategoriaMercadoLivre } = await import("./categorias");
 const { preverCategoriaMercadoLivre } = await import("./previsorCategoria");
+const { buscarAtributosObrigatorios } = await import("./atributos");
 
 const produtoBase: Produto = {
   _id: undefined,
@@ -94,6 +99,23 @@ describe("criarAnuncio", () => {
 
     const chamadaDescricao = fetchMock.mock.calls[1];
     expect(chamadaDescricao[0]).toBe("https://api.mercadolibre.com/items/MLB999/description");
+  });
+
+  it("inclui atributos obrigatórios da categoria no corpo do item (ex: domínio 'decorations')", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    vi.mocked(buscarAtributosObrigatorios).mockResolvedValue([
+      { id: "BRAND", value_type: "list" },
+    ]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "MLB999" }) })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await criarAnuncio(produtoBase);
+
+    const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpoItem.attributes).toEqual([{ id: "BRAND", value_name: "valor-padrao" }]);
   });
 
   it("falha ao criar o item: lança erro sem tentar definir descrição", async () => {

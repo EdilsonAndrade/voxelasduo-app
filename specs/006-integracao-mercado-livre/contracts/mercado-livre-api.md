@@ -9,10 +9,11 @@ Cria o anúncio no Mercado Livre a partir do produto (US1). Requer que o produto
 **Processamento**:
 
 1. Resolve `category_id`: override manual por categoria do site se configurado, senão o previsor automático do Mercado Livre a partir de `produto.nome` (`preverCategoriaMercadoLivre`, research.md #5, atualizado pós-implementação — substituiu o mapeamento estático original, que gerava categorias raiz inválidas). Sem correspondência → registra falha em `publicacoesCanalFalhas` (`operacao: "criar"`) e retorna erro.
-2. Cria o anúncio em uma única chamada (`POST /items`) com `family_name` (modelo "User Products" — substitui `title`, que não é aceito; research.md #4), `price`, `currency_id: "BRL"`, `available_quantity: produto.estoque`, `condition: "new"`, `category_id`, e `pictures: produto.fotos.map((source) => ({ source }))` — cada foto é a própria URL pública do Vercel Blob; o Mercado Livre busca as imagens sozinho (research.md #3, atualizado pós-implementação: não existe upload por URL em endpoint separado).
-3. A descrição é um recurso à parte na API do Mercado Livre — `POST /items/{item_id}/description` com `{ "plain_text": produto.descricao }`, logo após o passo 2.
-4. Sucesso → grava `item_id` retornado em `produto.integracoes.mercadoLivreId`.
-5. Qualquer falha nos passos 2-3 → registra em `publicacoesCanalFalhas` (`operacao: "criar"`, motivo da API do Mercado Livre) e retorna erro; nenhum estado parcial é gravado no produto.
+2. Busca os atributos obrigatórios da categoria (`GET /categories/{categoryId}/attributes`, filtra `tags.required`) e preenche cada um com um valor padrão sensato (research.md #4, segunda correção pós-implementação — necessário para o Mercado Livre montar o título automaticamente em alguns domínios, ex: "decorations").
+3. Cria o anúncio em uma única chamada (`POST /items`) com `family_name` (modelo "User Products" — substitui `title`, que não é aceito; research.md #4), `price`, `currency_id: "BRL"`, `available_quantity: produto.estoque`, `condition: "new"`, `category_id`, `attributes` (passo 2), e `pictures: produto.fotos.map((source) => ({ source }))` — cada foto é a própria URL pública do Vercel Blob; o Mercado Livre busca as imagens sozinho (research.md #3, atualizado pós-implementação: não existe upload por URL em endpoint separado).
+4. A descrição é um recurso à parte na API do Mercado Livre — `POST /items/{item_id}/description` com `{ "plain_text": produto.descricao }`, logo após o passo 3.
+5. Sucesso → grava `item_id` retornado em `produto.integracoes.mercadoLivreId`.
+6. Qualquer falha nos passos 2-4 → registra em `publicacoesCanalFalhas` (`operacao: "criar"`, motivo da API do Mercado Livre) e retorna erro; nenhum estado parcial é gravado no produto.
 
 **Respostas**:
 

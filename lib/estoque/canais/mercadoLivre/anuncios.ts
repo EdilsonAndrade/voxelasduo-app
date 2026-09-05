@@ -3,6 +3,7 @@ import { obterAccessTokenValido } from "./auth";
 import { centavosParaReais } from "./client";
 import { resolverCategoriaMercadoLivre } from "./categorias";
 import { preverCategoriaMercadoLivre } from "./previsorCategoria";
+import { buscarAtributosObrigatorios, valorPadraoAtributo } from "./atributos";
 import { erroMercadoLivre } from "./erros";
 
 /**
@@ -38,6 +39,15 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
 
   const token = await obterAccessTokenValido();
 
+  // Alguns domínios (ex: "decorations", verificado em produção) exigem
+  // atributos obrigatórios da categoria mesmo no modelo "User Products" —
+  // sem eles, o Mercado Livre falha ao tentar montar o título automático a
+  // partir de `family_name` (research.md #4).
+  const atributosObrigatorios = await buscarAtributosObrigatorios(categoryId);
+  const attributes = atributosObrigatorios.map((atributo) =>
+    valorPadraoAtributo(atributo, produto)
+  );
+
   const respostaItem = await fetch("https://api.mercadolibre.com/items", {
     method: "POST",
     headers: {
@@ -59,6 +69,7 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
       condition: "new",
       listing_type_id: LISTING_TYPE_ID,
       pictures: produto.fotos.map((source) => ({ source })),
+      attributes,
     }),
   });
 
