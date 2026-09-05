@@ -45,7 +45,13 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      title: produto.nome,
+      // A conta vendedora está no modelo "User Products" (UP) do Mercado
+      // Livre: `family_name` (nome genérico que agruparia variações do mesmo
+      // produto) é obrigatório e substitui `title` — o Mercado Livre gera o
+      // título otimizado do anúncio a partir dele + atributos. Enviar `title`
+      // junto é rejeitado ("body.invalid_fields"), e enviar nenhum dos dois é
+      // rejeitado ("body.required_fields") — ambos verificados em produção.
+      family_name: produto.nome,
       category_id: categoryId,
       price: centavosParaReais(produto.preco),
       currency_id: "BRL",
