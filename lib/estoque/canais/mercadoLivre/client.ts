@@ -1,5 +1,6 @@
 import type { CanalEstoqueClient } from "../tipos";
 import { obterAccessTokenValido } from "./auth";
+import { erroMercadoLivre } from "./erros";
 
 /** `Produto.preco` é armazenado em centavos; a API do Mercado Livre espera o valor na unidade da moeda (reais). */
 export function centavosParaReais(centavos: number): number {
@@ -27,7 +28,7 @@ export const mercadoLivreClient: CanalEstoqueClient = {
     });
 
     if (!resposta.ok) {
-      throw new Error(`Falha ao atualizar anúncio no Mercado Livre (HTTP ${resposta.status}).`);
+      throw await erroMercadoLivre(resposta, "Falha ao atualizar anúncio no Mercado Livre");
     }
   },
 };

@@ -2,6 +2,7 @@ import type { Produto } from "@/lib/models/produto";
 import { obterAccessTokenValido } from "./auth";
 import { centavosParaReais } from "./client";
 import { resolverCategoriaMercadoLivre } from "./categorias";
+import { erroMercadoLivre } from "./erros";
 
 /**
  * Tipo de anúncio padrão usado na criação — precisa corresponder a um tipo
@@ -50,7 +51,7 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
   });
 
   if (!respostaItem.ok) {
-    throw new Error(`Falha ao criar anúncio no Mercado Livre (HTTP ${respostaItem.status}).`);
+    throw await erroMercadoLivre(respostaItem, "Falha ao criar anúncio no Mercado Livre");
   }
 
   const item = (await respostaItem.json()) as { id: string };
@@ -69,8 +70,9 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
   );
 
   if (!respostaDescricao.ok) {
-    throw new Error(
-      `Anúncio criado (${item.id}), mas falha ao definir a descrição no Mercado Livre (HTTP ${respostaDescricao.status}).`
+    throw await erroMercadoLivre(
+      respostaDescricao,
+      `Anúncio criado (${item.id}), mas falha ao definir a descrição no Mercado Livre`
     );
   }
 
@@ -97,6 +99,6 @@ export async function despublicarAnuncio(itemId: string): Promise<void> {
   });
 
   if (!resposta.ok) {
-    throw new Error(`Falha ao despublicar anúncio no Mercado Livre (HTTP ${resposta.status}).`);
+    throw await erroMercadoLivre(resposta, "Falha ao despublicar anúncio no Mercado Livre");
   }
 }
