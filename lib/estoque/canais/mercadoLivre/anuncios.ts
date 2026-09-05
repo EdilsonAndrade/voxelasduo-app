@@ -2,6 +2,7 @@ import type { Produto } from "@/lib/models/produto";
 import { obterAccessTokenValido } from "./auth";
 import { centavosParaReais } from "./client";
 import { resolverCategoriaMercadoLivre } from "./categorias";
+import { preverCategoriaMercadoLivre } from "./previsorCategoria";
 import { erroMercadoLivre } from "./erros";
 
 /**
@@ -13,9 +14,10 @@ const LISTING_TYPE_ID = "gold_special";
 
 /**
  * Cria o anúncio no Mercado Livre a partir do produto (US1): resolve a
- * categoria (research.md #5) e publica título, preço, estoque, fotos e
- * descrição. Retorna o `item_id` criado — quem chama é responsável por
- * gravá-lo em `produto.integracoes.mercadoLivreId` (contracts/mercado-livre-api.md).
+ * categoria (override manual ou previsor automático, research.md #5) e
+ * publica título, preço, estoque, fotos e descrição. Retorna o `item_id`
+ * criado — quem chama é responsável por gravá-lo em
+ * `produto.integracoes.mercadoLivreId` (contracts/mercado-livre-api.md).
  *
  * As fotos são enviadas como `pictures: [{ source: url }]` direto no corpo
  * de criação do item — o Mercado Livre busca cada URL pública sozinho
@@ -25,9 +27,13 @@ const LISTING_TYPE_ID = "gold_special";
  * (descoberto durante o teste em produção — corrigido aqui).
  */
 export async function criarAnuncio(produto: Produto): Promise<string> {
-  const categoryId = resolverCategoriaMercadoLivre(produto.categoria);
+  const categoryId =
+    resolverCategoriaMercadoLivre(produto.categoria) ??
+    (await preverCategoriaMercadoLivre(produto.nome));
   if (!categoryId) {
-    throw new Error(`Categoria "${produto.categoria}" sem mapeamento para o Mercado Livre.`);
+    throw new Error(
+      `Não foi possível determinar uma categoria do Mercado Livre para "${produto.categoria}"/"${produto.nome}".`
+    );
   }
 
   const token = await obterAccessTokenValido();
@@ -40,11 +46,6 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
     },
     body: JSON.stringify({
       title: produto.nome,
-      // Exigido pelo Mercado Livre mesmo sem variações (erro "body.required_fields"
-      // pedindo `family_name`, descoberto testando em produção) — nome genérico
-      // que agruparia variações do mesmo produto; como não há variações aqui,
-      // reaproveita o próprio nome do produto.
-      family_name: produto.nome,
       category_id: categoryId,
       price: centavosParaReais(produto.preco),
       currency_id: "BRL",
