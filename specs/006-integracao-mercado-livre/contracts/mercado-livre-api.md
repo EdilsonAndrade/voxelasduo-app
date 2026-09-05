@@ -9,8 +9,8 @@ Cria o anúncio no Mercado Livre a partir do produto (US1). Requer que o produto
 **Processamento**:
 
 1. Resolve `category_id` a partir de `produto.categoria` (mapeamento estático, research.md #5). Sem correspondência → registra falha em `publicacoesCanalFalhas` (`operacao: "criar"`) e retorna erro.
-2. Envia cada `produto.fotos[]` para `POST /pictures/items/upload` do Mercado Livre com `source` = URL pública (research.md #3), coletando os IDs de imagem retornados.
-3. Cria o anúncio (`POST /items`) com `title`, `description`, `price`, `currency_id: "BRL"`, `available_quantity: produto.estoque`, `condition: "new"`, `category_id`, `pictures` (IDs do passo 2).
+2. Cria o anúncio em uma única chamada (`POST /items`) com `title`, `price`, `currency_id: "BRL"`, `available_quantity: produto.estoque`, `condition: "new"`, `category_id`, e `pictures: produto.fotos.map((source) => ({ source }))` — cada foto é a própria URL pública do Vercel Blob; o Mercado Livre busca as imagens sozinho (research.md #3, atualizado pós-implementação: não existe upload por URL em endpoint separado).
+3. A descrição é um recurso à parte na API do Mercado Livre — `POST /items/{item_id}/description` com `{ "plain_text": produto.descricao }`, logo após o passo 2.
 4. Sucesso → grava `item_id` retornado em `produto.integracoes.mercadoLivreId`.
 5. Qualquer falha nos passos 2-3 → registra em `publicacoesCanalFalhas` (`operacao: "criar"`, motivo da API do Mercado Livre) e retorna erro; nenhum estado parcial é gravado no produto.
 
