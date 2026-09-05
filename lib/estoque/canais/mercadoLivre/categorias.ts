@@ -16,3 +16,23 @@ export function resolverCategoriaMercadoLivre(categoria: string): string | undef
   const categoryId = OVERRIDE_CATEGORIAS[categoria];
   return categoryId ? categoryId : undefined;
 }
+
+/**
+ * Qualificador em português somado ao nome do produto na consulta ao
+ * previsor (research.md #5) — sem isso, um nome de produto com uma palavra
+ * genérica (ex: "Chaveiro") pode cair num domínio errado por homônimo (ex:
+ * "Antiguidades e Coleções > Chaveiros", em vez de decoração), descoberto
+ * testando em produção. Ajuste/complete conforme novas categorias do site
+ * surgirem.
+ */
+const QUALIFICADOR_CATEGORIA: Record<string, string> = {
+  decoracao: "decoração",
+  organizacao: "organizador",
+  personalizados: "personalizado",
+};
+
+/** Monta a consulta enviada ao previsor de categorias: nome do produto + um qualificador da categoria do site, quando houver. */
+export function montarConsultaPrevisor(categoria: string, nomeProduto: string): string {
+  const qualificador = QUALIFICADOR_CATEGORIA[categoria];
+  return qualificador ? `${nomeProduto} ${qualificador}` : nomeProduto;
+}

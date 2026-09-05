@@ -1,7 +1,7 @@
 import type { Produto } from "@/lib/models/produto";
 import { obterAccessTokenValido } from "./auth";
 import { centavosParaReais } from "./client";
-import { resolverCategoriaMercadoLivre } from "./categorias";
+import { montarConsultaPrevisor, resolverCategoriaMercadoLivre } from "./categorias";
 import { preverCategoriaMercadoLivre } from "./previsorCategoria";
 import { buscarAtributosObrigatorios, valorPadraoAtributo } from "./atributos";
 import { erroMercadoLivre } from "./erros";
@@ -30,7 +30,7 @@ const LISTING_TYPE_ID = "gold_special";
 export async function criarAnuncio(produto: Produto): Promise<string> {
   const categoryId =
     resolverCategoriaMercadoLivre(produto.categoria) ??
-    (await preverCategoriaMercadoLivre(produto.nome));
+    (await preverCategoriaMercadoLivre(montarConsultaPrevisor(produto.categoria, produto.nome)));
   if (!categoryId) {
     throw new Error(
       `Não foi possível determinar uma categoria do Mercado Livre para "${produto.categoria}"/"${produto.nome}".`

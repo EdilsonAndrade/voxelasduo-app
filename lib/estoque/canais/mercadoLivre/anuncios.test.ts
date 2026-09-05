@@ -4,9 +4,13 @@ import type { Produto } from "@/lib/models/produto";
 vi.mock("./auth", () => ({
   obterAccessTokenValido: vi.fn().mockResolvedValue("token-valido"),
 }));
-vi.mock("./categorias", () => ({
-  resolverCategoriaMercadoLivre: vi.fn(),
-}));
+vi.mock("./categorias", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./categorias")>();
+  return {
+    ...real,
+    resolverCategoriaMercadoLivre: vi.fn(),
+  };
+});
 vi.mock("./previsorCategoria", () => ({
   preverCategoriaMercadoLivre: vi.fn(),
 }));
@@ -78,7 +82,7 @@ describe("criarAnuncio", () => {
     const itemId = await criarAnuncio(produtoBase);
 
     expect(itemId).toBe("MLB999");
-    expect(preverCategoriaMercadoLivre).toHaveBeenCalledWith("Vaso Geométrico");
+    expect(preverCategoriaMercadoLivre).toHaveBeenCalledWith("Vaso Geométrico decoração");
 
     const chamadaItem = fetchMock.mock.calls[0];
     expect(chamadaItem[0]).toBe("https://api.mercadolibre.com/items");
