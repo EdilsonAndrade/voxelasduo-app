@@ -78,8 +78,10 @@ describe("criarAnuncio", () => {
     const chamadaItem = fetchMock.mock.calls[0];
     expect(chamadaItem[0]).toBe("https://api.mercadolibre.com/items");
     const corpoItem = JSON.parse(chamadaItem[1].body as string);
+    // Modelo "User Products": `family_name` no lugar de `title` (research.md #4).
+    expect(corpoItem.title).toBeUndefined();
     expect(corpoItem).toMatchObject({
-      title: "Vaso Geométrico",
+      family_name: "Vaso Geométrico",
       category_id: "MLB12345",
       price: 129.9,
       currency_id: "BRL",
