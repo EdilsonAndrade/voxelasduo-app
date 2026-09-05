@@ -36,6 +36,8 @@ Resultados da Fase 0 — decisões técnicas com alternativas consideradas. Part
 
 **Alternatives considered**: Gravar o `item_id` em um campo separado (ex: `integracoes.mercadoLivreIdAutomatico`) para diferenciar anúncios criados pelo sistema dos cadastrados manualmente — rejeitado; a spec não exige essa distinção, e um único campo mantém a Tarefa 5 e esta tarefa compatíveis sem ramificação de código.
 
+**Correção pós-implementação (2026-09-05)**: testado em produção, `POST /items` retornou `HTTP 400` (`body.required_fields`: falta `family_name`) mesmo com todos os campos do payload original presentes. `family_name` é um campo do modelo de variações do Mercado Livre ("User Products") — um nome genérico que agruparia diferentes variações do mesmo produto — exigido por algumas categorias mesmo para anúncios sem variação nenhuma. Corrigido enviando `family_name: produto.nome` (reaproveita o próprio nome, já que não há conceito de variação no catálogo do site).
+
 ## 5. Mapeamento de categoria do site → categoria do Mercado Livre
 
 **Decision**: Um mapeamento estático (objeto/dicionário no código, ex: `lib/estoque/canais/mercadoLivre/categorias.ts`) associa cada valor de `produto.categoria` usado no site a um `category_id` válido do Mercado Livre. Categoria do produto sem entrada no mapeamento impede a publicação e gera uma falha registrada (FR-011), identificando o motivo ("categoria sem mapeamento").
