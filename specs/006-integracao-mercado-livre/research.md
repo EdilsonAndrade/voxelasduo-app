@@ -42,6 +42,8 @@ Resultados da Fase 0 — decisões técnicas com alternativas consideradas. Part
 
 **Risco aceito**: esse preenchimento automático é heurístico — se uma categoria exigir um atributo cujo valor não pode ser sensatamente adivinhado (ex: uma medida técnica específica), a publicação falhará de forma registrada e consultável (FR-011), com o motivo exato vindo da API do Mercado Livre (graças a `erroMercadoLivre`, #7-adjacente) — nunca silenciosamente.
 
+**Terceira correção pós-implementação (2026-09-05)**: a publicação funcionou de ponta a ponta, mas o previsor colocou "Chaveiro VoXElas Duo" em "Antiguidades e Coleções > Antiguidades > Chaveiros" — o termo "Chaveiro" sozinho tem um domínio de colecionismo/antiguidades no Mercado Livre, não relacionado ao produto (decoração nova). Corrigido acrescentando um qualificador em português à consulta do previsor, derivado da categoria do site (`montarConsultaPrevisor`, `categorias.ts`): `decoracao` → "decoração", `organizacao` → "organizador", `personalizados` → "personalizado". Ex: `"Chaveiro VoXElas Duo decoração"` em vez de só `"Chaveiro VoXElas Duo"`. Mantém o mesmo princípio de override manual (research.md #5) para os casos em que mesmo assim o previsor errar.
+
 ## 5. Categoria do Mercado Livre: previsor automático, com override manual opcional
 
 **Decision original**: Um mapeamento estático (objeto/dicionário no código) associaria cada valor de `produto.categoria` usado no site a um `category_id` fixo do Mercado Livre.
