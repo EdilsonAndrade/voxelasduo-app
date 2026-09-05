@@ -55,6 +55,7 @@ describe("criarAnuncio", () => {
     const corpoItem = JSON.parse(chamadaItem[1].body as string);
     expect(corpoItem).toMatchObject({
       title: "Vaso Geométrico",
+      family_name: "Vaso Geométrico",
       category_id: "MLB12345",
       price: 129.9,
       currency_id: "BRL",

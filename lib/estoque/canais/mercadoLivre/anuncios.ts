@@ -40,6 +40,11 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
     },
     body: JSON.stringify({
       title: produto.nome,
+      // Exigido pelo Mercado Livre mesmo sem variações (erro "body.required_fields"
+      // pedindo `family_name`, descoberto testando em produção) — nome genérico
+      // que agruparia variações do mesmo produto; como não há variações aqui,
+      // reaproveita o próprio nome do produto.
+      family_name: produto.nome,
       category_id: categoryId,
       price: centavosParaReais(produto.preco),
       currency_id: "BRL",
