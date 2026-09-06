@@ -200,6 +200,26 @@
   color: #c23a3a;
 }
 
+.mlLinkBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.3rem;
+}
+
+.mlLink {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--roxo);
+}
+
+.mlLinkAviso {
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  color: var(--texto-soft);
+}
+
 .formSuccess {
   font-family: var(--font-body);
   font-weight: 700;
