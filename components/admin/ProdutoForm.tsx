@@ -308,6 +308,11 @@ export default function ProdutoForm({
               <span className={styles.mlLinkAviso}>
                 Pode levar de 5 a 10 minutos para aparecer na loja depois da publicação.
               </span>
+              <span className={styles.mlLinkAviso}>
+                Preço, estoque e descrição são atualizados automaticamente no anúncio ao salvar o
+                produto. Nome, categoria e fotos não são atualizados sozinhos — para refletir essas
+                mudanças, despublique e publique de novo.
+              </span>
             </div>
           )}
           {erroPublicacao && <span className={styles.fieldError}>{erroPublicacao}</span>}

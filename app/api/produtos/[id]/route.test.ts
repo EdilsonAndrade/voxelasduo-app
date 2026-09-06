@@ -64,7 +64,9 @@ describe("PATCH /api/produtos/[id]", () => {
   it("dispara sincronizarAnuncioProduto quando há anúncio associado e o preço muda", async () => {
     await PATCH(requisicao({ preco: 6000 }), params(produtoBase._id!.toString()));
 
-    expect(sincronizarAnuncioProduto).toHaveBeenCalledWith(produtoBase._id!.toString(), undefined);
+    expect(sincronizarAnuncioProduto).toHaveBeenCalledWith(produtoBase._id!.toString(), undefined, {
+      sincronizarDescricao: false,
+    });
   });
 
   it("dispara sincronizarAnuncioProduto quando há anúncio associado e o estoque muda", async () => {
@@ -82,8 +84,36 @@ describe("PATCH /api/produtos/[id]", () => {
     expect(sincronizarAnuncioProduto).not.toHaveBeenCalled();
   });
 
-  it("não dispara quando o campo alterado não é preço nem estoque", async () => {
+  it("não dispara quando o campo alterado não é preço, estoque nem descrição", async () => {
     await PATCH(requisicao({ nome: "Novo nome" }), params(produtoBase._id!.toString()));
+
+    expect(sincronizarAnuncioProduto).not.toHaveBeenCalled();
+  });
+
+  it("dispara com sincronizarDescricao quando a descrição muda", async () => {
+    await PATCH(
+      requisicao({ descricao: "Descrição nova" }),
+      params(produtoBase._id!.toString())
+    );
+
+    expect(sincronizarAnuncioProduto).toHaveBeenCalledWith(produtoBase._id!.toString(), undefined, {
+      sincronizarDescricao: true,
+    });
+  });
+
+  it("dispara sem sincronizarDescricao quando só preço/estoque mudam", async () => {
+    await PATCH(requisicao({ preco: 6000 }), params(produtoBase._id!.toString()));
+
+    expect(sincronizarAnuncioProduto).toHaveBeenCalledWith(produtoBase._id!.toString(), undefined, {
+      sincronizarDescricao: false,
+    });
+  });
+
+  it("não dispara quando a descrição enviada é igual à atual", async () => {
+    await PATCH(
+      requisicao({ descricao: produtoBase.descricao }),
+      params(produtoBase._id!.toString())
+    );
 
     expect(sincronizarAnuncioProduto).not.toHaveBeenCalled();
   });

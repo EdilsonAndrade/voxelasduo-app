@@ -62,9 +62,30 @@ describe("sincronizarAnuncioProduto", () => {
     expect(mercadoLivreClient.atualizarAnuncio).toHaveBeenCalledWith("MLB123", {
       quantidade: 8,
       preco: 5000,
+      descricao: undefined,
     });
     expect(marcarSincronizado).toHaveBeenCalled();
     expect(marcarFalha).not.toHaveBeenCalled();
+  });
+
+  it("com sincronizarDescricao: envia a descrição atual do produto ao client", async () => {
+    process.env.MERCADOLIVRE_CLIENT_ID = "id";
+    process.env.MERCADOLIVRE_CLIENT_SECRET = "secret";
+    buscarProdutoPorId.mockResolvedValue({
+      ...produtoBase,
+      integracoes: { mercadoLivreId: "MLB123" },
+    });
+    mercadoLivreClient.atualizarAnuncio.mockResolvedValue(undefined);
+
+    await sincronizarAnuncioProduto(produtoBase._id!.toString(), pedidoId, {
+      sincronizarDescricao: true,
+    });
+
+    expect(mercadoLivreClient.atualizarAnuncio).toHaveBeenCalledWith("MLB123", {
+      quantidade: 8,
+      preco: 5000,
+      descricao: produtoBase.descricao,
+    });
   });
 
   it("canal sem credencial configurada: é ignorado, mesmo com mapeamento", async () => {
@@ -126,6 +147,7 @@ describe("sincronizarAnuncioProduto", () => {
     expect(shopeeClient.atualizarAnuncio).toHaveBeenCalledWith("SHP123", {
       quantidade: 8,
       preco: 5000,
+      descricao: undefined,
     });
   });
 });
