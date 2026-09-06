@@ -29,11 +29,11 @@ export async function POST(_request: Request, { params }: Params) {
   }
 
   try {
-    const mercadoLivreId = await criarAnuncio(produto);
+    const { id: mercadoLivreId, permalink: mercadoLivrePermalink } = await criarAnuncio(produto);
     await atualizarProduto(id, {
-      integracoes: { ...produto.integracoes, mercadoLivreId },
+      integracoes: { ...produto.integracoes, mercadoLivreId, mercadoLivrePermalink },
     });
-    return NextResponse.json({ mercadoLivreId }, { status: 201 });
+    return NextResponse.json({ mercadoLivreId, mercadoLivrePermalink }, { status: 201 });
   } catch (erro) {
     const motivo = mensagemErro(erro);
     await registrarFalhaPublicacao(produto._id, "mercado_livre", "criar", motivo);
@@ -73,7 +73,11 @@ export async function DELETE(_request: Request, { params }: Params) {
   // trata o valor como "ausente" (checagem de truthy), tanto `null` quanto
   // string vazia.
   await atualizarProduto(id, {
-    integracoes: { ...produto.integracoes, mercadoLivreId: undefined },
+    integracoes: {
+      ...produto.integracoes,
+      mercadoLivreId: undefined,
+      mercadoLivrePermalink: undefined,
+    },
   });
 
   return NextResponse.json({ despublicado: true });

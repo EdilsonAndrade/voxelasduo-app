@@ -57,7 +57,10 @@ describe("criarAnuncio", () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB-OVERRIDE");
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "MLB999" }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
       .mockResolvedValueOnce({ ok: true });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -74,14 +77,23 @@ describe("criarAnuncio", () => {
     const fetchMock = vi
       .fn()
       // POST /items
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "MLB999" }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "MLB999",
+          permalink: "https://produto.mercadolivre.com.br/MLB-999-vaso-geometrico",
+        }),
+      })
       // POST /items/{id}/description
       .mockResolvedValueOnce({ ok: true });
     vi.stubGlobal("fetch", fetchMock);
 
-    const itemId = await criarAnuncio(produtoBase);
+    const anuncio = await criarAnuncio(produtoBase);
 
-    expect(itemId).toBe("MLB999");
+    expect(anuncio).toEqual({
+      id: "MLB999",
+      permalink: "https://produto.mercadolivre.com.br/MLB-999-vaso-geometrico",
+    });
     expect(preverCategoriaMercadoLivre).toHaveBeenCalledWith("Vaso Geométrico decoração");
 
     const chamadaItem = fetchMock.mock.calls[0];
@@ -112,7 +124,10 @@ describe("criarAnuncio", () => {
     ]);
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "MLB999" }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
       .mockResolvedValueOnce({ ok: true });
     vi.stubGlobal("fetch", fetchMock);
 

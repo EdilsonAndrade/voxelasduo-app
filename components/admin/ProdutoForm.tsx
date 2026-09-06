@@ -6,13 +6,6 @@ import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 import styles from "./admin.module.css";
 
-/** Anúncios do Mercado Livre seguem o padrão "MLB1234567890" (item.id da API). */
-function linkAnuncioMercadoLivre(mercadoLivreId: string): string | null {
-  const match = mercadoLivreId.trim().match(/^([A-Z]{3})(\d+)$/i);
-  if (!match) return null;
-  return `https://produto.mercadolivre.com.br/${match[1].toUpperCase()}-${match[2]}`;
-}
-
 export interface ProdutoFormValores {
   id?: string;
   nome: string;
@@ -23,6 +16,8 @@ export interface ProdutoFormValores {
   fotos: string[];
   /** ID do anúncio correspondente no Mercado Livre — vazio = sem anúncio nesse canal (Tarefa 5). */
   mercadoLivreId?: string;
+  /** URL pública do anúncio, devolvida pela API do Mercado Livre na publicação — não reconstruir manualmente. */
+  mercadoLivrePermalink?: string;
   /** ID do anúncio correspondente na Shopee — vazio = sem anúncio nesse canal (Tarefa 5). */
   shopeeItemId?: string;
 }
@@ -35,6 +30,7 @@ const VAZIO: ProdutoFormValores = {
   categoria: "",
   fotos: [],
   mercadoLivreId: "",
+  mercadoLivrePermalink: "",
   shopeeItemId: "",
 };
 
@@ -106,6 +102,7 @@ export default function ProdutoForm({
       fotos: valores.fotos,
       integracoes: {
         mercadoLivreId: valores.mercadoLivreId?.trim() || undefined,
+        mercadoLivrePermalink: valores.mercadoLivrePermalink?.trim() || undefined,
         shopeeItemId: valores.shopeeItemId?.trim() || undefined,
       },
     };
@@ -150,6 +147,7 @@ export default function ProdutoForm({
       }
 
       atualizarCampo("mercadoLivreId", dados.mercadoLivreId as string);
+      atualizarCampo("mercadoLivrePermalink", dados.mercadoLivrePermalink as string);
       setToastMensagem("Produto publicado no Mercado Livre.");
       router.refresh();
     } finally {
@@ -175,6 +173,7 @@ export default function ProdutoForm({
       }
 
       atualizarCampo("mercadoLivreId", "");
+      atualizarCampo("mercadoLivrePermalink", "");
       setToastMensagem("Anúncio despublicado do Mercado Livre.");
       router.refresh();
     } finally {
@@ -293,9 +292,9 @@ export default function ProdutoForm({
           )}
           {editando && valores.mercadoLivreId?.trim() && (
             <div className={styles.mlLinkBox}>
-              {linkAnuncioMercadoLivre(valores.mercadoLivreId) && (
+              {valores.mercadoLivrePermalink?.trim() && (
                 <a
-                  href={linkAnuncioMercadoLivre(valores.mercadoLivreId)!}
+                  href={valores.mercadoLivrePermalink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={styles.mlLink}

@@ -5,6 +5,8 @@ export const PRODUTOS_COLLECTION = "produtos";
 /** IDs do anúncio correspondente em cada canal externo — ausência = produto sem anúncio naquele canal. */
 export interface IntegracoesCanal {
   mercadoLivreId?: string;
+  /** URL pública do anúncio, devolvida pela API na criação (`item.permalink`) — não reconstruir manualmente (ver anuncios.ts). */
+  mercadoLivrePermalink?: string;
   shopeeItemId?: string;
 }
 

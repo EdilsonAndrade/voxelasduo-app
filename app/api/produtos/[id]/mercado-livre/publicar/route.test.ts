@@ -63,17 +63,26 @@ describe("POST /api/produtos/[id]/mercado-livre/publicar", () => {
     expect(criarAnuncio).not.toHaveBeenCalled();
   });
 
-  it("201 com o mercadoLivreId criado, gravando em integracoes", async () => {
+  it("201 com o mercadoLivreId e permalink criados, gravando em integracoes", async () => {
     buscarProdutoPorId.mockResolvedValue(produtoBase);
-    criarAnuncio.mockResolvedValue("MLB999");
+    criarAnuncio.mockResolvedValue({
+      id: "MLB999",
+      permalink: "https://produto.mercadolivre.com.br/MLB-999-vaso-geometrico",
+    });
 
     const resposta = await POST(new Request("http://localhost"), params(produtoBase._id!.toString()));
     const corpo = await resposta.json();
 
     expect(resposta.status).toBe(201);
-    expect(corpo).toEqual({ mercadoLivreId: "MLB999" });
+    expect(corpo).toEqual({
+      mercadoLivreId: "MLB999",
+      mercadoLivrePermalink: "https://produto.mercadolivre.com.br/MLB-999-vaso-geometrico",
+    });
     expect(atualizarProduto).toHaveBeenCalledWith(produtoBase._id!.toString(), {
-      integracoes: { mercadoLivreId: "MLB999" },
+      integracoes: {
+        mercadoLivreId: "MLB999",
+        mercadoLivrePermalink: "https://produto.mercadolivre.com.br/MLB-999-vaso-geometrico",
+      },
     });
     expect(registrarFalhaPublicacao).not.toHaveBeenCalled();
   });
@@ -124,10 +133,14 @@ describe("DELETE /api/produtos/[id]/mercado-livre/publicar", () => {
     expect(despublicarAnuncio).not.toHaveBeenCalled();
   });
 
-  it("200 despublica e limpa integracoes.mercadoLivreId", async () => {
+  it("200 despublica e limpa integracoes.mercadoLivreId e mercadoLivrePermalink", async () => {
     buscarProdutoPorId.mockResolvedValue({
       ...produtoBase,
-      integracoes: { mercadoLivreId: "MLB999", shopeeItemId: "SHP1" },
+      integracoes: {
+        mercadoLivreId: "MLB999",
+        mercadoLivrePermalink: "https://produto.mercadolivre.com.br/MLB-999-vaso-geometrico",
+        shopeeItemId: "SHP1",
+      },
     });
     despublicarAnuncio.mockResolvedValue(undefined);
 
@@ -141,7 +154,11 @@ describe("DELETE /api/produtos/[id]/mercado-livre/publicar", () => {
     expect(corpo).toEqual({ despublicado: true });
     expect(despublicarAnuncio).toHaveBeenCalledWith("MLB999");
     expect(atualizarProduto).toHaveBeenCalledWith(produtoBase._id!.toString(), {
-      integracoes: { mercadoLivreId: undefined, shopeeItemId: "SHP1" },
+      integracoes: {
+        mercadoLivreId: undefined,
+        mercadoLivrePermalink: undefined,
+        shopeeItemId: "SHP1",
+      },
     });
   });
 
