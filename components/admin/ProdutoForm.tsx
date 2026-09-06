@@ -50,6 +50,7 @@ export default function ProdutoForm({
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [erroPublicacao, setErroPublicacao] = useState<string | null>(null);
   const [confirmandoDespublicar, setConfirmandoDespublicar] = useState(false);
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false);
   const [toastMensagem, setToastMensagem] = useState<string | null>(null);
 
   const editando = Boolean(valoresIniciais.id);
@@ -181,18 +182,20 @@ export default function ProdutoForm({
     }
   }
 
-  async function handleExcluir() {
+  async function confirmarExcluir() {
+    setConfirmandoExcluir(false);
     if (!valoresIniciais.id) return;
-    if (!window.confirm("Remover este produto? Essa ação não pode ser desfeita.")) return;
 
     setExcluindo(true);
     try {
       const resposta = await fetch(`/api/produtos/${valoresIniciais.id}`, { method: "DELETE" });
-      if (resposta.ok || resposta.status === 404) {
+      const ok = resposta.ok || resposta.status === 404;
+      if (ok) {
         router.push("/admin/produtos");
         router.refresh();
       } else {
-        setErroGeral("Não foi possível remover o produto.");
+        const dados = await resposta.json().catch(() => null);
+        setErroGeral(dados?.erro ?? "Não foi possível remover o produto.");
       }
     } finally {
       setExcluindo(false);
@@ -345,7 +348,12 @@ export default function ProdutoForm({
           {salvando ? "Salvando…" : "Salvar produto"}
         </button>
         {editando && (
-          <button type="button" className={styles.btnDanger} onClick={handleExcluir} disabled={excluindo}>
+          <button
+            type="button"
+            className={styles.btnDanger}
+            onClick={() => setConfirmandoExcluir(true)}
+            disabled={excluindo}
+          >
             {excluindo ? "Removendo…" : "Remover produto"}
           </button>
         )}
@@ -359,6 +367,19 @@ export default function ProdutoForm({
         variante="perigo"
         onConfirmar={confirmarDespublicarMercadoLivre}
         onCancelar={() => setConfirmandoDespublicar(false)}
+      />
+      <ConfirmModal
+        aberto={confirmandoExcluir}
+        titulo="Remover produto?"
+        mensagem={
+          valores.mercadoLivreId?.trim()
+            ? "Essa ação não pode ser desfeita. Como o produto está publicado no Mercado Livre, o anúncio também será despublicado (fechado) na loja."
+            : "Essa ação não pode ser desfeita."
+        }
+        textoConfirmar="Remover"
+        variante="perigo"
+        onConfirmar={confirmarExcluir}
+        onCancelar={() => setConfirmandoExcluir(false)}
       />
       <Toast mensagem={toastMensagem} aoFechar={() => setToastMensagem(null)} />
     </>

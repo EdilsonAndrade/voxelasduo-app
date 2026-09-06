@@ -9,6 +9,7 @@ import { gerarSlug } from "@/lib/produtos/slug";
 import { removerFotoProduto } from "@/lib/storage/blob";
 import { validarProduto, type ProdutoPayload } from "@/lib/produtos/validation";
 import { sincronizarAnuncioProduto } from "@/lib/estoque/sincronizacao";
+import { despublicarAnuncio } from "@/lib/estoque/canais/mercadoLivre/anuncios";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -68,6 +69,22 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   if (!produto) {
     return NextResponse.json({ erro: "Produto não encontrado." }, { status: 404 });
+  }
+
+  // Remover um produto publicado sem despublicar deixaria o anúncio órfão e
+  // vendável no Mercado Livre — despublica primeiro e só remove o produto se
+  // isso funcionar (o admin já foi avisado disso antes de confirmar).
+  const mercadoLivreId = produto.integracoes?.mercadoLivreId;
+  if (mercadoLivreId) {
+    try {
+      await despublicarAnuncio(mercadoLivreId);
+    } catch (erro) {
+      const motivo = erro instanceof Error ? erro.message : "Erro desconhecido";
+      return NextResponse.json(
+        { erro: `Não foi possível despublicar do Mercado Livre antes de remover: ${motivo}` },
+        { status: 422 }
+      );
+    }
   }
 
   await Promise.all(produto.fotos.map((url) => removerFotoProduto(url).catch(() => undefined)));
