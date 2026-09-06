@@ -8,19 +8,23 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "seed:admin": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {
     "@mercadopago/sdk-react": "^1.0.7",
     "@vercel/blob": "^2.8.0",
     "@vercel/config": "^0.7.0",
+    "bcryptjs": "^3.0.3",
     "mercadopago": "^3.6.0",
     "mongodb": "6.12.0",
     "next": "16.3.4",
+    "next-auth": "^5.0.0-beta.32",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "26.4.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
