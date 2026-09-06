@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/006-integracao-mercado-livre/plan.md
+at specs/007-painel-administrativo-pedidos/plan.md
 
 ## RULES
 

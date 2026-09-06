@@ -5,6 +5,9 @@ export const PEDIDOS_COLLECTION = "pedidos";
 export type StatusPedido = "pendente" | "pago" | "enviado" | "cancelado";
 export type CanalOrigem = "site" | "shopee" | "mercado_livre";
 
+export const STATUS_PEDIDO: StatusPedido[] = ["pendente", "pago", "enviado", "cancelado"];
+export const CANAIS_ORIGEM: CanalOrigem[] = ["site", "shopee", "mercado_livre"];
+
 export interface ItemPedido {
   produtoId: ObjectId;
   quantidade: number;

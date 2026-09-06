@@ -1,8 +1,16 @@
-import { MongoServerError, ObjectId } from "mongodb";
+import { MongoServerError, ObjectId, type Filter } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
-import { PEDIDOS_COLLECTION, type ClientePedido, type Pedido } from "@/lib/models/pedido";
+import {
+  PEDIDOS_COLLECTION,
+  type CanalOrigem,
+  type ClientePedido,
+  type Pedido,
+  type StatusPedido,
+} from "@/lib/models/pedido";
 import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
 import { ErroEstoque, validarEstoque } from "./estoque";
+
+export const PEDIDOS_POR_PAGINA = 20;
 
 let indicesGarantidos: Promise<void> | undefined;
 
@@ -36,6 +44,47 @@ export async function buscarPedidoPorId(id: string) {
 export async function buscarPedidoPorIdempotencia(idempotencia: string) {
   const colecao = await colecaoPedidos();
   return colecao.findOne({ idempotencia });
+}
+
+export interface FiltroPedidos {
+  canal?: CanalOrigem;
+  status?: StatusPedido;
+  pagina?: number;
+}
+
+export interface PedidosPaginados {
+  pedidos: Pedido[];
+  total: number;
+}
+
+/**
+ * Lista pedidos para o painel administrativo (Tarefa 8/EDI-81), mais recentes primeiro.
+ * `canal: "shopee"` sempre retorna vazio sem consultar o banco — a Shopee ainda não
+ * tem integração real (aprovação pendente na Shopee Open Platform), só a opção de
+ * filtro já preparada na UI (research.md #3).
+ */
+export async function listarPedidos(filtro: FiltroPedidos = {}): Promise<PedidosPaginados> {
+  if (filtro.canal === "shopee") {
+    return { pedidos: [], total: 0 };
+  }
+
+  const colecao = await colecaoPedidos();
+  const query: Filter<Pedido> = {};
+  if (filtro.canal) query.canalOrigem = filtro.canal;
+  if (filtro.status) query.status = filtro.status;
+
+  const pagina = filtro.pagina && filtro.pagina > 0 ? filtro.pagina : 1;
+  const [pedidos, total] = await Promise.all([
+    colecao
+      .find(query)
+      .sort({ criadoEm: -1 })
+      .skip((pagina - 1) * PEDIDOS_POR_PAGINA)
+      .limit(PEDIDOS_POR_PAGINA)
+      .toArray(),
+    colecao.countDocuments(query),
+  ]);
+
+  return { pedidos, total };
 }
 
 export async function buscarProdutosPorIds(ids: string[]): Promise<Map<string, Produto>> {

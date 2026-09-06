@@ -86,6 +86,75 @@
   color: var(--texto-soft);
 }
 
+.badgeStatusPendente {
+  composes: badge;
+  color: #b3701f;
+  border-color: #b3701f;
+}
+
+.badgeStatusPago {
+  composes: badge;
+  color: #2f8f52;
+  border-color: #2f8f52;
+}
+
+.badgeStatusEnviado {
+  composes: badge;
+  color: var(--roxo);
+  border-color: var(--roxo);
+}
+
+.badgeStatusCancelado {
+  composes: badge;
+  color: #c23a3a;
+  border-color: #c23a3a;
+}
+
+.badgeCanalSite {
+  composes: badge;
+}
+
+.badgeCanalMercadoLivre {
+  composes: badge;
+  color: var(--roxo);
+  border-color: var(--roxo);
+}
+
+.badgeCanalShopeeEmBreve {
+  composes: badge;
+  color: var(--texto-soft);
+  border-style: dashed;
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.filtros {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.filtroSelect {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  color: var(--preto);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+}
+
+.avisoShopee {
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  color: var(--texto-soft);
+  border: 2px dashed var(--surface-line);
+  border-radius: 16px;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
 .empty {
   text-align: center;
   padding: 3rem 1rem;
