@@ -30,6 +30,7 @@ export default async function EditarProdutoPage({
           categoria: produto.categoria,
           fotos: produto.fotos,
           mercadoLivreId: produto.integracoes?.mercadoLivreId ?? "",
+          mercadoLivrePermalink: produto.integracoes?.mercadoLivrePermalink ?? "",
           shopeeItemId: produto.integracoes?.shopeeItemId ?? "",
         }}
       />

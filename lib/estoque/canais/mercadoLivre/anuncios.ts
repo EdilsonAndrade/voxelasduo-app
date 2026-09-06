@@ -16,9 +16,15 @@ const LISTING_TYPE_ID = "gold_special";
 /**
  * Cria o anúncio no Mercado Livre a partir do produto (US1): resolve a
  * categoria (override manual ou previsor automático, research.md #5) e
- * publica título, preço, estoque, fotos e descrição. Retorna o `item_id`
- * criado — quem chama é responsável por gravá-lo em
- * `produto.integracoes.mercadoLivreId` (contracts/mercado-livre-api.md).
+ * publica título, preço, estoque, fotos e descrição. Retorna o `item_id` e o
+ * `permalink` criados — quem chama é responsável por gravá-los em
+ * `produto.integracoes.mercadoLivreId`/`mercadoLivrePermalink`
+ * (contracts/mercado-livre-api.md).
+ *
+ * O `permalink` retornado pela API é usado como está, nunca reconstruído a
+ * partir do ID: contas no modelo "User Products" (catálogo) publicam sob uma
+ * URL com slug + sufixo `/up/MLBU...` (ID da oferta, diferente do `item.id`),
+ * então um padrão `SITE-NUMERO` fixo gera link quebrado.
  *
  * As fotos são enviadas como `pictures: [{ source: url }]` direto no corpo
  * de criação do item — o Mercado Livre busca cada URL pública sozinho
@@ -27,7 +33,12 @@ const LISTING_TYPE_ID = "gold_special";
  * (`multipart/form-data` com campo `file`), rejeitando `source` com HTTP 400
  * (descoberto durante o teste em produção — corrigido aqui).
  */
-export async function criarAnuncio(produto: Produto): Promise<string> {
+export interface AnuncioCriado {
+  id: string;
+  permalink: string;
+}
+
+export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
   const categoryId =
     resolverCategoriaMercadoLivre(produto.categoria) ??
     (await preverCategoriaMercadoLivre(montarConsultaPrevisor(produto.categoria, produto.nome)));
@@ -77,7 +88,7 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
     throw await erroMercadoLivre(respostaItem, "Falha ao criar anúncio no Mercado Livre");
   }
 
-  const item = (await respostaItem.json()) as { id: string };
+  const item = (await respostaItem.json()) as { id: string; permalink: string };
 
   // A descrição é um recurso separado na API do Mercado Livre — precisa de uma segunda chamada.
   const respostaDescricao = await fetch(
@@ -99,7 +110,7 @@ export async function criarAnuncio(produto: Produto): Promise<string> {
     );
   }
 
-  return item.id;
+  return { id: item.id, permalink: item.permalink };
 }
 
 /**
