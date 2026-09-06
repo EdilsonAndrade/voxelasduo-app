@@ -48,6 +48,8 @@ function mensagemErro(erro: unknown): string {
 interface OpcoesSincronizacao {
   /** Canal que originou a venda (Tarefa 7/EDI-80) — excluído da lista a sincronizar (research.md #8): já reflete a baixa no próprio canal. */
   canalOrigem?: Canal;
+  /** Reenvia a descrição atual do produto ao canal — só faz sentido quando ela mudou (edição no admin), não em toda baixa de estoque por venda. */
+  sincronizarDescricao?: boolean;
 }
 
 /**
@@ -83,6 +85,7 @@ export async function sincronizarAnuncioProduto(
         config.client.atualizarAnuncio(anuncioId, {
           quantidade: produto.estoque,
           preco: produto.preco,
+          descricao: opcoes.sincronizarDescricao ? produto.descricao : undefined,
         }),
         TIMEOUT_TENTATIVA_IMEDIATA_MS
       );

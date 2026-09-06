@@ -52,12 +52,19 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const produto = await atualizarProduto(id, dados);
 
-  // Mantém o anúncio já publicado (Tarefa 7/EDI-80) refletindo preço/estoque
-  // após uma edição no admin — best-effort, nunca trava a resposta do PATCH.
+  // Mantém o anúncio já publicado (Tarefa 7/EDI-80) refletindo preço,
+  // estoque e descrição após uma edição no admin — best-effort, nunca trava
+  // a resposta do PATCH. Nome, categoria e fotos não têm um endpoint de
+  // atualização "in place" tão direto na API do Mercado Livre — quem quiser
+  // refletir essas mudanças no anúncio precisa despublicar e publicar de novo.
   const mercadoLivreId = produto?.integracoes?.mercadoLivreId;
   const precoOuEstoqueMudou = "preco" in payload || "estoque" in payload;
-  if (produto && mercadoLivreId && precoOuEstoqueMudou) {
-    sincronizarAnuncioProduto(id, undefined).catch(() => undefined);
+  const descricaoMudou =
+    typeof payload.descricao === "string" && payload.descricao !== produtoAtual.descricao;
+  if (produto && mercadoLivreId && (precoOuEstoqueMudou || descricaoMudou)) {
+    sincronizarAnuncioProduto(id, undefined, { sincronizarDescricao: descricaoMudou }).catch(
+      () => undefined
+    );
   }
 
   return NextResponse.json({ produto });
