@@ -2,7 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import ConfirmModal from "./ConfirmModal";
+import Toast from "./Toast";
 import styles from "./admin.module.css";
+
+/** Anúncios do Mercado Livre seguem o padrão "MLB1234567890" (item.id da API). */
+function linkAnuncioMercadoLivre(mercadoLivreId: string): string | null {
+  const match = mercadoLivreId.trim().match(/^([A-Z]{3})(\d+)$/i);
+  if (!match) return null;
+  return `https://produto.mercadolivre.com.br/${match[1].toUpperCase()}-${match[2]}`;
+}
 
 export interface ProdutoFormValores {
   id?: string;
@@ -44,6 +53,8 @@ export default function ProdutoForm({
   const [camposErro, setCamposErro] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [erroPublicacao, setErroPublicacao] = useState<string | null>(null);
+  const [confirmandoDespublicar, setConfirmandoDespublicar] = useState(false);
+  const [toastMensagem, setToastMensagem] = useState<string | null>(null);
 
   const editando = Boolean(valoresIniciais.id);
 
@@ -139,15 +150,16 @@ export default function ProdutoForm({
       }
 
       atualizarCampo("mercadoLivreId", dados.mercadoLivreId as string);
+      setToastMensagem("Produto publicado no Mercado Livre.");
       router.refresh();
     } finally {
       setPublicandoMercadoLivre(false);
     }
   }
 
-  async function handleDespublicarMercadoLivre() {
+  async function confirmarDespublicarMercadoLivre() {
+    setConfirmandoDespublicar(false);
     if (!valoresIniciais.id) return;
-    if (!window.confirm("Despublicar (fechar) este anúncio no Mercado Livre?")) return;
 
     setDespublicandoMercadoLivre(true);
     setErroPublicacao(null);
@@ -163,6 +175,7 @@ export default function ProdutoForm({
       }
 
       atualizarCampo("mercadoLivreId", "");
+      setToastMensagem("Anúncio despublicado do Mercado Livre.");
       router.refresh();
     } finally {
       setDespublicandoMercadoLivre(false);
@@ -188,7 +201,8 @@ export default function ProdutoForm({
   }
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
+    <>
+      <form className={styles.form} onSubmit={handleSubmit}>
       <div className={styles.field}>
         <label htmlFor="nome">Nome</label>
         <input
@@ -271,11 +285,28 @@ export default function ProdutoForm({
             <button
               type="button"
               className={styles.btnGhost}
-              onClick={handleDespublicarMercadoLivre}
+              onClick={() => setConfirmandoDespublicar(true)}
               disabled={despublicandoMercadoLivre}
             >
               {despublicandoMercadoLivre ? "Despublicando…" : "Despublicar do Mercado Livre"}
             </button>
+          )}
+          {editando && valores.mercadoLivreId?.trim() && (
+            <div className={styles.mlLinkBox}>
+              {linkAnuncioMercadoLivre(valores.mercadoLivreId) && (
+                <a
+                  href={linkAnuncioMercadoLivre(valores.mercadoLivreId)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.mlLink}
+                >
+                  Ver anúncio na loja ↗
+                </a>
+              )}
+              <span className={styles.mlLinkAviso}>
+                Pode levar de 5 a 10 minutos para aparecer na loja depois da publicação.
+              </span>
+            </div>
           )}
           {erroPublicacao && <span className={styles.fieldError}>{erroPublicacao}</span>}
         </div>
@@ -320,6 +351,17 @@ export default function ProdutoForm({
           </button>
         )}
       </div>
-    </form>
+      </form>
+      <ConfirmModal
+        aberto={confirmandoDespublicar}
+        titulo="Despublicar anúncio?"
+        mensagem="O anúncio será fechado no Mercado Livre e o produto ficará livre para ser publicado de novo."
+        textoConfirmar="Despublicar"
+        variante="perigo"
+        onConfirmar={confirmarDespublicarMercadoLivre}
+        onCancelar={() => setConfirmandoDespublicar(false)}
+      />
+      <Toast mensagem={toastMensagem} aoFechar={() => setToastMensagem(null)} />
+    </>
   );
 }
