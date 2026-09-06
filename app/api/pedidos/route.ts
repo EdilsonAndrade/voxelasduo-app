@@ -1,21 +1,38 @@
 import { NextResponse } from "next/server";
-import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
-import { PEDIDOS_COLLECTION, type Pedido } from "@/lib/models/pedido";
-import { buscarProdutosPorIds, criarPedido, type ItemPedidoDetalhado } from "@/lib/pedidos/repository";
+import { CANAIS_ORIGEM, STATUS_PEDIDO, type CanalOrigem, type Pedido, type StatusPedido } from "@/lib/models/pedido";
+import {
+  PEDIDOS_POR_PAGINA,
+  buscarProdutosPorIds,
+  criarPedido,
+  listarPedidos,
+  type ItemPedidoDetalhado,
+} from "@/lib/pedidos/repository";
+import { paraPedidoResumo } from "@/lib/pedidos/apresentacao";
 import { ErroEstoque } from "@/lib/pedidos/estoque";
 import { validarCheckout, type CheckoutPayload } from "@/lib/pedidos/validation";
 
-// Esqueleto da rota (Tarefa 1): lista pedidos sem regra de negócio de pagamento.
-// A listagem administrativa completa é escopo da Tarefa 8 (EDI-81).
-export async function GET() {
-  const client = await getMongoClient();
-  const pedidos = await client
-    .db(DB_NAME)
-    .collection<Pedido>(PEDIDOS_COLLECTION)
-    .find({})
-    .toArray();
+/** Listagem administrativa de pedidos (Tarefa 8/EDI-81) — filtro por canal/status e paginação simples. */
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const canalParam = searchParams.get("canal");
+  const statusParam = searchParams.get("status");
+  const paginaParam = Number(searchParams.get("pagina"));
 
-  return NextResponse.json({ pedidos });
+  const { pedidos, total } = await listarPedidos({
+    canal: CANAIS_ORIGEM.includes(canalParam as CanalOrigem) ? (canalParam as CanalOrigem) : undefined,
+    status: STATUS_PEDIDO.includes(statusParam as StatusPedido) ? (statusParam as StatusPedido) : undefined,
+    pagina: Number.isFinite(paginaParam) && paginaParam > 0 ? paginaParam : undefined,
+  });
+
+  const produtos = await buscarProdutosPorIds(
+    pedidos.flatMap((pedido) => pedido.itens.map((item) => item.produtoId.toString()))
+  );
+
+  return NextResponse.json({
+    pedidos: pedidos.map((pedido) => paraPedidoResumo(pedido, produtos)),
+    totalPaginas: Math.max(1, Math.ceil(total / PEDIDOS_POR_PAGINA)),
+    paginaAtual: Number.isFinite(paginaParam) && paginaParam > 0 ? paginaParam : 1,
+  });
 }
 
 export async function POST(request: Request) {
