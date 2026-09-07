@@ -17,3 +17,4 @@ tsconfig.tsbuildinfo
 *.log
 .DS_Store
 atlas-credentials.env
+voxelasjson_google_clientid.json

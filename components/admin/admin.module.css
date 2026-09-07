@@ -98,10 +98,22 @@
   border-color: #2f8f52;
 }
 
+.badgeStatusEmProducao {
+  composes: badge;
+  color: #1f6fb3;
+  border-color: #1f6fb3;
+}
+
 .badgeStatusEnviado {
   composes: badge;
   color: var(--roxo);
   border-color: var(--roxo);
+}
+
+.badgeStatusEntregue {
+  composes: badge;
+  color: #2f8f52;
+  border-color: #2f8f52;
 }
 
 .badgeStatusCancelado {

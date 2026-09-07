@@ -14,6 +14,9 @@ const { abaterEstoquePedido, registrarItemExternoSemProduto } = vi.hoisted(() =>
   abaterEstoquePedido: vi.fn(),
   registrarItemExternoSemProduto: vi.fn(),
 }));
+const { notificarAdminVendaExterna } = vi.hoisted(() => ({
+  notificarAdminVendaExterna: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@/lib/estoque/canais/mercadoLivre/pedidos", () => ({ buscarPedidoMercadoLivre }));
 vi.mock("@/lib/produtos/repository", () => ({ buscarProdutoPorMercadoLivreId }));
@@ -22,6 +25,7 @@ vi.mock("@/lib/estoque/abatimento", () => ({
   abaterEstoquePedido,
   registrarItemExternoSemProduto,
 }));
+vi.mock("@/lib/email/resend", () => ({ notificarAdminVendaExterna }));
 
 const { POST } = await import("./route");
 
@@ -77,9 +81,10 @@ describe("POST /api/webhooks/mercado-livre/pedidos", () => {
       itens: [{ produtoId: produtoMock._id, quantidade: 2, precoUnitario: 5000 }],
     });
     expect(abaterEstoquePedido).toHaveBeenCalledWith(pedidoCriado);
+    expect(notificarAdminVendaExterna).toHaveBeenCalledWith(pedidoCriado);
   });
 
-  it("reenvio da mesma notificação: não abate de novo", async () => {
+  it("reenvio da mesma notificação: não abate nem notifica de novo", async () => {
     buscarPedidoMercadoLivre.mockResolvedValue({
       itens: [{ itemId: "MLB123", quantidade: 2 }],
     });
@@ -92,6 +97,7 @@ describe("POST /api/webhooks/mercado-livre/pedidos", () => {
     await POST(requisicao(notificacaoBase));
 
     expect(abaterEstoquePedido).not.toHaveBeenCalled();
+    expect(notificarAdminVendaExterna).not.toHaveBeenCalled();
   });
 
   it("item sem produto correspondente: registra inconsistência e segue sem travar", async () => {

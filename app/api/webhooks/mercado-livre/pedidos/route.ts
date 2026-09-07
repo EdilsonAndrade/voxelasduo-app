@@ -3,6 +3,7 @@ import { buscarPedidoMercadoLivre } from "@/lib/estoque/canais/mercadoLivre/pedi
 import { buscarProdutoPorMercadoLivreId } from "@/lib/produtos/repository";
 import { upsertPedidoExterno, type ItemPedidoExterno } from "@/lib/pedidos/externos";
 import { abaterEstoquePedido, registrarItemExternoSemProduto } from "@/lib/estoque/abatimento";
+import { notificarAdminVendaExterna } from "@/lib/email/resend";
 
 interface NotificacaoMercadoLivre {
   resource?: string;
@@ -64,6 +65,8 @@ export async function POST(request: Request) {
 
     if (criado) {
       await abaterEstoquePedido(pedido);
+      // Best-effort (Tarefa 10/EDI-84) — nunca bloqueia o processamento do webhook.
+      await notificarAdminVendaExterna(pedido);
     }
   }
 

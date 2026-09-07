@@ -110,6 +110,8 @@ export interface CriarPedidoInput {
   idempotencia: string;
   cliente: ClientePedido;
   itens: { produtoId: string; quantidade: number }[];
+  /** Presente quando o checkout foi feito por um cliente autenticado (Tarefa 10/EDI-84). */
+  clienteId?: ObjectId;
 }
 
 export interface ItemPedidoDetalhado {
@@ -185,6 +187,7 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
     valorTotal,
     pagamento: { tentativas: [] },
     idempotencia: input.idempotencia,
+    ...(input.clienteId ? { clienteId: input.clienteId } : {}),
     criadoEm: agora,
     atualizadoEm: agora,
   };
