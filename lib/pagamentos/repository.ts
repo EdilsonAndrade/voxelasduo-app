@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { buscarPedidoPorId, colecaoPedidos } from "@/lib/pedidos/repository";
 import type { StatusTentativaPagamento, TentativaPagamento } from "@/lib/models/pedido";
 import { abaterEstoquePedido } from "@/lib/estoque/abatimento";
+import { enviarConfirmacaoPedido } from "@/lib/email/resend";
 
 /** Janela em que uma tentativa "pendente" é considerada ativa (evita cobrança dupla em abas simultâneas). */
 const JANELA_TENTATIVA_ATIVA_MS = 10 * 60 * 1000;
@@ -27,10 +28,12 @@ export async function existeTentativaAtivaRecente(pedidoId: string): Promise<boo
  * efeito se o pedido ainda não estiver "pago" (data-model.md #3). Reprocessar
  * a mesma aprovação (resposta síncrona + webhook posterior) não duplica efeito.
  *
- * O abatimento de estoque (Tarefa 5/EDI-78) é amarrado a esta mesma condição
- * via `findOneAndUpdate`: só dispara quando esta chamada foi de fato quem
+ * O abatimento de estoque (Tarefa 5/EDI-78) e o e-mail de confirmação de
+ * pedido ao comprador (Tarefa 12/EDI-87) são amarrados a esta mesma condição
+ * via `findOneAndUpdate`: só disparam quando esta chamada foi de fato quem
  * promoveu o pedido, reaproveitando a idempotência já resolvida aqui em vez
- * de um mecanismo próprio (research.md #1 da Tarefa 5).
+ * de um mecanismo próprio (research.md #1 da Tarefa 5, research.md #1 da
+ * Tarefa 12).
  */
 async function promoverPedidoSeAprovado(
   objectId: ObjectId,
@@ -54,6 +57,8 @@ async function promoverPedidoSeAprovado(
 
   if (pedidoPromovido) {
     await abaterEstoquePedido(pedidoPromovido);
+    // Best-effort (Tarefa 12/EDI-87) — nunca bloqueia a confirmação do pagamento.
+    await enviarConfirmacaoPedido(pedidoPromovido);
   }
 }
 
