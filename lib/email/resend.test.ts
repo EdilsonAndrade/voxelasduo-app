@@ -10,9 +10,15 @@ vi.mock("resend", () => ({
   }),
 }));
 
-const { enviarCodigoRecuperacao, enviarCodigoVerificacao, notificarAdminVendaExterna } = await import(
-  "./resend"
-);
+const { buscarProdutosPorIds } = vi.hoisted(() => ({ buscarProdutosPorIds: vi.fn() }));
+vi.mock("@/lib/pedidos/repository", () => ({ buscarProdutosPorIds }));
+
+const {
+  enviarCodigoRecuperacao,
+  enviarCodigoVerificacao,
+  notificarAdminVendaExterna,
+  enviarConfirmacaoPedido,
+} = await import("./resend");
 
 const pedidoBase: Pedido = {
   _id: new ObjectId(),
@@ -50,6 +56,7 @@ describe("enviarCodigoRecuperacao", () => {
         to: "cliente@exemplo.com",
         subject: expect.stringContaining("senha"),
         text: expect.stringContaining("123456"),
+        html: expect.stringContaining("123456"),
       })
     );
   });
@@ -77,6 +84,7 @@ describe("enviarCodigoVerificacao", () => {
         to: "cliente@exemplo.com",
         subject: expect.stringContaining("e-mail"),
         text: expect.stringContaining("654321"),
+        html: expect.stringContaining("654321"),
       })
     );
   });
@@ -109,6 +117,7 @@ describe("notificarAdminVendaExterna", () => {
         to: "admin@voxelasduo.com",
         subject: expect.stringContaining("Mercado Livre"),
         text: expect.stringContaining("130,00"),
+        html: expect.stringContaining("130,00"),
       })
     );
   });
@@ -122,5 +131,56 @@ describe("notificarAdminVendaExterna", () => {
   it("não lança quando o envio falha", async () => {
     send.mockRejectedValue(new Error("falha de rede"));
     await expect(notificarAdminVendaExterna(pedidoBase)).resolves.toBeUndefined();
+  });
+});
+
+describe("enviarConfirmacaoPedido", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.RESEND_API_KEY = "re_teste";
+    process.env.EMAIL_FROM = "naoresponda@voxelasduo.com";
+  });
+
+  it("envia a confirmação para o e-mail do comprador com número do pedido, itens e valor total", async () => {
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+    const [produtoId1, produtoId2] = pedidoBase.itens.map((item) => item.produtoId);
+    buscarProdutosPorIds.mockResolvedValue(
+      new Map([
+        [produtoId1.toString(), { _id: produtoId1, nome: "Voxel Rosa P" }],
+        [produtoId2.toString(), { _id: produtoId2, nome: "Voxel Azul M" }],
+      ])
+    );
+
+    await enviarConfirmacaoPedido(pedidoBase);
+
+    expect(buscarProdutosPorIds).toHaveBeenCalledWith(
+      expect.arrayContaining([produtoId1.toString(), produtoId2.toString()])
+    );
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: pedidoBase.cliente.email,
+        subject: expect.stringContaining(pedidoBase._id!.toString()),
+        html: expect.stringContaining("Voxel Rosa P"),
+        text: expect.stringContaining("Voxel Rosa P"),
+      })
+    );
+    const enviado = send.mock.calls[0][0];
+    expect(enviado.text).toContain("Voxel Azul M");
+    expect(enviado.text).toContain("130,00");
+  });
+
+  it("usa 'Produto' como nome de fallback quando o produto não é encontrado", async () => {
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+    buscarProdutosPorIds.mockResolvedValue(new Map());
+
+    await enviarConfirmacaoPedido(pedidoBase);
+
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ text: expect.stringContaining("Produto") }));
+  });
+
+  it("não lança quando o envio falha", async () => {
+    buscarProdutosPorIds.mockResolvedValue(new Map());
+    send.mockRejectedValue(new Error("falha de rede"));
+    await expect(enviarConfirmacaoPedido(pedidoBase)).resolves.toBeUndefined();
   });
 });
