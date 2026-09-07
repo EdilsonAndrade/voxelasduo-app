@@ -1,0 +1,343 @@
+.pagina {
+  padding: 3rem 0 4.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.cartao {
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 20px;
+  padding: 2rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.eyebrow {
+  font-family: var(--font-hand);
+  font-size: 1.3rem;
+  color: var(--rosa);
+  margin: 0;
+}
+
+.titulo {
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0 0 0.25rem;
+}
+
+.subtitulo {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--texto-soft);
+  margin: -0.75rem 0 0;
+}
+
+.divisor {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--texto-soft);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.divisor::before,
+.divisor::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: var(--surface-line);
+}
+
+.botaoGoogle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 0.75rem 1.4rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+  width: 100%;
+}
+
+.botaoGoogle:hover:not(:disabled) {
+  border-color: var(--roxo);
+  transform: translateY(-1px);
+}
+
+.botaoGoogle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.rodape {
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--texto-soft);
+  margin: 0;
+}
+
+.rodape a {
+  color: var(--roxo);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.linkBotao {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  color: var(--roxo);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.linkBotao:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .botaoGoogle {
+    transition: none;
+  }
+  .botaoGoogle:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+.enderecosLista {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.enderecoItem {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--texto-soft);
+  margin: 0;
+}
+
+.paginaConta {
+  padding: 2.5rem 0 4.5rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* Navegação de "Minha conta" (2 abas simples — site raso, sem breadcrumb) */
+
+.contaNav {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.contaNav a {
+  color: var(--texto-soft);
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid transparent;
+}
+
+.contaNavAtivo {
+  color: var(--preto) !important;
+  border-bottom-color: var(--roxo) !important;
+}
+
+/* "Meus Pedidos" */
+
+.listaPedidos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.pedidoCard {
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 18px;
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pedidoTopo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pedidoData {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--texto-soft);
+}
+
+.pedidoItens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--preto);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.pedidoRodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pedidoValor {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--roxo);
+}
+
+.badgeCanal {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  border: 2px solid var(--surface-line);
+}
+
+.badgeStatus {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  background: var(--creme);
+  border: 2px solid var(--roxo);
+  color: var(--roxo);
+}
+
+.rastreio {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+  margin: 0;
+}
+
+.vazio {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  background: var(--surface);
+  border: 2px dashed var(--surface-line);
+  border-radius: 18px;
+}
+
+.vazioTexto {
+  font-family: var(--font-hand);
+  font-size: 1.4rem;
+  color: var(--texto-soft);
+  margin: 0 0 0.6rem;
+}
+
+.vazioLink {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--roxo);
+}
+
+/* Trilha de produção — sinal visual próprio: cada pedido pago "anda" por
+   4 estações até a entrega, como uma peça saindo da impressora por etapas. */
+.trilha {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.trilhaEtapa {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  text-align: center;
+  position: relative;
+}
+
+.trilhaEtapa::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--surface-line);
+  z-index: 0;
+}
+
+.trilhaEtapa:first-child::before {
+  content: none;
+}
+
+.trilhaPonto {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--surface-line);
+  border: 2px solid var(--surface-line);
+  z-index: 1;
+}
+
+.trilhaEtapaFeita .trilhaPonto {
+  background: var(--roxo);
+  border-color: var(--roxo);
+}
+
+.trilhaEtapaFeita.trilhaEtapa::before {
+  background: var(--roxo);
+}
+
+.trilhaRotulo {
+  font-family: var(--font-hand);
+  font-size: 0.95rem;
+  color: var(--texto-soft);
+}
+
+.trilhaEtapaFeita .trilhaRotulo {
+  color: var(--roxo);
+}

@@ -9,6 +9,7 @@ export interface PedidoResumo {
   valorTotal: number;
   criadoEm: Date;
   temItemSemCorrespondencia: boolean;
+  rastreio?: Pedido["rastreio"];
 }
 
 export interface ItemPedidoDetalhe {
@@ -30,6 +31,7 @@ export interface PedidoDetalhado {
   origemExterna?: Pedido["origemExterna"];
   criadoEm: Date;
   atualizadoEm: Date;
+  rastreio?: Pedido["rastreio"];
 }
 
 function resolverItem(
@@ -59,6 +61,7 @@ export function paraPedidoResumo(pedido: Pedido, produtos: Map<string, Produto>)
     valorTotal: pedido.valorTotal,
     criadoEm: pedido.criadoEm,
     temItemSemCorrespondencia,
+    rastreio: pedido.rastreio,
   };
 }
 
@@ -77,5 +80,6 @@ export function paraPedidoDetalhado(
     origemExterna: pedido.origemExterna,
     criadoEm: pedido.criadoEm,
     atualizadoEm: pedido.atualizadoEm,
+    rastreio: pedido.rastreio,
   };
 }

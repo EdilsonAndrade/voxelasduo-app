@@ -7,10 +7,13 @@ const { buscarPedidoPorId, buscarProdutosPorIds } = vi.hoisted(() => ({
   buscarPedidoPorId: vi.fn(),
   buscarProdutosPorIds: vi.fn(),
 }));
-const { atualizarStatusPedido } = vi.hoisted(() => ({ atualizarStatusPedido: vi.fn() }));
+const { atualizarStatusPedido, atualizarRastreioPedido } = vi.hoisted(() => ({
+  atualizarStatusPedido: vi.fn(),
+  atualizarRastreioPedido: vi.fn(),
+}));
 
 vi.mock("@/lib/pedidos/repository", () => ({ buscarPedidoPorId, buscarProdutosPorIds }));
-vi.mock("@/lib/pedidos/atualizarStatus", () => ({ atualizarStatusPedido }));
+vi.mock("@/lib/pedidos/atualizarStatus", () => ({ atualizarStatusPedido, atualizarRastreioPedido }));
 
 const { GET, PATCH } = await import("./route");
 
@@ -119,5 +122,44 @@ describe("PATCH /api/pedidos/[id]", () => {
       status: "enviado",
       atualizadoEm: atualizadoEm.toISOString(),
     });
+  });
+
+  it("retorna 400 quando o rastreio vem incompleto", async () => {
+    const resposta = await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        body: JSON.stringify({ rastreio: { codigo: "BR123" } }),
+      }),
+      params(new ObjectId().toString())
+    );
+
+    expect(resposta.status).toBe(400);
+    expect(atualizarRastreioPedido).not.toHaveBeenCalled();
+  });
+
+  it("atualiza o rastreio e retorna o pedido", async () => {
+    const id = new ObjectId();
+    const atualizadoEm = new Date("2026-09-06T12:05:00.000Z");
+    atualizarRastreioPedido.mockResolvedValue({
+      _id: id,
+      status: "enviado",
+      rastreio: { codigo: "BR123", transportadora: "Correios" },
+      atualizadoEm,
+    });
+
+    const resposta = await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        body: JSON.stringify({ rastreio: { codigo: "BR123", transportadora: "Correios" } }),
+      }),
+      params(id.toString())
+    );
+    const corpo = await resposta.json();
+
+    expect(atualizarRastreioPedido).toHaveBeenCalledWith(id.toString(), {
+      codigo: "BR123",
+      transportadora: "Correios",
+    });
+    expect(corpo.pedido.rastreio).toEqual({ codigo: "BR123", transportadora: "Correios" });
   });
 });

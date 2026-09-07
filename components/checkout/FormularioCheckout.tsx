@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useCarrinho } from "@/components/carrinho/carrinho-context";
+import { buscarEnderecoPorCep } from "@/lib/cep/buscarEnderecoPorCep";
 import styles from "./checkout.module.css";
 
 interface ItemSemEstoque {
@@ -44,8 +45,29 @@ export default function FormularioCheckout({ aoConcluir }: FormularioCheckoutPro
     cep: "",
   });
 
+  const [buscandoCep, setBuscandoCep] = useState(false);
+
   function atualizar(campo: keyof typeof formulario, valor: string) {
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  async function buscarCep(valor: string) {
+    atualizar("cep", valor);
+    const digitos = valor.replace(/\D/g, "");
+    if (digitos.length !== 8) return;
+
+    setBuscandoCep(true);
+    const endereco = await buscarEnderecoPorCep(digitos);
+    setBuscandoCep(false);
+    if (endereco) {
+      setFormulario((atual) => ({
+        ...atual,
+        logradouro: endereco.logradouro || atual.logradouro,
+        bairro: endereco.bairro || atual.bairro,
+        cidade: endereco.cidade || atual.cidade,
+        estado: endereco.estado || atual.estado,
+      }));
+    }
   }
 
   async function enviar(evento: React.FormEvent<HTMLFormElement>) {
@@ -198,6 +220,23 @@ export default function FormularioCheckout({ aoConcluir }: FormularioCheckoutPro
       <section className={styles.secao}>
         <p className={styles.secaoTitulo}>sua casa</p>
         <div className={styles.campos}>
+          <div className={styles.campo}>
+            <label className={styles.rotulo} htmlFor="cep">
+              CEP <span>*</span>
+            </label>
+            <input
+              id="cep"
+              className={styles.input}
+              value={formulario.cep}
+              onChange={(e) => buscarCep(e.target.value)}
+              autoComplete="postal-code"
+              placeholder="01001-000"
+            />
+            {buscandoCep && <p className={styles.statusCampo}>buscando endereço…</p>}
+            {erroDe("cliente.endereco.cep") && (
+              <p className={styles.erroCampo}>{erroDe("cliente.endereco.cep")}</p>
+            )}
+          </div>
           <div className={`${styles.campo} ${styles.campoLargo}`}>
             <label className={styles.rotulo} htmlFor="logradouro">
               rua <span>*</span>
@@ -282,22 +321,6 @@ export default function FormularioCheckout({ aoConcluir }: FormularioCheckoutPro
             />
             {erroDe("cliente.endereco.estado") && (
               <p className={styles.erroCampo}>{erroDe("cliente.endereco.estado")}</p>
-            )}
-          </div>
-          <div className={styles.campo}>
-            <label className={styles.rotulo} htmlFor="cep">
-              CEP <span>*</span>
-            </label>
-            <input
-              id="cep"
-              className={styles.input}
-              value={formulario.cep}
-              onChange={(e) => atualizar("cep", e.target.value)}
-              autoComplete="postal-code"
-              placeholder="01001-000"
-            />
-            {erroDe("cliente.endereco.cep") && (
-              <p className={styles.erroCampo}>{erroDe("cliente.endereco.cep")}</p>
             )}
           </div>
         </div>

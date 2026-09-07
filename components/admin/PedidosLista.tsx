@@ -12,14 +12,18 @@ import styles from "./admin.module.css";
 const LABEL_STATUS: Record<PedidoResumo["status"], string> = {
   pendente: "Pendente",
   pago: "Pago",
+  em_producao: "Em produção",
   enviado: "Enviado",
+  entregue: "Entregue",
   cancelado: "Cancelado",
 };
 
 const CLASSE_BADGE_STATUS: Record<PedidoResumo["status"], string> = {
   pendente: styles.badgeStatusPendente,
   pago: styles.badgeStatusPago,
+  em_producao: styles.badgeStatusEmProducao,
   enviado: styles.badgeStatusEnviado,
+  entregue: styles.badgeStatusEntregue,
   cancelado: styles.badgeStatusCancelado,
 };
 
@@ -66,8 +70,28 @@ export default function PedidosLista({
   } | null>(null);
   const [salvandoStatus, setSalvandoStatus] = useState(false);
   const [toastMensagem, setToastMensagem] = useState<string | null>(null);
+  const [rastreioForm, setRastreioForm] = useState({ codigo: "", transportadora: "" });
+  const [salvandoRastreio, setSalvandoRastreio] = useState(false);
 
   useEffect(() => setPedidos(pedidosIniciais), [pedidosIniciais]);
+
+  async function salvarRastreio(pedidoId: string) {
+    if (!rastreioForm.codigo.trim() || !rastreioForm.transportadora.trim()) return;
+    setSalvandoRastreio(true);
+    try {
+      const resposta = await fetch(`/api/pedidos/${pedidoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rastreio: rastreioForm }),
+      });
+      if (resposta.ok) {
+        setToastMensagem("Rastreio salvo — já visível para o cliente em \"Meus Pedidos\".");
+        setRastreioForm({ codigo: "", transportadora: "" });
+      }
+    } finally {
+      setSalvandoRastreio(false);
+    }
+  }
 
   async function confirmarMudancaStatus() {
     if (!pendenteConfirmacao) return;
@@ -142,7 +166,9 @@ export default function PedidosLista({
         <option value="">Todos os status</option>
         <option value="pendente">Pendente</option>
         <option value="pago">Pago</option>
+        <option value="em_producao">Em produção</option>
         <option value="enviado">Enviado</option>
+        <option value="entregue">Entregue</option>
         <option value="cancelado">Cancelado</option>
       </select>
     </div>
@@ -247,6 +273,38 @@ export default function PedidosLista({
                           Pagamento: {detalhe.pagamento.metodo} — {detalhe.pagamento.status}
                         </p>
                       )}
+                      {detalhe.rastreio && (
+                        <p>
+                          Rastreio atual: <strong>{detalhe.rastreio.codigo}</strong> (
+                          {detalhe.rastreio.transportadora})
+                        </p>
+                      )}
+                      <div className={styles.filtros}>
+                        <input
+                          className={styles.filtroSelect}
+                          placeholder="código de rastreio"
+                          value={rastreioForm.codigo}
+                          onChange={(e) =>
+                            setRastreioForm((atual) => ({ ...atual, codigo: e.target.value }))
+                          }
+                        />
+                        <input
+                          className={styles.filtroSelect}
+                          placeholder="transportadora"
+                          value={rastreioForm.transportadora}
+                          onChange={(e) =>
+                            setRastreioForm((atual) => ({ ...atual, transportadora: e.target.value }))
+                          }
+                        />
+                        <button
+                          type="button"
+                          className={styles.btnGhost}
+                          disabled={salvandoRastreio}
+                          onClick={() => salvarRastreio(pedido.id)}
+                        >
+                          {salvandoRastreio ? "salvando..." : "salvar rastreio"}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </td>

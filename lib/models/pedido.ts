@@ -2,10 +2,17 @@ import type { ObjectId } from "mongodb";
 
 export const PEDIDOS_COLLECTION = "pedidos";
 
-export type StatusPedido = "pendente" | "pago" | "enviado" | "cancelado";
+export type StatusPedido = "pendente" | "pago" | "em_producao" | "enviado" | "entregue" | "cancelado";
 export type CanalOrigem = "site" | "shopee" | "mercado_livre";
 
-export const STATUS_PEDIDO: StatusPedido[] = ["pendente", "pago", "enviado", "cancelado"];
+export const STATUS_PEDIDO: StatusPedido[] = [
+  "pendente",
+  "pago",
+  "em_producao",
+  "enviado",
+  "entregue",
+  "cancelado",
+];
 export const CANAIS_ORIGEM: CanalOrigem[] = ["site", "shopee", "mercado_livre"];
 
 export interface ItemPedido {
@@ -54,6 +61,11 @@ export interface PagamentoPedido {
   tentativas: TentativaPagamento[];
 }
 
+export interface RastreioPedido {
+  codigo: string;
+  transportadora: string;
+}
+
 export interface Pedido {
   _id?: ObjectId;
   itens: ItemPedido[];
@@ -77,6 +89,15 @@ export interface Pedido {
     canal: "mercado_livre" | "shopee";
     pedidoExternoId: string;
   };
+  /**
+   * Presente quando o pedido foi finalizado por um cliente autenticado no
+   * site (Tarefa 10/EDI-84). Nunca gravado retroativamente — pedidos de
+   * convidado sem `clienteId` são associados por `cliente.email` em tempo de
+   * leitura (ver `lib/clientes/pedidosAssociados.ts`).
+   */
+  clienteId?: ObjectId;
+  /** Dados de rastreio, quando disponíveis (Tarefa 10/EDI-84). */
+  rastreio?: RastreioPedido;
   criadoEm: Date;
   atualizadoEm: Date;
 }

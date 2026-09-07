@@ -1,4 +1,6 @@
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth/clienteConfig";
 import { CANAIS_ORIGEM, STATUS_PEDIDO, type CanalOrigem, type Pedido, type StatusPedido } from "@/lib/models/pedido";
 import {
   PEDIDOS_POR_PAGINA,
@@ -50,6 +52,12 @@ export async function POST(request: Request) {
     })
   );
 
+  // Leitura opcional da sessão do cliente (Tarefa 10/EDI-84) — o checkout
+  // continua público (guest checkout); quando há sessão válida, o pedido
+  // já nasce associado à conta.
+  const session = await auth();
+  const clienteId = session?.user?.id ? new ObjectId(session.user.id) : undefined;
+
   let pedido: Pedido;
   let duplicado: boolean;
   let itensDetalhados: ItemPedidoDetalhado[];
@@ -59,6 +67,7 @@ export async function POST(request: Request) {
       idempotencia: payload.idempotencia as string,
       cliente: payload.cliente as Pedido["cliente"],
       itens,
+      clienteId,
     });
     pedido = resultado.pedido;
     duplicado = resultado.duplicado;

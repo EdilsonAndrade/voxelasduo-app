@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import type { Pedido, StatusPedido } from "@/lib/models/pedido";
+import type { Pedido, RastreioPedido, StatusPedido } from "@/lib/models/pedido";
 import { colecaoPedidos } from "./repository";
 
 /**
@@ -17,6 +17,21 @@ export async function atualizarStatusPedido(
   const resultado = await colecao.findOneAndUpdate(
     { _id: new ObjectId(id) },
     { $set: { status: novoStatus, atualizadoEm: new Date() } },
+    { returnDocument: "after" }
+  );
+
+  return resultado;
+}
+
+/** Registra/atualiza o rastreio de um pedido (Tarefa 10/EDI-84 — exibido em "Meus Pedidos"). */
+export async function atualizarRastreioPedido(
+  id: string,
+  rastreio: RastreioPedido
+): Promise<Pedido | null> {
+  const colecao = await colecaoPedidos();
+  const resultado = await colecao.findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: { rastreio, atualizadoEm: new Date() } },
     { returnDocument: "after" }
   );
 
