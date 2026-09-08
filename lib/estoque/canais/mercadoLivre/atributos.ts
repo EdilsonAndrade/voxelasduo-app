@@ -1,4 +1,4 @@
-import type { Produto } from "@/lib/models/produto";
+import type { EmbalagemEnvio, Produto } from "@/lib/models/produto";
 import { obterAccessTokenValido } from "./auth";
 import { erroMercadoLivre } from "./erros";
 
@@ -54,7 +54,12 @@ const PADRAO_GENERICO = /gen[eé]ric|n[aã]o especificad|outr[oa]|sem marca/i;
  * Melhor esforço para preencher um atributo obrigatório sem intervenção
  * manual: para listas fechadas (ex: marca), procura uma opção genérica
  * ("Genérica", "Não especificado"); sem opção assim, usa a primeira da
- * lista. Para atributos de texto livre, reaproveita o nome do produto.
+ * lista. Para atributos de texto livre, reaproveita o nome do produto —
+ * **exceto** `BRAND`, que usa um valor genérico fixo (EDI-95): produtos sem
+ * marca real não devem ter "Marca" preenchida com o próprio nome do
+ * produto, o que fazia "Marca" e "Modelo" saírem idênticos quando ambos são
+ * atributos obrigatórios de texto livre na mesma categoria (bug observado em
+ * produção).
  */
 export function valorPadraoAtributo(atributo: AtributoCategoria, produto: Produto): AtributoItem {
   if (atributo.value_type === "list" && atributo.values && atributo.values.length > 0) {
@@ -62,5 +67,27 @@ export function valorPadraoAtributo(atributo: AtributoCategoria, produto: Produt
     return { id: atributo.id, value_id: (generico ?? atributo.values[0]).id };
   }
 
+  if (atributo.id === "BRAND") {
+    return { id: atributo.id, value_name: "Genérica" };
+  }
+
   return { id: atributo.id, value_name: produto.nome };
+}
+
+/**
+ * Monta os atributos de peso/dimensões da embalagem pronta para envio
+ * (`SELLER_PACKAGE_WEIGHT/HEIGHT/WIDTH/LENGTH`), a partir dos dados
+ * informados pelo vendedor — enviados na publicação mesmo quando a
+ * categoria não os marca como obrigatórios (EDI-96), já que sem eles o
+ * Mercado Livre calcula o frete com base num padrão impreciso. Formato
+ * `"<número> <unidade>"`, mesmo padrão observado no retorno de itens já
+ * publicados (`GET /items/{id}`) para esses atributos.
+ */
+export function atributosEmbalagem(embalagem: EmbalagemEnvio): AtributoItem[] {
+  return [
+    { id: "SELLER_PACKAGE_WEIGHT", value_name: `${embalagem.pesoGramas} g` },
+    { id: "SELLER_PACKAGE_HEIGHT", value_name: `${embalagem.alturaCm} cm` },
+    { id: "SELLER_PACKAGE_WIDTH", value_name: `${embalagem.larguraCm} cm` },
+    { id: "SELLER_PACKAGE_LENGTH", value_name: `${embalagem.comprimentoCm} cm` },
+  ];
 }

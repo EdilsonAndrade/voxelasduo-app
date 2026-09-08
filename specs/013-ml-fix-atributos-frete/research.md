@@ -1,0 +1,39 @@
+# Phase 0 Research: Correções urgentes de atributos e frete nos anúncios do Mercado Livre
+
+## 1. Correção do valor padrão de "Marca"
+
+**Decisão**: Em `valorPadraoAtributo()` (`lib/estoque/canais/mercadoLivre/atributos.ts`), quando o atributo é de texto livre (não `list`) **e** seu `id` é `"BRAND"`, retornar um valor genérico fixo (`"Genérica"`) em vez de `produto.nome`. Para qualquer outro atributo de texto livre (incluindo `"MODEL"`), manter o comportamento atual (usa `produto.nome`).
+
+**Rationale**: A causa raiz do bug observado ("Marca" e "Modelo" idênticos) é que ambos caem no mesmo `return` genérico da função, que sempre usa `produto.nome`. Diferenciar apenas `BRAND` resolve a duplicação com a menor mudança possível, e é semanticamente correto: "Marca" realmente não tem valor conhecido quando o produto é de fabricação própria, enquanto "Modelo" ainda faz algum sentido receber o nome do produto (mais informativo para o comprador do que um genérico).
+
+**Alternatives considered**:
+- Usar `"Genérica"` também para `MODEL` — rejeitado porque tornaria o atributo "Modelo" menos informativo do que já é hoje (nome do produto), sem necessidade, já que o bug é especificamente a duplicação, não o valor de Modelo em si.
+- Tornar os atributos obrigatórios em algo que force preenchimento manual pelo vendedor — mais correto a longo prazo, mas adiciona fricção ao cadastro e não resolve os anúncios já publicados sem ação adicional; mantido fora de escopo desta correção urgente (o vendedor já pode informar uma marca real quando souber, ver FR-003, sem que isso seja obrigatório).
+
+## 2. Envio de peso/dimensões da embalagem na publicação
+
+**Decisão**: Adicionar um novo campo opcional `embalagemEnvio` ao modelo `Produto` (peso em gramas, altura/largura/comprimento em cm). Criar uma função `atributosEmbalagem(embalagem: EmbalagemEnvio): AtributoItem[]` em `atributos.ts` que retorna os atributos `SELLER_PACKAGE_WEIGHT`, `SELLER_PACKAGE_HEIGHT`, `SELLER_PACKAGE_LENGTH`, `SELLER_PACKAGE_WIDTH` no formato `{ id, value_name: "<numero> <unidade>" }` (ex: `{ id: "SELLER_PACKAGE_WEIGHT", value_name: "250 g" }`), com base no exemplo de item já publicado consultado na documentação do Mercado Livre (`GET /items/{id}`), que mostra esses atributos nesse formato. Em `criarAnuncio()`, concatenar esses atributos ao array `attributes` **independentemente** de a categoria marcá-los como obrigatórios (hoje só os obrigatórios são incluídos).
+
+**Rationale**: A API de custos (`/sites/MLB/listing_prices`, usada na EDI-92/EDI-94) já deixa claro que o frete depende de dados de logística/peso — mas o problema aqui é mais direto: o **anúncio em si** nunca informa peso/dimensões ao Mercado Livre, então o cálculo de frete do comprador não tem como ser preciso. Enviar esses atributos, mesmo quando não obrigatórios pela categoria, é a correção mínima necessária.
+
+**Alternatives considered**:
+- Enviar como valor estruturado (`{ number, unit }`) em vez de `value_name` textual — a documentação de "Descrição de produtos"/exemplos de item mostra o campo de resposta com `value_name: "250 g"` e `values[0].struct: { number, unit }`, mas não há exemplo direto de o que enviar na criação. Optou-se por `value_name` com número+unidade por ser o formato já usado com sucesso pelo restante do código (`valorPadraoAtributo` usa `value_name` para texto livre) e mais simples de montar. **Precisa ser validado empiricamente publicando um item de teste** (mesmo padrão de descoberta usado em decisões anteriores deste projeto, documentado nos comentários do código) — se o Mercado Livre rejeitar o formato, ajustar para o formato estruturado.
+- Tornar peso/dimensões obrigatórios no cadastro de produto — rejeitado por FR-007 (deve orientar mas não bloquear a publicação), para não travar publicações urgentes por falta desse dado ainda não preenchido em produtos já cadastrados.
+
+## 3. Corrigir anúncios já publicados sem despublicar/republicar
+
+**Decisão**: Criar `atualizarAtributosAnuncio(itemId: string, produto: Produto): Promise<void>` em `lib/estoque/canais/mercadoLivre/anuncios.ts`, que resolve a categoria do item (reaproveitando `resolverCategoriaMercadoLivre`/categoria já conhecida), busca os atributos obrigatórios (`buscarAtributosObrigatorios`), monta os valores corrigidos (`valorPadraoAtributo` já corrigido) + `atributosEmbalagem()` (se `produto.embalagemEnvio` existir), e envia via `PUT /items/{itemId}` com `{ attributes: [...] }`.
+
+**Rationale**: O restante do código já demonstra que `PUT /items/{id}` aceita atualizações parciais (`atualizarAnuncio()` em `client.ts` já faz `PUT` só com `available_quantity`/`price`; `despublicarAnuncio()` só com `status`) — o mesmo padrão deve funcionar para `attributes`, sem precisar fechar e recriar o anúncio (FR-004/FR-009).
+
+**Alternatives considered**: Usar `PATCH` — a API do Mercado Livre para o recurso `/items/{id}` documentada neste projeto usa `PUT` para todas as atualizações parciais já implementadas; manter consistência.
+
+## 4. Aplicar a correção nos anúncios já publicados (ação em lote)
+
+**Decisão**: Dois caminhos complementares:
+1. **Script único de manutenção** (`scripts/corrigir-atributos-mercado-livre.ts`, rodado via `tsx`, mesmo padrão de `scripts/seed.ts`): itera sobre `listarProdutosComIntegracaoExterna()` (já existe, usado pela importação de avaliações da EDI-85), filtra os que têm `integracoes.mercadoLivreId`, e chama `atualizarAtributosAnuncio()` para cada um — resolve a correção retroativa em massa numa única execução manual.
+2. **Ação no admin** (botão "Corrigir atributos no Mercado Livre" em `ProdutoForm.tsx`, nova rota `POST /api/produtos/[id]/mercado-livre/corrigir-atributos`): permite corrigir um produto específico pontualmente, sem depender de rodar o script (útil ao editar um produto e notar o problema, ou depois de preencher os dados de embalagem).
+
+**Rationale**: O script resolve a urgência imediata (corrigir todos os anúncios já publicados, incluindo o citado pelo usuário) numa execução só; a ação no admin cobre o caso contínuo (produtos editados depois, ou corrigidos individualmente). Nenhum dos dois exige infraestrutura nova (fila, cron) — volume atual de produtos publicados é pequeno o suficiente para processamento sequencial simples.
+
+**Alternatives considered**: Sincronizar atributos automaticamente a cada `PATCH /api/produtos/[id]` (como já acontece com preço/estoque/descrição em `sincronizarAnuncioProduto`) — descartado como *único* mecanismo porque não resolve os anúncios já publicados que não serão editados tão cedo; mas nada impede adicionar isso como reforço futuro (fora do escopo desta correção urgente, que prioriza a ação em lote + botão manual).

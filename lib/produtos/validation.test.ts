@@ -108,4 +108,45 @@ describe("validarProduto", () => {
       "custoProducao"
     );
   });
+
+  const embalagemEnvioValida = {
+    pesoGramas: 250,
+    alturaCm: 10,
+    larguraCm: 15,
+    comprimentoCm: 20,
+  };
+
+  it("aceita produto sem embalagemEnvio (campo opcional)", () => {
+    expect(validarProduto(payloadValido)).toEqual({});
+  });
+
+  it("aceita embalagemEnvio completo e válido", () => {
+    expect(validarProduto({ ...payloadValido, embalagemEnvio: embalagemEnvioValida })).toEqual({});
+  });
+
+  it("rejeita embalagemEnvio com campo obrigatório ausente", () => {
+    const { pesoGramas, ...semPeso } = embalagemEnvioValida;
+    void pesoGramas;
+    expect(validarProduto({ ...payloadValido, embalagemEnvio: semPeso })).toHaveProperty(
+      "embalagemEnvio"
+    );
+  });
+
+  it("rejeita embalagemEnvio com campo zero ou negativo", () => {
+    expect(
+      validarProduto({ ...payloadValido, embalagemEnvio: { ...embalagemEnvioValida, pesoGramas: 0 } })
+    ).toHaveProperty("embalagemEnvio");
+    expect(
+      validarProduto({
+        ...payloadValido,
+        embalagemEnvio: { ...embalagemEnvioValida, alturaCm: -1 },
+      })
+    ).toHaveProperty("embalagemEnvio");
+  });
+
+  it("rejeita embalagemEnvio em formato inválido", () => {
+    expect(validarProduto({ ...payloadValido, embalagemEnvio: "não é objeto" })).toHaveProperty(
+      "embalagemEnvio"
+    );
+  });
 });
