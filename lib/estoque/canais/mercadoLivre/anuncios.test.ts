@@ -324,7 +324,7 @@ describe("atualizarAtributosAnuncio", () => {
     );
   });
 
-  it("inclui shipping.dimensions quando produto.embalagemEnvio está definido (EDI-96)", async () => {
+  it("nunca inclui shipping.dimensions, mesmo com produto.embalagemEnvio definido — o Mercado Livre rejeita essa mudança num item já ativo (field_not_updatable, descoberto em produção)", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal("fetch", fetchMock);
@@ -336,12 +336,12 @@ describe("atualizarAtributosAnuncio", () => {
 
     await atualizarAtributosAnuncio("MLB999", produtoComEmbalagem);
 
-    expect(dimensoesEnvioParaFrete).toHaveBeenCalledWith(produtoComEmbalagem.embalagemEnvio);
+    expect(dimensoesEnvioParaFrete).not.toHaveBeenCalled();
     const corpo = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(corpo.shipping).toEqual({ dimensions: "20x15x10,250" });
+    expect(corpo.shipping).toBeUndefined();
   });
 
-  it("sem embalagemEnvio: não inclui atributos de embalagem nem shipping.dimensions", async () => {
+  it("sem embalagemEnvio: não inclui atributos de embalagem", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal("fetch", fetchMock);
@@ -349,7 +349,6 @@ describe("atualizarAtributosAnuncio", () => {
     await atualizarAtributosAnuncio("MLB999", produtoBase);
 
     expect(atributosEmbalagem).not.toHaveBeenCalled();
-    expect(dimensoesEnvioParaFrete).not.toHaveBeenCalled();
     const corpo = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(corpo.shipping).toBeUndefined();
   });

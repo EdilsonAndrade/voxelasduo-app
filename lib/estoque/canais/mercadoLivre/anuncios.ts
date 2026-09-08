@@ -188,13 +188,20 @@ export async function despublicarAnuncio(itemId: string): Promise<void> {
 }
 
 /**
- * Corrige os atributos e o campo de dimensões de envio de um anúncio **já
- * publicado** (Marca/Modelo — EDI-95 — e/ou peso/dimensões de embalagem —
- * EDI-96), sem despublicar e republicar: a API do Mercado Livre aceita
- * `PUT /items/{id}` parcial, mesmo padrão já usado por `atualizarAnuncio()`
- * (preço/estoque) e `despublicarAnuncio()` (status) — research.md #3.
- * Reaproveitada tanto pela rota de correção pontual no admin quanto pelo
- * script de correção em lote dos anúncios já ativos.
+ * Corrige os atributos de Marca/Modelo (EDI-95) e os atributos informativos
+ * de embalagem (EDI-96) de um anúncio **já publicado**, sem despublicar e
+ * republicar: a API do Mercado Livre aceita `PUT /items/{id}` parcial, mesmo
+ * padrão já usado por `atualizarAnuncio()` (preço/estoque) e
+ * `despublicarAnuncio()` (status) — research.md #3.
+ *
+ * **Não inclui `shipping.dimensions`**: descoberto em produção que o
+ * Mercado Livre rejeita essa alteração num item já ativo com
+ * `field_not_updatable` (`"shipping.dimensions is not modifiable"`) —
+ * diferente dos atributos, que aceitam `PUT` parcial normalmente. Corrigir
+ * o frete de um anúncio já publicado exige despublicar e publicar de novo
+ * (`criarAnuncio`, que já envia `shipping.dimensions` na criação); não há
+ * hoje uma forma de ajustar só isso num item ativo sem recriar o anúncio
+ * (research.md #2/#3).
  */
 export async function atualizarAtributosAnuncio(itemId: string, produto: Produto): Promise<void> {
   const categoryId = await resolverCategoriaOuFalhar(produto);
@@ -208,7 +215,7 @@ export async function atualizarAtributosAnuncio(itemId: string, produto: Produto
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ attributes, ...corpoEnvio(produto) }),
+    body: JSON.stringify({ attributes }),
   });
 
   if (!resposta.ok) {
