@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buscarProdutoPorCategoriaESlug } from "@/lib/produtos/repository";
 import { formatarPreco } from "@/lib/produtos/formato";
+import { buscarAvaliacoesProduto } from "@/lib/avaliacoes/repository";
 import BotaoAdicionarCarrinho from "@/components/carrinho/BotaoAdicionarCarrinho";
+import AvaliacoesProduto from "@/components/produtos/AvaliacoesProduto";
 import styles from "@/components/produtos/produtos.module.css";
 
 export default async function ProdutoDetalhePage({
@@ -18,6 +20,7 @@ export default async function ProdutoDetalhePage({
   }
 
   const semEstoque = produto.estoque === 0;
+  const paginaAvaliacoes = await buscarAvaliacoesProduto(produto._id!);
 
   return (
     <div className="container">
@@ -70,6 +73,17 @@ export default async function ProdutoDetalhePage({
           />
         </div>
       </div>
+
+      <AvaliacoesProduto
+        produtoId={produto._id!.toString()}
+        avaliacoesIniciais={paginaAvaliacoes.avaliacoes.map((avaliacao) => ({
+          canal: avaliacao.canal,
+          nota: avaliacao.nota,
+          comentario: avaliacao.comentario ?? null,
+          dataAvaliacao: avaliacao.dataAvaliacao.toISOString(),
+        }))}
+        cursorInicial={paginaAvaliacoes.proximoCursor}
+      />
     </div>
   );
 }

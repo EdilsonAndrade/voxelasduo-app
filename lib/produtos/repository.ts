@@ -66,6 +66,19 @@ export async function buscarProdutoPorMercadoLivreId(itemId: string): Promise<Pr
   return colecao.findOne({ "integracoes.mercadoLivreId": itemId });
 }
 
+/** Produtos com anúncio em pelo menos um canal externo, usada pelo job de importação de avaliações (Tarefa 11/EDI-85). */
+export async function listarProdutosComIntegracaoExterna(): Promise<Produto[]> {
+  const colecao = await colecaoProdutos();
+  return colecao
+    .find({
+      $or: [
+        { "integracoes.mercadoLivreId": { $exists: true } },
+        { "integracoes.shopeeItemId": { $exists: true } },
+      ],
+    })
+    .toArray();
+}
+
 export async function buscarProdutoPorCategoriaESlug(
   categoria: string,
   slug: string

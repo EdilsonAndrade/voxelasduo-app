@@ -352,3 +352,88 @@
   color: var(--roxo);
   text-decoration: underline;
 }
+
+.avaliacoes {
+  padding-bottom: 4rem;
+}
+
+.avaliacoesTitulo {
+  font-family: var(--font-hand);
+  font-size: 1.6rem;
+  color: var(--rosa);
+  margin-bottom: 1.2rem;
+}
+
+.avaliacoesVazio {
+  color: var(--texto-soft);
+  border: 2px dashed var(--surface-line);
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.avaliacoesLista {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0 0 1.2rem;
+  padding: 0;
+  max-width: 62ch;
+}
+
+.avaliacaoItem {
+  border: 2px solid var(--surface-line);
+  border-radius: 16px;
+  padding: 1rem 1.2rem;
+  background: var(--surface);
+}
+
+.avaliacaoCabecalho {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+}
+
+.avaliacaoNota {
+  color: var(--laranja);
+  letter-spacing: 0.05em;
+}
+
+.avaliacaoCanal {
+  font-weight: 700;
+  color: var(--roxo);
+  border: 1px solid var(--surface-line);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+}
+
+.avaliacaoData {
+  color: var(--texto-soft);
+  margin-left: auto;
+}
+
+.avaliacaoComentario {
+  margin: 0.6rem 0 0;
+  color: var(--preto);
+  line-height: 1.5;
+}
+
+.avaliacoesCarregarMais {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.55rem 1.2rem;
+  cursor: pointer;
+}
+
+.avaliacoesCarregarMais:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
