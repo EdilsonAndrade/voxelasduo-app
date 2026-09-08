@@ -18,15 +18,12 @@ vi.mock("./atributos", () => ({
   buscarAtributosObrigatorios: vi.fn().mockResolvedValue([]),
   valorPadraoAtributo: vi.fn((atributo) => ({ id: atributo.id, value_name: "valor-padrao" })),
   atributosEmbalagem: vi.fn().mockReturnValue([]),
-  dimensoesEnvioParaFrete: vi.fn().mockReturnValue("20x15x10,250"),
 }));
 
 const { criarAnuncio, despublicarAnuncio, atualizarAtributosAnuncio } = await import("./anuncios");
 const { resolverCategoriaMercadoLivre } = await import("./categorias");
 const { preverCategoriaMercadoLivre } = await import("./previsorCategoria");
-const { buscarAtributosObrigatorios, atributosEmbalagem, dimensoesEnvioParaFrete } = await import(
-  "./atributos"
-);
+const { buscarAtributosObrigatorios, atributosEmbalagem } = await import("./atributos");
 
 const produtoBase: Produto = {
   _id: undefined,
@@ -180,7 +177,7 @@ describe("criarAnuncio", () => {
     );
   });
 
-  it("inclui shipping.dimensions no corpo do item quando produto.embalagemEnvio está definido (EDI-96)", async () => {
+  it("não envia shipping.dimensions — o Mercado Livre ignora esse campo nesta conta/modelo (EDI-96, confirmado em produção)", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
     const fetchMock = vi
       .fn()
@@ -198,12 +195,11 @@ describe("criarAnuncio", () => {
 
     await criarAnuncio(produtoComEmbalagem);
 
-    expect(dimensoesEnvioParaFrete).toHaveBeenCalledWith(produtoComEmbalagem.embalagemEnvio);
     const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(corpoItem.shipping).toEqual({ dimensions: "20x15x10,250" });
+    expect(corpoItem.shipping).toBeUndefined();
   });
 
-  it("sem embalagemEnvio: não inclui atributos de embalagem nem shipping.dimensions, e não bloqueia a publicação", async () => {
+  it("sem embalagemEnvio: não inclui atributos de embalagem e não bloqueia a publicação", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
     const fetchMock = vi
       .fn()
@@ -217,7 +213,6 @@ describe("criarAnuncio", () => {
     await criarAnuncio(produtoBase);
 
     expect(atributosEmbalagem).not.toHaveBeenCalled();
-    expect(dimensoesEnvioParaFrete).not.toHaveBeenCalled();
     const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(corpoItem.shipping).toBeUndefined();
   });
@@ -336,7 +331,6 @@ describe("atualizarAtributosAnuncio", () => {
 
     await atualizarAtributosAnuncio("MLB999", produtoComEmbalagem);
 
-    expect(dimensoesEnvioParaFrete).not.toHaveBeenCalled();
     const corpo = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(corpo.shipping).toBeUndefined();
   });

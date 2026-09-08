@@ -29,7 +29,25 @@
 
 **Segunda correção pós-implementação (descoberta ao testar em produção)**: ao tentar aplicar `shipping.dimensions` também em `atualizarAtributosAnuncio()` (para corrigir o anúncio `MLB5203603089` já publicado), a API do Mercado Livre rejeitou a requisição inteira com `HTTP 400` / `field_not_updatable`: `"shipping.dimensions is not modifiable"`. Isso confirma o que a FAQ já insinuava ("Ao atualizar um item com ME2 aparecem warnings e as dimensões não mudam... certas dimensões são gerenciadas pela operação logística"): **`shipping.dimensions` só pode ser definido na criação do item — não pode ser alterado depois que o anúncio está ativo**, mesmo em logística `drop_off` (não só `fulfillment`, como a FAQ sugeria).
 
-**Decisão revisada**: `atualizarAtributosAnuncio()` **não** envia `shipping.dimensions` — continua corrigindo apenas os atributos (Marca/Modelo e os atributos informativos `SELLER_PACKAGE_*`), que a API aceita normalmente via `PUT` parcial num item ativo. `shipping.dimensions` só é enviado por `criarAnuncio()`, ou seja, **só produtos publicados a partir de agora terão o frete calculado com base no peso/dimensões reais automaticamente**. Para um anúncio já ativo com frete impreciso, a correção via API não é possível sem recriar o anúncio (despublicar + publicar de novo) — decisão de negócio explicitamente fora do escopo automatizado desta correção (ver spec.md, FR-009, que previa "sem despublicar/republicar" — premissa que se mostrou inválida para este campo específico; os demais dados, sim, continuam corrigíveis sem republicar).
+**Terceira rodada (medição direta em produção — conclusão final)**: o anúncio foi despublicado e republicado (`MLB5203603089` → `MLB5205046421`) para que `criarAnuncio()` pudesse enviar `shipping.dimensions` desde a criação. Inspecionando o item novo:
+
+- `shipping.dimensions` continuou `null` — **o Mercado Livre ignora esse campo silenciosamente também na criação**, nesta conta/modelo (User Products + ME2 `drop_off`). Não gera erro, simplesmente não persiste.
+- Os atributos `SELLER_PACKAGE_*` **sumiram por completo** do item novo, enquanto o item antigo os tinha. A diferença entre os dois: o antigo foi gravado com o formato original `"65 g"` / `"16 cm"`, e o novo com o formato "número puro" (`"35"`) adotado na rodada anterior seguindo a FAQ. Conclusão: esses atributos são do tipo `number_unit` e **exigem a unidade junto do valor** — sem ela, o Mercado Livre descarta o atributo sem qualquer erro. A recomendação da FAQ não vale para este caso.
+
+**Medição do impacto real do frete** (`GET /users/{seller_id}/shipping_options?zip_code=...&item_price=...&dimensions=...`), mesma origem/destino do teste do vendedor:
+
+| Dimensões simuladas | Frete ao comprador |
+|---|---|
+| 35 g, 15x10x10 (real do produto) | R$ 14,00 |
+| 2 kg, 30x30x30 (pacote grande) | R$ 21,70 |
+
+Ou seja: **as dimensões afetam o frete, mas o piso do Mercado Envios nessa rota é ~R$ 14** — os R$ 14,99 cobrados hoje já estão praticamente no mínimo. Corrigir os atributos de embalagem economiza cerca de R$ 1, não resolve a percepção de "frete caro" para um produto de R$ 27. Isso é característica da tabela do Mercado Envios (agravada por vendedor novo, sem descontos de reputação), não um defeito da integração.
+
+**Decisões finais**:
+1. `atributosEmbalagem()` volta a enviar o valor **com unidade** (`"35 g"`, `"10 cm"`) — único formato que o Mercado Livre efetivamente persiste.
+2. `shipping.dimensions` **não é mais enviado** em lugar nenhum (nem em `criarAnuncio`, nem em `atualizarAtributosAnuncio`): é ignorado na criação e rejeitado na atualização (`field_not_updatable`). A função `dimensoesEnvioParaFrete` e o helper `corpoEnvio` foram removidos.
+3. `atualizarAtributosAnuncio()` continua corrigindo Marca/Modelo e os atributos de embalagem num item já ativo — isso a API aceita normalmente.
+4. Reduzir o frete percebido pelo comprador **não é um problema de integração** — depende de decisões comerciais/logísticas (Mercado Envios Flex, oferecer frete grátis, montar kits com preço ≥ R$ 79 onde o frete grátis é obrigatório e parcialmente subsidiado, ou Full). Registrado para tratamento em ticket próprio.
 
 ## 3. Corrigir anúncios já publicados sem despublicar/republicar
 

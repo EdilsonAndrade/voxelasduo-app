@@ -3,12 +3,7 @@ import { obterAccessTokenValido } from "./auth";
 import { centavosParaReais } from "./client";
 import { montarConsultaPrevisor, resolverCategoriaMercadoLivre } from "./categorias";
 import { preverCategoriaMercadoLivre } from "./previsorCategoria";
-import {
-  atributosEmbalagem,
-  buscarAtributosObrigatorios,
-  dimensoesEnvioParaFrete,
-  valorPadraoAtributo,
-} from "./atributos";
+import { atributosEmbalagem, buscarAtributosObrigatorios, valorPadraoAtributo } from "./atributos";
 import { erroMercadoLivre } from "./erros";
 
 /**
@@ -55,20 +50,6 @@ async function montarAtributos(categoryId: string, produto: Produto) {
   }
 
   return attributes;
-}
-
-/**
- * Monta o campo `shipping.dimensions` a incluir no corpo da requisição
- * (criação ou correção de um anúncio) quando o produto tem embalagem
- * configurada — este é o campo que efetivamente alimenta o cálculo de
- * frete do Mercado Livre (EDI-96, ver `dimensoesEnvioParaFrete`), distinto
- * dos atributos `SELLER_PACKAGE_*` (só informativos). Retorna um objeto
- * vazio quando não há `embalagemEnvio`, para poder ser espalhado (`...`) no
- * corpo sem alterar o comportamento quando o dado ainda não foi preenchido.
- */
-function corpoEnvio(produto: Produto): { shipping?: { dimensions: string } } {
-  if (!produto.embalagemEnvio) return {};
-  return { shipping: { dimensions: dimensoesEnvioParaFrete(produto.embalagemEnvio) } };
 }
 
 /**
@@ -130,7 +111,6 @@ export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
       listing_type_id: LISTING_TYPE_ID,
       pictures: produto.fotos.map((source) => ({ source })),
       attributes,
-      ...corpoEnvio(produto),
     }),
   });
 

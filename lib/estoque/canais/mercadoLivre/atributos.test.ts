@@ -5,8 +5,9 @@ vi.mock("./auth", () => ({
   obterAccessTokenValido: vi.fn().mockResolvedValue("token-valido"),
 }));
 
-const { buscarAtributosObrigatorios, valorPadraoAtributo, atributosEmbalagem, dimensoesEnvioParaFrete } =
-  await import("./atributos");
+const { buscarAtributosObrigatorios, valorPadraoAtributo, atributosEmbalagem } = await import(
+  "./atributos"
+);
 
 const produtoBase: Produto = {
   _id: undefined,
@@ -96,7 +97,7 @@ describe("valorPadraoAtributo", () => {
 });
 
 describe("atributosEmbalagem", () => {
-  it("monta os 4 atributos de embalagem como número puro, sem unidade no valor (EDI-96)", () => {
+  it("monta os 4 atributos com a unidade junto do valor — sem unidade o Mercado Livre descarta o atributo silenciosamente (EDI-96, confirmado em produção)", () => {
     const atributos = atributosEmbalagem({
       pesoGramas: 250,
       alturaCm: 10,
@@ -105,23 +106,10 @@ describe("atributosEmbalagem", () => {
     });
 
     expect(atributos).toEqual([
-      { id: "SELLER_PACKAGE_WEIGHT", value_name: "250" },
-      { id: "SELLER_PACKAGE_HEIGHT", value_name: "10" },
-      { id: "SELLER_PACKAGE_WIDTH", value_name: "15" },
-      { id: "SELLER_PACKAGE_LENGTH", value_name: "20" },
+      { id: "SELLER_PACKAGE_WEIGHT", value_name: "250 g" },
+      { id: "SELLER_PACKAGE_HEIGHT", value_name: "10 cm" },
+      { id: "SELLER_PACKAGE_WIDTH", value_name: "15 cm" },
+      { id: "SELLER_PACKAGE_LENGTH", value_name: "20 cm" },
     ]);
-  });
-});
-
-describe("dimensoesEnvioParaFrete", () => {
-  it("formata como 'comprimentoxlarguraxaltura,peso' (EDI-96)", () => {
-    const dimensoes = dimensoesEnvioParaFrete({
-      pesoGramas: 65,
-      alturaCm: 16,
-      larguraCm: 13,
-      comprimentoCm: 4,
-    });
-
-    expect(dimensoes).toBe("4x13x16,65");
   });
 });
