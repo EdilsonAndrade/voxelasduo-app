@@ -17,12 +17,13 @@ vi.mock("./previsorCategoria", () => ({
 vi.mock("./atributos", () => ({
   buscarAtributosObrigatorios: vi.fn().mockResolvedValue([]),
   valorPadraoAtributo: vi.fn((atributo) => ({ id: atributo.id, value_name: "valor-padrao" })),
+  atributosEmbalagem: vi.fn().mockReturnValue([]),
 }));
 
-const { criarAnuncio, despublicarAnuncio } = await import("./anuncios");
+const { criarAnuncio, despublicarAnuncio, atualizarAtributosAnuncio } = await import("./anuncios");
 const { resolverCategoriaMercadoLivre } = await import("./categorias");
 const { preverCategoriaMercadoLivre } = await import("./previsorCategoria");
-const { buscarAtributosObrigatorios } = await import("./atributos");
+const { buscarAtributosObrigatorios, atributosEmbalagem } = await import("./atributos");
 
 const produtoBase: Produto = {
   _id: undefined,
@@ -143,6 +144,54 @@ describe("criarAnuncio", () => {
 
     await expect(criarAnuncio(produtoBase)).rejects.toThrow("HTTP 400");
   });
+
+  it("inclui atributos de embalagem no corpo do item quando produto.embalagemEnvio está definido (EDI-96)", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    vi.mocked(atributosEmbalagem).mockReturnValue([
+      { id: "SELLER_PACKAGE_WEIGHT", value_name: "250 g" },
+      { id: "SELLER_PACKAGE_HEIGHT", value_name: "10 cm" },
+    ]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const produtoComEmbalagem: Produto = {
+      ...produtoBase,
+      embalagemEnvio: { pesoGramas: 250, alturaCm: 10, larguraCm: 15, comprimentoCm: 20 },
+    };
+
+    await criarAnuncio(produtoComEmbalagem);
+
+    expect(atributosEmbalagem).toHaveBeenCalledWith(produtoComEmbalagem.embalagemEnvio);
+    const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpoItem.attributes).toEqual(
+      expect.arrayContaining([
+        { id: "SELLER_PACKAGE_WEIGHT", value_name: "250 g" },
+        { id: "SELLER_PACKAGE_HEIGHT", value_name: "10 cm" },
+      ])
+    );
+  });
+
+  it("sem embalagemEnvio: não inclui atributos de embalagem e não bloqueia a publicação", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await criarAnuncio(produtoBase);
+
+    expect(atributosEmbalagem).not.toHaveBeenCalled();
+  });
 });
 
 describe("despublicarAnuncio", () => {
@@ -167,5 +216,92 @@ describe("despublicarAnuncio", () => {
   it("lança erro quando a API responde com falha", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400 }));
     await expect(despublicarAnuncio("MLB999")).rejects.toThrow("HTTP 400");
+  });
+});
+
+describe("atualizarAtributosAnuncio", () => {
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("resolve a categoria, monta os atributos corrigidos e envia via PUT (EDI-95/EDI-96)", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    vi.mocked(buscarAtributosObrigatorios).mockResolvedValue([
+      { id: "BRAND", value_type: "string" },
+    ]);
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await atualizarAtributosAnuncio("MLB999", produtoBase);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.mercadolibre.com/items/MLB999",
+      expect.objectContaining({
+        method: "PUT",
+        headers: expect.objectContaining({ Authorization: "Bearer token-valido" }),
+      })
+    );
+    const corpo = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpo.attributes).toEqual([{ id: "BRAND", value_name: "valor-padrao" }]);
+  });
+
+  it("sem override: resolve a categoria pelo previsor, igual à publicação", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue(undefined);
+    vi.mocked(preverCategoriaMercadoLivre).mockResolvedValue("MLB999888");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
+    await atualizarAtributosAnuncio("MLB999", produtoBase);
+
+    expect(buscarAtributosObrigatorios).toHaveBeenCalledWith("MLB999888");
+  });
+
+  it("sem categoria resolvível: lança erro sem chamar a API", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue(undefined);
+    vi.mocked(preverCategoriaMercadoLivre).mockResolvedValue(undefined);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(atualizarAtributosAnuncio("MLB999", produtoBase)).rejects.toThrow(
+      "Não foi possível determinar uma categoria"
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("lança erro quando a API responde com falha", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400 }));
+
+    await expect(atualizarAtributosAnuncio("MLB999", produtoBase)).rejects.toThrow("HTTP 400");
+  });
+
+  it("inclui atributos de embalagem quando produto.embalagemEnvio está definido", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    vi.mocked(atributosEmbalagem).mockReturnValue([
+      { id: "SELLER_PACKAGE_WEIGHT", value_name: "250 g" },
+    ]);
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const produtoComEmbalagem: Produto = {
+      ...produtoBase,
+      embalagemEnvio: { pesoGramas: 250, alturaCm: 10, larguraCm: 10, comprimentoCm: 10 },
+    };
+
+    await atualizarAtributosAnuncio("MLB999", produtoComEmbalagem);
+
+    expect(atributosEmbalagem).toHaveBeenCalledWith(produtoComEmbalagem.embalagemEnvio);
+    const corpo = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpo.attributes).toEqual(
+      expect.arrayContaining([{ id: "SELLER_PACKAGE_WEIGHT", value_name: "250 g" }])
+    );
+  });
+
+  it("sem embalagemEnvio: não inclui atributos de embalagem", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await atualizarAtributosAnuncio("MLB999", produtoBase);
+
+    expect(atributosEmbalagem).not.toHaveBeenCalled();
   });
 });

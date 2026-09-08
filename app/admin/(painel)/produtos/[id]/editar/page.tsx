@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import ProdutoForm from "@/components/admin/ProdutoForm";
 import { buscarProdutoPorId } from "@/lib/produtos/repository";
 import { custoProducaoParaFormulario } from "@/lib/produtos/custoProducaoFormulario";
+import { embalagemEnvioParaFormulario } from "@/lib/produtos/embalagemEnvioFormulario";
 import styles from "@/components/admin/admin.module.css";
 
 export default async function EditarProdutoPage({
@@ -34,6 +35,7 @@ export default async function EditarProdutoPage({
           mercadoLivrePermalink: produto.integracoes?.mercadoLivrePermalink ?? "",
           shopeeItemId: produto.integracoes?.shopeeItemId ?? "",
           custoProducao: custoProducaoParaFormulario(produto.custoProducao),
+          embalagemEnvio: embalagemEnvioParaFormulario(produto.embalagemEnvio),
         }}
       />
     </div>

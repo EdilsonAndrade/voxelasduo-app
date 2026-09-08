@@ -43,6 +43,23 @@ export interface CustoProducao {
   custoEmbalagemCentavos: number;
 }
 
+/**
+ * Peso e dimensões da embalagem pronta para envio — distinto do "peso da
+ * peça" (`CustoProducao.pesoPecaGramas`), pois inclui proteção/caixa. Usado
+ * para informar o Mercado Livre e obter um frete condizente com o produto
+ * real (EDI-96).
+ */
+export interface EmbalagemEnvio {
+  /** Peso da embalagem pronta para envio, em gramas. */
+  pesoGramas: number;
+  /** Altura da embalagem, em centímetros. */
+  alturaCm: number;
+  /** Largura da embalagem, em centímetros. */
+  larguraCm: number;
+  /** Comprimento da embalagem, em centímetros. */
+  comprimentoCm: number;
+}
+
 export interface Produto {
   _id?: ObjectId;
   nome: string;
@@ -57,6 +74,8 @@ export interface Produto {
   integracoes?: IntegracoesCanal;
   /** Custo de produção específico deste produto — ausente = ainda não configurado (EDI-92). */
   custoProducao?: CustoProducao;
+  /** Dados de embalagem para cálculo de frete no Mercado Livre — ausente = ainda não configurado (EDI-96). */
+  embalagemEnvio?: EmbalagemEnvio;
   criadoEm: Date;
   atualizadoEm: Date;
 }

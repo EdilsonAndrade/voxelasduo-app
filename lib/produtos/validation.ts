@@ -9,6 +9,8 @@ export interface ProdutoPayload {
   integracoes?: unknown;
   /** Custo de produção (COGS) do produto (EDI-92) — opcional, produto pode ser salvo sem custo configurado. */
   custoProducao?: unknown;
+  /** Peso/dimensões da embalagem para envio (EDI-96) — opcional, produto pode ser salvo sem esses dados configurados. */
+  embalagemEnvio?: unknown;
 }
 
 /** Campos monetários/numéricos obrigatórios de `custoProducao`, todos exigidos > 0 quando o objeto está presente (EDI-92). */
@@ -51,6 +53,26 @@ function validarCustoProducao(valor: unknown): string | undefined {
 
   if (!numeroFinito(custo.margemPerdaPercentual) || (custo.margemPerdaPercentual as number) < 0) {
     return "A margem de perda não pode ser negativa.";
+  }
+
+  return undefined;
+}
+
+/** Campos obrigatórios de `embalagemEnvio`, todos exigidos > 0 quando o objeto está presente (EDI-96). */
+const CAMPOS_EMBALAGEM_ENVIO = ["pesoGramas", "alturaCm", "larguraCm", "comprimentoCm"] as const;
+
+/** Valida `embalagemEnvio` quando presente no payload: todos os campos são obrigatórios e devem ser > 0 (data-model.md → "Validação"). */
+function validarEmbalagemEnvio(valor: unknown): string | undefined {
+  if (typeof valor !== "object" || valor === null || Array.isArray(valor)) {
+    return "Formato de embalagem para envio inválido.";
+  }
+
+  const embalagem = valor as Record<string, unknown>;
+
+  for (const campo of CAMPOS_EMBALAGEM_ENVIO) {
+    if (!numeroFinito(embalagem[campo]) || (embalagem[campo] as number) <= 0) {
+      return `Informe um valor maior que zero para "${campo}".`;
+    }
   }
 
   return undefined;
@@ -118,6 +140,13 @@ export function validarProduto(
     const erro = validarCustoProducao(payload.custoProducao);
     if (erro) {
       erros.custoProducao = erro;
+    }
+  }
+
+  if (payload.embalagemEnvio !== undefined) {
+    const erro = validarEmbalagemEnvio(payload.embalagemEnvio);
+    if (erro) {
+      erros.embalagemEnvio = erro;
     }
   }
 

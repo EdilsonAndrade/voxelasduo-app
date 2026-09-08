@@ -13,8 +13,14 @@ import {
   VAZIO_CUSTO_PRODUCAO,
   type CustoProducaoFormValores,
 } from "@/lib/produtos/custoProducaoFormulario";
+import {
+  camposEmbalagemFaltando,
+  montarEmbalagemEnvio,
+  VAZIO_EMBALAGEM_ENVIO,
+  type EmbalagemEnvioFormValores,
+} from "@/lib/produtos/embalagemEnvioFormulario";
 
-export type { CustoProducaoFormValores };
+export type { CustoProducaoFormValores, EmbalagemEnvioFormValores };
 
 export interface ProdutoFormValores {
   id?: string;
@@ -32,6 +38,8 @@ export interface ProdutoFormValores {
   shopeeItemId?: string;
   /** Custo de produção (COGS) — opcional, ausência não bloqueia o cadastro (EDI-92). */
   custoProducao: CustoProducaoFormValores;
+  /** Peso/dimensões da embalagem para envio — opcional, ausência não bloqueia a publicação (EDI-96). */
+  embalagemEnvio: EmbalagemEnvioFormValores;
 }
 
 const VAZIO: ProdutoFormValores = {
@@ -45,6 +53,7 @@ const VAZIO: ProdutoFormValores = {
   mercadoLivrePermalink: "",
   shopeeItemId: "",
   custoProducao: VAZIO_CUSTO_PRODUCAO,
+  embalagemEnvio: VAZIO_EMBALAGEM_ENVIO,
 };
 
 export default function ProdutoForm({
@@ -59,6 +68,8 @@ export default function ProdutoForm({
   const [excluindo, setExcluindo] = useState(false);
   const [publicandoMercadoLivre, setPublicandoMercadoLivre] = useState(false);
   const [despublicandoMercadoLivre, setDespublicandoMercadoLivre] = useState(false);
+  const [corrigindoAtributos, setCorrigindoAtributos] = useState(false);
+  const [erroCorrecaoAtributos, setErroCorrecaoAtributos] = useState<string | null>(null);
   const [camposErro, setCamposErro] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [erroPublicacao, setErroPublicacao] = useState<string | null>(null);
@@ -82,6 +93,16 @@ export default function ProdutoForm({
     }));
   }
 
+  function atualizarCampoEmbalagem<K extends keyof EmbalagemEnvioFormValores>(
+    campo: K,
+    valor: string
+  ) {
+    setValores((atual) => ({
+      ...atual,
+      embalagemEnvio: { ...atual.embalagemEnvio, [campo]: valor },
+    }));
+  }
+
   const camposCustoFaltando = useMemo(
     () => camposCustoProducaoFaltando(valores.custoProducao),
     [valores.custoProducao]
@@ -93,6 +114,15 @@ export default function ProdutoForm({
   const resultadoCogs = useMemo(
     () => (custoProducaoCalculado ? calcularCustoProducao(custoProducaoCalculado) : null),
     [custoProducaoCalculado]
+  );
+
+  const camposEmbalagemNaoPreenchidos = useMemo(
+    () => camposEmbalagemFaltando(valores.embalagemEnvio),
+    [valores.embalagemEnvio]
+  );
+  const embalagemEnvioCalculada = useMemo(
+    () => montarEmbalagemEnvio(valores.embalagemEnvio),
+    [valores.embalagemEnvio]
   );
 
   async function handleUpload(evento: React.ChangeEvent<HTMLInputElement>) {
@@ -143,6 +173,7 @@ export default function ProdutoForm({
         shopeeItemId: valores.shopeeItemId?.trim() || undefined,
       },
       custoProducao: custoProducaoCalculado ?? undefined,
+      embalagemEnvio: embalagemEnvioCalculada ?? undefined,
     };
 
     try {
@@ -216,6 +247,30 @@ export default function ProdutoForm({
       router.refresh();
     } finally {
       setDespublicandoMercadoLivre(false);
+    }
+  }
+
+  /** Reaplica Marca/Modelo e embalagem corrigidos num anúncio já publicado, sem despublicar/republicar (EDI-95/EDI-96). */
+  async function handleCorrigirAtributos() {
+    if (!valoresIniciais.id) return;
+
+    setCorrigindoAtributos(true);
+    setErroCorrecaoAtributos(null);
+    try {
+      const resposta = await fetch(
+        `/api/produtos/${valoresIniciais.id}/mercado-livre/corrigir-atributos`,
+        { method: "POST" }
+      );
+      const dados = await resposta.json();
+
+      if (!resposta.ok) {
+        setErroCorrecaoAtributos(dados.erro ?? "Não foi possível corrigir os atributos.");
+        return;
+      }
+
+      setToastMensagem("Atributos corrigidos no Mercado Livre.");
+    } finally {
+      setCorrigindoAtributos(false);
     }
   }
 
@@ -466,6 +521,63 @@ export default function ProdutoForm({
         )}
       </fieldset>
 
+      <fieldset className={styles.field}>
+        <legend>Dados de embalagem para envio (opcional)</legend>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="embalagemPeso">Peso da embalagem (g)</label>
+            <input
+              id="embalagemPeso"
+              inputMode="decimal"
+              placeholder="250"
+              value={valores.embalagemEnvio.pesoGramas}
+              onChange={(e) => atualizarCampoEmbalagem("pesoGramas", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="embalagemAltura">Altura (cm)</label>
+            <input
+              id="embalagemAltura"
+              inputMode="decimal"
+              placeholder="10"
+              value={valores.embalagemEnvio.alturaCm}
+              onChange={(e) => atualizarCampoEmbalagem("alturaCm", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="embalagemLargura">Largura (cm)</label>
+            <input
+              id="embalagemLargura"
+              inputMode="decimal"
+              placeholder="15"
+              value={valores.embalagemEnvio.larguraCm}
+              onChange={(e) => atualizarCampoEmbalagem("larguraCm", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="embalagemComprimento">Comprimento (cm)</label>
+            <input
+              id="embalagemComprimento"
+              inputMode="decimal"
+              placeholder="20"
+              value={valores.embalagemEnvio.comprimentoCm}
+              onChange={(e) => atualizarCampoEmbalagem("comprimentoCm", e.target.value)}
+            />
+          </div>
+        </div>
+
+        {camposErro.embalagemEnvio && (
+          <span className={styles.fieldError}>{camposErro.embalagemEnvio}</span>
+        )}
+
+        {!embalagemEnvioCalculada && camposEmbalagemNaoPreenchidos.length > 0 && (
+          <span className={styles.mlLinkAviso}>
+            Sem {camposEmbalagemNaoPreenchidos.join(", ")}, o Mercado Livre pode calcular um frete
+            impreciso para o comprador (mais caro e/ou mais lento que o necessário).
+          </span>
+        )}
+      </fieldset>
+
       <SimuladorPrecificacao
         nome={valores.nome}
         categoria={valores.categoria}
@@ -523,6 +635,21 @@ export default function ProdutoForm({
                 produto. Nome, categoria e fotos não são atualizados sozinhos — para refletir essas
                 mudanças, despublique e publique de novo.
               </span>
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={handleCorrigirAtributos}
+                disabled={corrigindoAtributos}
+              >
+                {corrigindoAtributos ? "Corrigindo…" : "Corrigir atributos no Mercado Livre"}
+              </button>
+              <span className={styles.mlLinkAviso}>
+                Reaplica Marca/Modelo e peso/dimensões de embalagem corrigidos no anúncio já
+                publicado, sem precisar despublicar e publicar de novo.
+              </span>
+              {erroCorrecaoAtributos && (
+                <span className={styles.fieldError}>{erroCorrecaoAtributos}</span>
+              )}
             </div>
           )}
           {erroPublicacao && <span className={styles.fieldError}>{erroPublicacao}</span>}

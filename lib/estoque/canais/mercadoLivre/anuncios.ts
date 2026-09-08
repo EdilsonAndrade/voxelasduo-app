@@ -3,7 +3,7 @@ import { obterAccessTokenValido } from "./auth";
 import { centavosParaReais } from "./client";
 import { montarConsultaPrevisor, resolverCategoriaMercadoLivre } from "./categorias";
 import { preverCategoriaMercadoLivre } from "./previsorCategoria";
-import { buscarAtributosObrigatorios, valorPadraoAtributo } from "./atributos";
+import { atributosEmbalagem, buscarAtributosObrigatorios, valorPadraoAtributo } from "./atributos";
 import { erroMercadoLivre } from "./erros";
 
 /**
@@ -12,6 +12,45 @@ import { erroMercadoLivre } from "./erros";
  * `listing_types_allowed`); ajustar aqui se a conta não tiver "gold_special".
  */
 const LISTING_TYPE_ID = "gold_special";
+
+/**
+ * Resolve a categoria do Mercado Livre para um produto (override manual ou
+ * previsor automático, research.md #5) — reaproveitada tanto na criação do
+ * anúncio quanto na correção de atributos de um anúncio já publicado
+ * (EDI-95/EDI-96), para nunca divergir da categoria realmente usada.
+ */
+async function resolverCategoriaOuFalhar(produto: Produto): Promise<string> {
+  const categoryId =
+    resolverCategoriaMercadoLivre(produto.categoria) ??
+    (await preverCategoriaMercadoLivre(montarConsultaPrevisor(produto.categoria, produto.nome)));
+
+  if (!categoryId) {
+    throw new Error(
+      `Não foi possível determinar uma categoria do Mercado Livre para "${produto.categoria}"/"${produto.nome}".`
+    );
+  }
+
+  return categoryId;
+}
+
+/**
+ * Monta os atributos obrigatórios da categoria (Marca/Modelo etc., já com o
+ * valor padrão corrigido — EDI-95) mais os atributos de embalagem quando o
+ * produto tiver `embalagemEnvio` configurado (EDI-96) — reaproveitada tanto
+ * na criação quanto na correção retroativa de um anúncio já publicado.
+ */
+async function montarAtributos(categoryId: string, produto: Produto) {
+  const atributosObrigatorios = await buscarAtributosObrigatorios(categoryId);
+  const attributes = atributosObrigatorios.map((atributo) =>
+    valorPadraoAtributo(atributo, produto)
+  );
+
+  if (produto.embalagemEnvio) {
+    attributes.push(...atributosEmbalagem(produto.embalagemEnvio));
+  }
+
+  return attributes;
+}
 
 /**
  * Cria o anúncio no Mercado Livre a partir do produto (US1): resolve a
@@ -39,25 +78,16 @@ export interface AnuncioCriado {
 }
 
 export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
-  const categoryId =
-    resolverCategoriaMercadoLivre(produto.categoria) ??
-    (await preverCategoriaMercadoLivre(montarConsultaPrevisor(produto.categoria, produto.nome)));
-  if (!categoryId) {
-    throw new Error(
-      `Não foi possível determinar uma categoria do Mercado Livre para "${produto.categoria}"/"${produto.nome}".`
-    );
-  }
-
+  const categoryId = await resolverCategoriaOuFalhar(produto);
   const token = await obterAccessTokenValido();
 
   // Alguns domínios (ex: "decorations", verificado em produção) exigem
   // atributos obrigatórios da categoria mesmo no modelo "User Products" —
   // sem eles, o Mercado Livre falha ao tentar montar o título automático a
-  // partir de `family_name` (research.md #4).
-  const atributosObrigatorios = await buscarAtributosObrigatorios(categoryId);
-  const attributes = atributosObrigatorios.map((atributo) =>
-    valorPadraoAtributo(atributo, produto)
-  );
+  // partir de `family_name` (research.md #4). Inclui também os atributos de
+  // embalagem, quando configurados (EDI-96), independentemente de serem
+  // obrigatórios pela categoria.
+  const attributes = await montarAtributos(categoryId, produto);
 
   const respostaItem = await fetch("https://api.mercadolibre.com/items", {
     method: "POST",
@@ -134,5 +164,34 @@ export async function despublicarAnuncio(itemId: string): Promise<void> {
 
   if (!resposta.ok) {
     throw await erroMercadoLivre(resposta, "Falha ao despublicar anúncio no Mercado Livre");
+  }
+}
+
+/**
+ * Corrige os atributos de um anúncio **já publicado** (Marca/Modelo —
+ * EDI-95 — e/ou peso/dimensões de embalagem — EDI-96), sem despublicar e
+ * republicar: a API do Mercado Livre aceita `PUT /items/{id}` parcial, mesmo
+ * padrão já usado por `atualizarAnuncio()` (preço/estoque) e
+ * `despublicarAnuncio()` (status) — research.md #3. Reaproveitada tanto pela
+ * rota de correção pontual no admin quanto pelo script de correção em lote
+ * dos anúncios já ativos.
+ */
+export async function atualizarAtributosAnuncio(itemId: string, produto: Produto): Promise<void> {
+  const categoryId = await resolverCategoriaOuFalhar(produto);
+  const attributes = await montarAtributos(categoryId, produto);
+
+  const token = await obterAccessTokenValido();
+
+  const resposta = await fetch(`https://api.mercadolibre.com/items/${itemId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ attributes }),
+  });
+
+  if (!resposta.ok) {
+    throw await erroMercadoLivre(resposta, "Falha ao corrigir atributos do anúncio no Mercado Livre");
   }
 }
