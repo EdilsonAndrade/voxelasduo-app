@@ -38,4 +38,74 @@ describe("validarProduto", () => {
     expect(validarProduto({ preco: 100 }, { parcial: true })).toEqual({});
     expect(validarProduto({ preco: -1 }, { parcial: true })).toHaveProperty("preco");
   });
+
+  const custoProducaoValido = {
+    pesoPecaGramas: 120,
+    tempoImpressaoHoras: 4.5,
+    tempoMaoDeObraHoras: 0.25,
+    precoCarreteCentavos: 10000,
+    pesoCarreteGramas: 1000,
+    margemPerdaPercentual: 10,
+    precoImpressoraCentavos: 457000,
+    vidaUtilImpressoraHoras: 4000,
+    consumoEletricoKwh: 0.15,
+    tarifaEnergiaCentavos: 90,
+    valorHoraTrabalhoCentavos: 3000,
+    custoEmbalagemCentavos: 350,
+  };
+
+  it("aceita produto sem custoProducao (campo opcional)", () => {
+    expect(validarProduto(payloadValido)).toEqual({});
+  });
+
+  it("aceita custoProducao completo e válido", () => {
+    expect(validarProduto({ ...payloadValido, custoProducao: custoProducaoValido })).toEqual({});
+  });
+
+  it("aceita margemPerdaPercentual igual a zero", () => {
+    expect(
+      validarProduto({
+        ...payloadValido,
+        custoProducao: { ...custoProducaoValido, margemPerdaPercentual: 0 },
+      })
+    ).toEqual({});
+  });
+
+  it("rejeita custoProducao com campo obrigatório ausente", () => {
+    const { pesoPecaGramas, ...semPeso } = custoProducaoValido;
+    void pesoPecaGramas;
+    expect(
+      validarProduto({ ...payloadValido, custoProducao: semPeso })
+    ).toHaveProperty("custoProducao");
+  });
+
+  it("rejeita custoProducao com campo zero ou negativo", () => {
+    expect(
+      validarProduto({
+        ...payloadValido,
+        custoProducao: { ...custoProducaoValido, pesoCarreteGramas: 0 },
+      })
+    ).toHaveProperty("custoProducao");
+    expect(
+      validarProduto({
+        ...payloadValido,
+        custoProducao: { ...custoProducaoValido, precoImpressoraCentavos: -1 },
+      })
+    ).toHaveProperty("custoProducao");
+  });
+
+  it("rejeita margemPerdaPercentual negativa", () => {
+    expect(
+      validarProduto({
+        ...payloadValido,
+        custoProducao: { ...custoProducaoValido, margemPerdaPercentual: -5 },
+      })
+    ).toHaveProperty("custoProducao");
+  });
+
+  it("rejeita custoProducao em formato inválido", () => {
+    expect(validarProduto({ ...payloadValido, custoProducao: "não é objeto" })).toHaveProperty(
+      "custoProducao"
+    );
+  });
 });
