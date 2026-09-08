@@ -7,6 +7,53 @@ export interface ProdutoPayload {
   fotos?: unknown;
   /** IDs do anúncio em cada canal externo (Tarefa 5) — opcional, sem anúncio ainda em nenhum canal por padrão. */
   integracoes?: unknown;
+  /** Custo de produção (COGS) do produto (EDI-92) — opcional, produto pode ser salvo sem custo configurado. */
+  custoProducao?: unknown;
+}
+
+/** Campos monetários/numéricos obrigatórios de `custoProducao`, todos exigidos > 0 quando o objeto está presente (EDI-92). */
+const CAMPOS_CUSTO_PRODUCAO_POSITIVOS = [
+  "pesoPecaGramas",
+  "tempoImpressaoHoras",
+  "tempoMaoDeObraHoras",
+  "precoCarreteCentavos",
+  "pesoCarreteGramas",
+  "precoImpressoraCentavos",
+  "vidaUtilImpressoraHoras",
+  "consumoEletricoKwh",
+  "tarifaEnergiaCentavos",
+  "valorHoraTrabalhoCentavos",
+  "custoEmbalagemCentavos",
+] as const;
+
+function numeroFinito(valor: unknown): valor is number {
+  return typeof valor === "number" && Number.isFinite(valor);
+}
+
+/**
+ * Valida `custoProducao` quando presente no payload: todos os campos são
+ * obrigatórios (data-model.md → "Validação"). Campos de peso/tempo/preço
+ * devem ser > 0; `margemPerdaPercentual` pode ser 0 (sem perda) mas não
+ * negativa.
+ */
+function validarCustoProducao(valor: unknown): string | undefined {
+  if (typeof valor !== "object" || valor === null || Array.isArray(valor)) {
+    return "Formato de custo de produção inválido.";
+  }
+
+  const custo = valor as Record<string, unknown>;
+
+  for (const campo of CAMPOS_CUSTO_PRODUCAO_POSITIVOS) {
+    if (!numeroFinito(custo[campo]) || (custo[campo] as number) <= 0) {
+      return `Informe um valor maior que zero para "${campo}".`;
+    }
+  }
+
+  if (!numeroFinito(custo.margemPerdaPercentual) || (custo.margemPerdaPercentual as number) < 0) {
+    return "A margem de perda não pode ser negativa.";
+  }
+
+  return undefined;
 }
 
 export type ErrosValidacao = Record<string, string>;
@@ -64,6 +111,13 @@ export function validarProduto(
     const fotos = payload.fotos;
     if (!Array.isArray(fotos) || fotos.length === 0 || !fotos.every((f) => typeof f === "string" && f.length > 0)) {
       erros.fotos = "Envie ao menos uma foto do produto.";
+    }
+  }
+
+  if (payload.custoProducao !== undefined) {
+    const erro = validarCustoProducao(payload.custoProducao);
+    if (erro) {
+      erros.custoProducao = erro;
     }
   }
 

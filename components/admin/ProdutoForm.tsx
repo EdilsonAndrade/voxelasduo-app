@@ -1,10 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
+import SimuladorPrecificacao from "./SimuladorPrecificacao";
 import styles from "./admin.module.css";
+import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
+import {
+  camposCustoProducaoFaltando,
+  montarCustoProducao,
+  VAZIO_CUSTO_PRODUCAO,
+  type CustoProducaoFormValores,
+} from "@/lib/produtos/custoProducaoFormulario";
+
+export type { CustoProducaoFormValores };
 
 export interface ProdutoFormValores {
   id?: string;
@@ -20,6 +30,8 @@ export interface ProdutoFormValores {
   mercadoLivrePermalink?: string;
   /** ID do anúncio correspondente na Shopee — vazio = sem anúncio nesse canal (Tarefa 5). */
   shopeeItemId?: string;
+  /** Custo de produção (COGS) — opcional, ausência não bloqueia o cadastro (EDI-92). */
+  custoProducao: CustoProducaoFormValores;
 }
 
 const VAZIO: ProdutoFormValores = {
@@ -32,6 +44,7 @@ const VAZIO: ProdutoFormValores = {
   mercadoLivreId: "",
   mercadoLivrePermalink: "",
   shopeeItemId: "",
+  custoProducao: VAZIO_CUSTO_PRODUCAO,
 };
 
 export default function ProdutoForm({
@@ -58,6 +71,29 @@ export default function ProdutoForm({
   function atualizarCampo<K extends keyof ProdutoFormValores>(campo: K, valor: ProdutoFormValores[K]) {
     setValores((atual) => ({ ...atual, [campo]: valor }));
   }
+
+  function atualizarCampoCustoProducao<K extends keyof CustoProducaoFormValores>(
+    campo: K,
+    valor: string
+  ) {
+    setValores((atual) => ({
+      ...atual,
+      custoProducao: { ...atual.custoProducao, [campo]: valor },
+    }));
+  }
+
+  const camposCustoFaltando = useMemo(
+    () => camposCustoProducaoFaltando(valores.custoProducao),
+    [valores.custoProducao]
+  );
+  const custoProducaoCalculado = useMemo(
+    () => montarCustoProducao(valores.custoProducao),
+    [valores.custoProducao]
+  );
+  const resultadoCogs = useMemo(
+    () => (custoProducaoCalculado ? calcularCustoProducao(custoProducaoCalculado) : null),
+    [custoProducaoCalculado]
+  );
 
   async function handleUpload(evento: React.ChangeEvent<HTMLInputElement>) {
     const arquivos = evento.target.files;
@@ -106,6 +142,7 @@ export default function ProdutoForm({
         mercadoLivrePermalink: valores.mercadoLivrePermalink?.trim() || undefined,
         shopeeItemId: valores.shopeeItemId?.trim() || undefined,
       },
+      custoProducao: custoProducaoCalculado ?? undefined,
     };
 
     try {
@@ -263,6 +300,179 @@ export default function ProdutoForm({
         />
         {camposErro.categoria && <span className={styles.fieldError}>{camposErro.categoria}</span>}
       </div>
+
+      <fieldset className={styles.field}>
+        <legend>Custo de produção (opcional)</legend>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="custoPesoPeca">Peso da peça (g)</label>
+            <input
+              id="custoPesoPeca"
+              inputMode="decimal"
+              placeholder="120"
+              value={valores.custoProducao.pesoPecaGramas}
+              onChange={(e) => atualizarCampoCustoProducao("pesoPecaGramas", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="custoTempoImpressao">Tempo de impressão (h)</label>
+            <input
+              id="custoTempoImpressao"
+              inputMode="decimal"
+              placeholder="4.5"
+              value={valores.custoProducao.tempoImpressaoHoras}
+              onChange={(e) => atualizarCampoCustoProducao("tempoImpressaoHoras", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="custoTempoMaoDeObra">Tempo de mão de obra (h)</label>
+            <input
+              id="custoTempoMaoDeObra"
+              inputMode="decimal"
+              placeholder="0.25"
+              value={valores.custoProducao.tempoMaoDeObraHoras}
+              onChange={(e) => atualizarCampoCustoProducao("tempoMaoDeObraHoras", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="custoPrecoCarretel">Preço do carretel de filamento (R$)</label>
+            <input
+              id="custoPrecoCarretel"
+              inputMode="decimal"
+              placeholder="100.00"
+              value={valores.custoProducao.precoCarreteReais}
+              onChange={(e) => atualizarCampoCustoProducao("precoCarreteReais", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="custoPesoCarretel">Peso do carretel (g)</label>
+            <input
+              id="custoPesoCarretel"
+              inputMode="decimal"
+              placeholder="1000"
+              value={valores.custoProducao.pesoCarreteGramas}
+              onChange={(e) => atualizarCampoCustoProducao("pesoCarreteGramas", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="custoMargemPerda">Margem de perda/purga (%)</label>
+            <input
+              id="custoMargemPerda"
+              inputMode="decimal"
+              placeholder="10"
+              value={valores.custoProducao.margemPerdaPercentual}
+              onChange={(e) => atualizarCampoCustoProducao("margemPerdaPercentual", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="custoPrecoImpressora">Preço da impressora (R$)</label>
+            <input
+              id="custoPrecoImpressora"
+              inputMode="decimal"
+              placeholder="4570.00"
+              value={valores.custoProducao.precoImpressoraReais}
+              onChange={(e) => atualizarCampoCustoProducao("precoImpressoraReais", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="custoVidaUtilImpressora">Vida útil da impressora (h)</label>
+            <input
+              id="custoVidaUtilImpressora"
+              inputMode="decimal"
+              placeholder="4000"
+              value={valores.custoProducao.vidaUtilImpressoraHoras}
+              onChange={(e) =>
+                atualizarCampoCustoProducao("vidaUtilImpressoraHoras", e.target.value)
+              }
+            />
+          </div>
+        </div>
+
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="custoConsumoEletrico">Consumo elétrico médio (kWh)</label>
+            <input
+              id="custoConsumoEletrico"
+              inputMode="decimal"
+              placeholder="0.15"
+              value={valores.custoProducao.consumoEletricoKwh}
+              onChange={(e) => atualizarCampoCustoProducao("consumoEletricoKwh", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="custoTarifaEnergia">Tarifa de energia (R$/kWh)</label>
+            <input
+              id="custoTarifaEnergia"
+              inputMode="decimal"
+              placeholder="0.90"
+              value={valores.custoProducao.tarifaEnergiaReais}
+              onChange={(e) => atualizarCampoCustoProducao("tarifaEnergiaReais", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="custoValorHoraTrabalho">Valor da hora de trabalho (R$)</label>
+            <input
+              id="custoValorHoraTrabalho"
+              inputMode="decimal"
+              placeholder="30.00"
+              value={valores.custoProducao.valorHoraTrabalhoReais}
+              onChange={(e) =>
+                atualizarCampoCustoProducao("valorHoraTrabalhoReais", e.target.value)
+              }
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="custoEmbalagem">Custo de embalagem/envio (R$)</label>
+            <input
+              id="custoEmbalagem"
+              inputMode="decimal"
+              placeholder="3.50"
+              value={valores.custoProducao.custoEmbalagemReais}
+              onChange={(e) => atualizarCampoCustoProducao("custoEmbalagemReais", e.target.value)}
+            />
+          </div>
+        </div>
+
+        {camposErro.custoProducao && (
+          <span className={styles.fieldError}>{camposErro.custoProducao}</span>
+        )}
+
+        {resultadoCogs ? (
+          <div className={styles.mlLinkBox}>
+            <strong>Custo de produção (COGS): R$ {(resultadoCogs.totalCentavos / 100).toFixed(2)}</strong>
+            <span className={styles.mlLinkAviso}>
+              Filamento: R$ {(resultadoCogs.custoFilamentoCentavos / 100).toFixed(2)} · Energia: R${" "}
+              {(resultadoCogs.custoEnergiaCentavos / 100).toFixed(2)} · Depreciação da impressora: R${" "}
+              {(resultadoCogs.custoDepreciacaoCentavos / 100).toFixed(2)} · Mão de obra: R${" "}
+              {(resultadoCogs.custoMaoDeObraCentavos / 100).toFixed(2)} · Embalagem: R${" "}
+              {(resultadoCogs.custoEmbalagemCentavos / 100).toFixed(2)}
+            </span>
+          </div>
+        ) : (
+          camposCustoFaltando.length > 0 && (
+            <span className={styles.mlLinkAviso}>
+              Preencha também {camposCustoFaltando.join(", ")} para calcular o custo de produção.
+            </span>
+          )
+        )}
+      </fieldset>
+
+      <SimuladorPrecificacao
+        nome={valores.nome}
+        categoria={valores.categoria}
+        precoVendaReais={valores.precoReais}
+        cogsCentavos={resultadoCogs?.totalCentavos ?? null}
+        onAplicarPrecoSugerido={(preco) => atualizarCampo("precoReais", preco)}
+      />
 
       <div className={styles.row}>
         <div className={styles.field}>
