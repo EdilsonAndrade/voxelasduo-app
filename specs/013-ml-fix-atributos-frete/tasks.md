@@ -141,3 +141,16 @@ Task: "Implementar atributosEmbalagem + testes"                 # T011, T016
 
 - Nenhuma tarefa de commit é executada automaticamente — mensagens de commit serão sugeridas ao usuário conforme CLAUDE.md (regra 5), sem commit automático
 - T009 e T022 (rodar o script contra o ambiente real) são ações operacionais que tocam produção — executadas pelo usuário/operador, não automaticamente pelo agente, conforme as regras do projeto sobre não subir/operar instâncias de produção sem solicitação direta
+
+---
+
+## Follow-up pós-implementação (validado em produção pelo usuário)
+
+Depois de aplicar a correção em `MLB5203603089` e o usuário confirmar que o frete cotado **não mudou**, uma inspeção direta do item via API revelou a causa: os atributos `SELLER_PACKAGE_*` são só informativos — o campo que o Mercado Livre realmente usa para calcular o frete é `shipping.dimensions` (formato `"AxBxC,peso"`), nunca enviado pela implementação original (ver research.md #2, seção "Correção pós-implementação").
+
+- [X] T025 Corrigir `atributosEmbalagem()` para enviar valores numéricos puros, sem unidade (`"65"`, não `"65 g"`), conforme a FAQ oficial do Mercado Livre sobre `item.attribute.invalid.seller.package.dimensions` — `lib/estoque/canais/mercadoLivre/atributos.ts` + `atributos.test.ts`
+- [X] T026 Implementar `dimensoesEnvioParaFrete(embalagem): string` (formato `"comprimentoxlarguraxaltura,peso"`) em `lib/estoque/canais/mercadoLivre/atributos.ts` + teste
+- [X] T027 Incluir `shipping: { dimensions }` (via novo helper `corpoEnvio()`) no corpo de `criarAnuncio()` e `atualizarAtributosAnuncio()` em `lib/estoque/canais/mercadoLivre/anuncios.ts`, quando `produto.embalagemEnvio` estiver definido + testes estendidos em `anuncios.test.ts`
+- [X] T028 Criar `scripts/inspecionar-item-mercado-livre.ts` (`npm run inspecionar:item-ml`) — ferramenta de diagnóstico para consultar atributos/frete de um item real, usada para descobrir esta causa raiz e útil para validações futuras
+- [ ] T029 Rodar novamente a correção (`npm run corrigir:atributos-ml` ou o botão no admin) contra o ambiente de produção, e conferir com `npm run inspecionar:item-ml -- MLB5203603089` que `shipping.dimensions` deixou de ser `null` — **ação executada pelo usuário/operador**
+- [ ] T030 Confirmar no próprio anúncio (recarregando a página de compra) se o frete cotado mudou; caso a ordem dos eixos em `dimensoesEnvioParaFrete` esteja incorreta (comprimento/largura/altura trocados), ajustar com base no resultado observado — **validação empírica, executada pelo usuário/operador**

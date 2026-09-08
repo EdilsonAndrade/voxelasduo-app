@@ -3,7 +3,12 @@ import { obterAccessTokenValido } from "./auth";
 import { centavosParaReais } from "./client";
 import { montarConsultaPrevisor, resolverCategoriaMercadoLivre } from "./categorias";
 import { preverCategoriaMercadoLivre } from "./previsorCategoria";
-import { atributosEmbalagem, buscarAtributosObrigatorios, valorPadraoAtributo } from "./atributos";
+import {
+  atributosEmbalagem,
+  buscarAtributosObrigatorios,
+  dimensoesEnvioParaFrete,
+  valorPadraoAtributo,
+} from "./atributos";
 import { erroMercadoLivre } from "./erros";
 
 /**
@@ -50,6 +55,20 @@ async function montarAtributos(categoryId: string, produto: Produto) {
   }
 
   return attributes;
+}
+
+/**
+ * Monta o campo `shipping.dimensions` a incluir no corpo da requisição
+ * (criação ou correção de um anúncio) quando o produto tem embalagem
+ * configurada — este é o campo que efetivamente alimenta o cálculo de
+ * frete do Mercado Livre (EDI-96, ver `dimensoesEnvioParaFrete`), distinto
+ * dos atributos `SELLER_PACKAGE_*` (só informativos). Retorna um objeto
+ * vazio quando não há `embalagemEnvio`, para poder ser espalhado (`...`) no
+ * corpo sem alterar o comportamento quando o dado ainda não foi preenchido.
+ */
+function corpoEnvio(produto: Produto): { shipping?: { dimensions: string } } {
+  if (!produto.embalagemEnvio) return {};
+  return { shipping: { dimensions: dimensoesEnvioParaFrete(produto.embalagemEnvio) } };
 }
 
 /**
@@ -111,6 +130,7 @@ export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
       listing_type_id: LISTING_TYPE_ID,
       pictures: produto.fotos.map((source) => ({ source })),
       attributes,
+      ...corpoEnvio(produto),
     }),
   });
 
@@ -168,13 +188,13 @@ export async function despublicarAnuncio(itemId: string): Promise<void> {
 }
 
 /**
- * Corrige os atributos de um anúncio **já publicado** (Marca/Modelo —
- * EDI-95 — e/ou peso/dimensões de embalagem — EDI-96), sem despublicar e
- * republicar: a API do Mercado Livre aceita `PUT /items/{id}` parcial, mesmo
- * padrão já usado por `atualizarAnuncio()` (preço/estoque) e
- * `despublicarAnuncio()` (status) — research.md #3. Reaproveitada tanto pela
- * rota de correção pontual no admin quanto pelo script de correção em lote
- * dos anúncios já ativos.
+ * Corrige os atributos e o campo de dimensões de envio de um anúncio **já
+ * publicado** (Marca/Modelo — EDI-95 — e/ou peso/dimensões de embalagem —
+ * EDI-96), sem despublicar e republicar: a API do Mercado Livre aceita
+ * `PUT /items/{id}` parcial, mesmo padrão já usado por `atualizarAnuncio()`
+ * (preço/estoque) e `despublicarAnuncio()` (status) — research.md #3.
+ * Reaproveitada tanto pela rota de correção pontual no admin quanto pelo
+ * script de correção em lote dos anúncios já ativos.
  */
 export async function atualizarAtributosAnuncio(itemId: string, produto: Produto): Promise<void> {
   const categoryId = await resolverCategoriaOuFalhar(produto);
@@ -188,7 +208,7 @@ export async function atualizarAtributosAnuncio(itemId: string, produto: Produto
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ attributes }),
+    body: JSON.stringify({ attributes, ...corpoEnvio(produto) }),
   });
 
   if (!resposta.ok) {

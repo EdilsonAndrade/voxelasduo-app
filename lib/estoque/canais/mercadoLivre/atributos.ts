@@ -78,16 +78,37 @@ export function valorPadraoAtributo(atributo: AtributoCategoria, produto: Produt
  * Monta os atributos de peso/dimensões da embalagem pronta para envio
  * (`SELLER_PACKAGE_WEIGHT/HEIGHT/WIDTH/LENGTH`), a partir dos dados
  * informados pelo vendedor — enviados na publicação mesmo quando a
- * categoria não os marca como obrigatórios (EDI-96), já que sem eles o
- * Mercado Livre calcula o frete com base num padrão impreciso. Formato
- * `"<número> <unidade>"`, mesmo padrão observado no retorno de itens já
- * publicados (`GET /items/{id}`) para esses atributos.
+ * categoria não os marca como obrigatórios (EDI-96). São atributos
+ * **informativos** (aparecem em "Características do produto" para o
+ * comprador) — não são o campo que o Mercado Livre usa para calcular o
+ * frete de fato (ver `dimensoesEnvioParaFrete` em `anuncios.ts`), mas ainda
+ * assim devem ser enviados como número puro, sem unidade no valor (ex:
+ * `"65"`, nunca `"65 g"`) — a FAQ oficial do Mercado Livre
+ * ("Itens — Atributos de envio e dimensões") documenta o erro
+ * `item.attribute.invalid.seller.package.dimensions` para valores com texto
+ * de unidade embutido.
  */
 export function atributosEmbalagem(embalagem: EmbalagemEnvio): AtributoItem[] {
   return [
-    { id: "SELLER_PACKAGE_WEIGHT", value_name: `${embalagem.pesoGramas} g` },
-    { id: "SELLER_PACKAGE_HEIGHT", value_name: `${embalagem.alturaCm} cm` },
-    { id: "SELLER_PACKAGE_WIDTH", value_name: `${embalagem.larguraCm} cm` },
-    { id: "SELLER_PACKAGE_LENGTH", value_name: `${embalagem.comprimentoCm} cm` },
+    { id: "SELLER_PACKAGE_WEIGHT", value_name: String(embalagem.pesoGramas) },
+    { id: "SELLER_PACKAGE_HEIGHT", value_name: String(embalagem.alturaCm) },
+    { id: "SELLER_PACKAGE_WIDTH", value_name: String(embalagem.larguraCm) },
+    { id: "SELLER_PACKAGE_LENGTH", value_name: String(embalagem.comprimentoCm) },
   ];
+}
+
+/**
+ * Formata as dimensões da embalagem no formato `"AxBxC,peso"` (comprimento x
+ * largura x altura em cm, peso em gramas) usado pelo campo `shipping.dimensions`
+ * do item — o campo que efetivamente alimenta o cálculo de frete do Mercado
+ * Livre (confirmado em produção: os atributos `SELLER_PACKAGE_*` sozinhos
+ * **não** mudam o frete cotado ao comprador, só aparecem como informação do
+ * produto). A ordem dos eixos segue a convenção mais comum documentada por
+ * integradores do Mercado Livre — a FAQ oficial não especifica a ordem
+ * exata; validar empiricamente após publicar/atualizar um item real e
+ * ajustar se necessário (mesmo padrão de descoberta já usado neste
+ * projeto).
+ */
+export function dimensoesEnvioParaFrete(embalagem: EmbalagemEnvio): string {
+  return `${embalagem.comprimentoCm}x${embalagem.larguraCm}x${embalagem.alturaCm},${embalagem.pesoGramas}`;
 }
