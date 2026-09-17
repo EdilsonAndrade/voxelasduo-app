@@ -149,4 +149,67 @@ describe("validarProduto", () => {
       "embalagemEnvio"
     );
   });
+
+  it("aceita produto sem fichaTecnica (campo opcional)", () => {
+    expect(validarProduto(payloadValido)).toEqual({});
+  });
+
+  it("aceita fichaTecnica vazia ({})", () => {
+    expect(validarProduto({ ...payloadValido, fichaTecnica: {} })).toEqual({});
+  });
+
+  it("aceita fichaTecnica preenchida parcialmente (só material)", () => {
+    expect(
+      validarProduto({ ...payloadValido, fichaTecnica: { material: "PLA" } })
+    ).toEqual({});
+  });
+
+  it("aceita fichaTecnica com todos os campos preenchidos e válidos", () => {
+    expect(
+      validarProduto({
+        ...payloadValido,
+        fichaTecnica: {
+          alturaCm: 20,
+          larguraCm: 15,
+          comprimentoCm: 10,
+          pesoGramas: 250,
+          material: "PLA",
+          itensInclusos: ["1 vaso", "1 prato"],
+        },
+      })
+    ).toEqual({});
+  });
+
+  it("rejeita alturaCm/larguraCm/comprimentoCm/pesoGramas zero ou negativo quando presentes", () => {
+    expect(
+      validarProduto({ ...payloadValido, fichaTecnica: { alturaCm: 0 } })
+    ).toHaveProperty("fichaTecnica");
+    expect(
+      validarProduto({ ...payloadValido, fichaTecnica: { larguraCm: -5 } })
+    ).toHaveProperty("fichaTecnica");
+    expect(
+      validarProduto({ ...payloadValido, fichaTecnica: { comprimentoCm: 0 } })
+    ).toHaveProperty("fichaTecnica");
+    expect(
+      validarProduto({ ...payloadValido, fichaTecnica: { pesoGramas: -1 } })
+    ).toHaveProperty("fichaTecnica");
+  });
+
+  it("rejeita material vazio quando presente", () => {
+    expect(
+      validarProduto({ ...payloadValido, fichaTecnica: { material: "" } })
+    ).toHaveProperty("fichaTecnica");
+  });
+
+  it("rejeita itensInclusos com item vazio quando presente", () => {
+    expect(
+      validarProduto({ ...payloadValido, fichaTecnica: { itensInclusos: ["1 vaso", ""] } })
+    ).toHaveProperty("fichaTecnica");
+  });
+
+  it("rejeita fichaTecnica em formato inválido", () => {
+    expect(validarProduto({ ...payloadValido, fichaTecnica: "não é objeto" })).toHaveProperty(
+      "fichaTecnica"
+    );
+  });
 });

@@ -19,8 +19,13 @@ import {
   VAZIO_EMBALAGEM_ENVIO,
   type EmbalagemEnvioFormValores,
 } from "@/lib/produtos/embalagemEnvioFormulario";
+import {
+  montarFichaTecnica,
+  VAZIO_FICHA_TECNICA,
+  type FichaTecnicaFormValores,
+} from "@/lib/produtos/fichaTecnicaFormulario";
 
-export type { CustoProducaoFormValores, EmbalagemEnvioFormValores };
+export type { CustoProducaoFormValores, EmbalagemEnvioFormValores, FichaTecnicaFormValores };
 
 export interface ProdutoFormValores {
   id?: string;
@@ -40,6 +45,8 @@ export interface ProdutoFormValores {
   custoProducao: CustoProducaoFormValores;
   /** Peso/dimensões da embalagem para envio — opcional, ausência não bloqueia a publicação (EDI-96). */
   embalagemEnvio: EmbalagemEnvioFormValores;
+  /** Ficha técnica opcional do produto — cada campo é independente, ausência não bloqueia a publicação (EDI-90). */
+  fichaTecnica: FichaTecnicaFormValores;
 }
 
 const VAZIO: ProdutoFormValores = {
@@ -54,6 +61,7 @@ const VAZIO: ProdutoFormValores = {
   shopeeItemId: "",
   custoProducao: VAZIO_CUSTO_PRODUCAO,
   embalagemEnvio: VAZIO_EMBALAGEM_ENVIO,
+  fichaTecnica: VAZIO_FICHA_TECNICA,
 };
 
 export default function ProdutoForm({
@@ -103,6 +111,16 @@ export default function ProdutoForm({
     }));
   }
 
+  function atualizarCampoFichaTecnica<K extends keyof FichaTecnicaFormValores>(
+    campo: K,
+    valor: string
+  ) {
+    setValores((atual) => ({
+      ...atual,
+      fichaTecnica: { ...atual.fichaTecnica, [campo]: valor },
+    }));
+  }
+
   const camposCustoFaltando = useMemo(
     () => camposCustoProducaoFaltando(valores.custoProducao),
     [valores.custoProducao]
@@ -123,6 +141,11 @@ export default function ProdutoForm({
   const embalagemEnvioCalculada = useMemo(
     () => montarEmbalagemEnvio(valores.embalagemEnvio),
     [valores.embalagemEnvio]
+  );
+
+  const fichaTecnicaCalculada = useMemo(
+    () => montarFichaTecnica(valores.fichaTecnica),
+    [valores.fichaTecnica]
   );
 
   async function handleUpload(evento: React.ChangeEvent<HTMLInputElement>) {
@@ -174,6 +197,7 @@ export default function ProdutoForm({
       },
       custoProducao: custoProducaoCalculado ?? undefined,
       embalagemEnvio: embalagemEnvioCalculada ?? undefined,
+      fichaTecnica: fichaTecnicaCalculada ?? undefined,
     };
 
     try {
@@ -575,6 +599,73 @@ export default function ProdutoForm({
             Sem {camposEmbalagemNaoPreenchidos.join(", ")}, o Mercado Livre pode calcular um frete
             impreciso para o comprador (mais caro e/ou mais lento que o necessário).
           </span>
+        )}
+      </fieldset>
+
+      <fieldset className={styles.field}>
+        <legend>Ficha técnica (opcional)</legend>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="fichaTecnicaAltura">Altura do produto (cm)</label>
+            <input
+              id="fichaTecnicaAltura"
+              inputMode="decimal"
+              placeholder="20"
+              value={valores.fichaTecnica.alturaCm}
+              onChange={(e) => atualizarCampoFichaTecnica("alturaCm", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="fichaTecnicaLargura">Largura do produto (cm)</label>
+            <input
+              id="fichaTecnicaLargura"
+              inputMode="decimal"
+              placeholder="15"
+              value={valores.fichaTecnica.larguraCm}
+              onChange={(e) => atualizarCampoFichaTecnica("larguraCm", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="fichaTecnicaComprimento">Comprimento do produto (cm)</label>
+            <input
+              id="fichaTecnicaComprimento"
+              inputMode="decimal"
+              placeholder="10"
+              value={valores.fichaTecnica.comprimentoCm}
+              onChange={(e) => atualizarCampoFichaTecnica("comprimentoCm", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="fichaTecnicaPeso">Peso do produto (g)</label>
+            <input
+              id="fichaTecnicaPeso"
+              inputMode="decimal"
+              placeholder="250"
+              value={valores.fichaTecnica.pesoGramas}
+              onChange={(e) => atualizarCampoFichaTecnica("pesoGramas", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <label htmlFor="fichaTecnicaMaterial">Material</label>
+        <input
+          id="fichaTecnicaMaterial"
+          placeholder="Ex: PLA"
+          value={valores.fichaTecnica.material}
+          onChange={(e) => atualizarCampoFichaTecnica("material", e.target.value)}
+        />
+
+        <label htmlFor="fichaTecnicaItensInclusos">Itens inclusos (um por linha)</label>
+        <textarea
+          id="fichaTecnicaItensInclusos"
+          rows={3}
+          placeholder={"1 vaso\n1 prato"}
+          value={valores.fichaTecnica.itensInclusos}
+          onChange={(e) => atualizarCampoFichaTecnica("itensInclusos", e.target.value)}
+        />
+
+        {camposErro.fichaTecnica && (
+          <span className={styles.fieldError}>{camposErro.fichaTecnica}</span>
         )}
       </fieldset>
 

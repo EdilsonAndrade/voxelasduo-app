@@ -3,8 +3,47 @@ import { obterAccessTokenValido } from "./auth";
 import { centavosParaReais } from "./client";
 import { montarConsultaPrevisor, resolverCategoriaMercadoLivre } from "./categorias";
 import { preverCategoriaMercadoLivre } from "./previsorCategoria";
-import { atributosEmbalagem, buscarAtributosObrigatorios, valorPadraoAtributo } from "./atributos";
+import {
+  atributosEmbalagem,
+  atributosFichaTecnica,
+  buscarAtributosCategoria,
+  buscarAtributosObrigatorios,
+  valorPadraoAtributo,
+} from "./atributos";
 import { erroMercadoLivre } from "./erros";
+
+/**
+ * Marca o início do bloco complementar de ficha técnica (EDI-90) dentro da
+ * descrição do anúncio — usado por `aplicarFichaTecnicaNaDescricao` para
+ * localizar e substituir só esse trecho, sem tocar no texto que o vendedor
+ * escreveu antes dele.
+ */
+const MARCADOR_FICHA_TECNICA = "\n\n---\nFicha técnica:\n";
+
+/**
+ * Aplica o bloco complementar de ficha técnica ao final de uma descrição,
+ * de forma idempotente (FR-007): localiza o marcador já existente e corta
+ * tudo a partir dele (preservando o texto original antes), depois concatena
+ * o bloco atual — assim, aplicar duas vezes com os mesmos dados produz o
+ * mesmo resultado, e o vendedor pode editar a descrição livremente antes do
+ * marcador sem que uma atualização futura sobrescreva o que ele escreveu
+ * (research.md #4).
+ */
+export function aplicarFichaTecnicaNaDescricao(
+  descricaoAtual: string,
+  paraDescricao: Array<{ rotulo: string; valor: string }>
+): string {
+  const indiceMarcador = descricaoAtual.indexOf(MARCADOR_FICHA_TECNICA);
+  const textoOriginal =
+    indiceMarcador === -1 ? descricaoAtual : descricaoAtual.slice(0, indiceMarcador);
+
+  if (paraDescricao.length === 0) {
+    return textoOriginal;
+  }
+
+  const linhas = paraDescricao.map(({ rotulo, valor }) => `- ${rotulo}: ${valor}`);
+  return `${textoOriginal}${MARCADOR_FICHA_TECNICA}${linhas.join("\n")}`;
+}
 
 /**
  * Tipo de anúncio padrão usado na criação — precisa corresponder a um tipo
@@ -35,9 +74,13 @@ async function resolverCategoriaOuFalhar(produto: Produto): Promise<string> {
 
 /**
  * Monta os atributos obrigatórios da categoria (Marca/Modelo etc., já com o
- * valor padrão corrigido — EDI-95) mais os atributos de embalagem quando o
- * produto tiver `embalagemEnvio` configurado (EDI-96) — reaproveitada tanto
- * na criação quanto na correção retroativa de um anúncio já publicado.
+ * valor padrão corrigido — EDI-95), os atributos de embalagem quando o
+ * produto tiver `embalagemEnvio` configurado (EDI-96), e os atributos de
+ * ficha técnica quando o produto tiver `fichaTecnica` configurada (EDI-90)
+ * — reaproveitada tanto na criação quanto na correção retroativa de um
+ * anúncio já publicado. Os campos de ficha técnica sem atributo
+ * correspondente na categoria voltam em `paraDescricao`, para quem chama
+ * decidir como complementar a descrição do anúncio.
  */
 async function montarAtributos(categoryId: string, produto: Produto) {
   const atributosObrigatorios = await buscarAtributosObrigatorios(categoryId);
@@ -49,7 +92,15 @@ async function montarAtributos(categoryId: string, produto: Produto) {
     attributes.push(...atributosEmbalagem(produto.embalagemEnvio));
   }
 
-  return attributes;
+  let paraDescricao: Array<{ rotulo: string; valor: string }> = [];
+  if (produto.fichaTecnica) {
+    const atributosCategoria = await buscarAtributosCategoria(categoryId);
+    const resultado = atributosFichaTecnica(produto.fichaTecnica, atributosCategoria);
+    attributes.push(...resultado.attributes);
+    paraDescricao = resultado.paraDescricao;
+  }
+
+  return { attributes, paraDescricao };
 }
 
 /**
@@ -85,9 +136,9 @@ export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
   // atributos obrigatórios da categoria mesmo no modelo "User Products" —
   // sem eles, o Mercado Livre falha ao tentar montar o título automático a
   // partir de `family_name` (research.md #4). Inclui também os atributos de
-  // embalagem, quando configurados (EDI-96), independentemente de serem
-  // obrigatórios pela categoria.
-  const attributes = await montarAtributos(categoryId, produto);
+  // embalagem (EDI-96) e de ficha técnica (EDI-90), quando configurados,
+  // independentemente de serem obrigatórios pela categoria.
+  const { attributes, paraDescricao } = await montarAtributos(categoryId, produto);
 
   const respostaItem = await fetch("https://api.mercadolibre.com/items", {
     method: "POST",
@@ -120,7 +171,15 @@ export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
 
   const item = (await respostaItem.json()) as { id: string; permalink: string };
 
-  // A descrição é um recurso separado na API do Mercado Livre — precisa de uma segunda chamada.
+  // A descrição é um recurso separado na API do Mercado Livre — precisa de
+  // uma segunda chamada. Quando há campos de ficha técnica sem atributo
+  // correspondente na categoria (EDI-90), o bloco complementar é anexado ao
+  // final da descrição do produto.
+  const descricaoFinal =
+    paraDescricao.length > 0
+      ? aplicarFichaTecnicaNaDescricao(produto.descricao, paraDescricao)
+      : produto.descricao;
+
   const respostaDescricao = await fetch(
     `https://api.mercadolibre.com/items/${item.id}/description`,
     {
@@ -129,7 +188,7 @@ export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ plain_text: produto.descricao }),
+      body: JSON.stringify({ plain_text: descricaoFinal }),
     }
   );
 
@@ -168,11 +227,21 @@ export async function despublicarAnuncio(itemId: string): Promise<void> {
 }
 
 /**
- * Corrige os atributos de Marca/Modelo (EDI-95) e os atributos informativos
- * de embalagem (EDI-96) de um anúncio **já publicado**, sem despublicar e
- * republicar: a API do Mercado Livre aceita `PUT /items/{id}` parcial, mesmo
- * padrão já usado por `atualizarAnuncio()` (preço/estoque) e
- * `despublicarAnuncio()` (status) — research.md #3.
+ * Corrige os atributos de Marca/Modelo (EDI-95), os atributos informativos
+ * de embalagem (EDI-96) e os de ficha técnica (EDI-90) de um anúncio **já
+ * publicado**, sem despublicar e republicar: a API do Mercado Livre aceita
+ * `PUT /items/{id}` parcial, mesmo padrão já usado por `atualizarAnuncio()`
+ * (preço/estoque) e `despublicarAnuncio()` (status) — research.md #3.
+ *
+ * Quando há campos de ficha técnica sem atributo correspondente na
+ * categoria, também busca a descrição atual do item (`GET
+ * .../description`) e a atualiza (`PUT .../description`) com o bloco
+ * complementar aplicado de forma idempotente — sem essa busca prévia, uma
+ * segunda correção sobrescreveria o texto que o vendedor tiver editado
+ * diretamente no Mercado Livre entre uma atualização e outra
+ * (contracts/ficha-tecnica-no-anuncio.md, "Falhas parciais": as duas
+ * chamadas são independentes — se a de descrição falhar, os atributos já
+ * salvos na primeira chamada permanecem).
  *
  * **Não inclui `shipping.dimensions`**: descoberto em produção que o
  * Mercado Livre rejeita essa alteração num item já ativo com
@@ -185,20 +254,54 @@ export async function despublicarAnuncio(itemId: string): Promise<void> {
  */
 export async function atualizarAtributosAnuncio(itemId: string, produto: Produto): Promise<void> {
   const categoryId = await resolverCategoriaOuFalhar(produto);
-  const attributes = await montarAtributos(categoryId, produto);
+  const { attributes, paraDescricao } = await montarAtributos(categoryId, produto);
 
   const token = await obterAccessTokenValido();
+  const cabecalhos = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
   const resposta = await fetch(`https://api.mercadolibre.com/items/${itemId}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: cabecalhos,
     body: JSON.stringify({ attributes }),
   });
 
   if (!resposta.ok) {
     throw await erroMercadoLivre(resposta, "Falha ao corrigir atributos do anúncio no Mercado Livre");
+  }
+
+  if (paraDescricao.length === 0) return;
+
+  const respostaDescricaoAtual = await fetch(
+    `https://api.mercadolibre.com/items/${itemId}/description`,
+    { headers: cabecalhos }
+  );
+
+  if (!respostaDescricaoAtual.ok) {
+    throw await erroMercadoLivre(
+      respostaDescricaoAtual,
+      "Falha ao consultar a descrição atual do anúncio no Mercado Livre"
+    );
+  }
+
+  const { plain_text: descricaoAtual } = (await respostaDescricaoAtual.json()) as {
+    plain_text: string;
+  };
+
+  const respostaDescricao = await fetch(
+    `https://api.mercadolibre.com/items/${itemId}/description`,
+    {
+      method: "PUT",
+      headers: cabecalhos,
+      body: JSON.stringify({
+        plain_text: aplicarFichaTecnicaNaDescricao(descricaoAtual, paraDescricao),
+      }),
+    }
+  );
+
+  if (!respostaDescricao.ok) {
+    throw await erroMercadoLivre(
+      respostaDescricao,
+      "Falha ao corrigir a descrição do anúncio no Mercado Livre"
+    );
   }
 }

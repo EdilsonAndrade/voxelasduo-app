@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { criarProduto, listarProdutos, slugDisponivel } from "@/lib/produtos/repository";
 import { gerarSlug } from "@/lib/produtos/slug";
 import { validarProduto, type ProdutoPayload } from "@/lib/produtos/validation";
-import type { CustoProducao, EmbalagemEnvio, IntegracoesCanal } from "@/lib/models/produto";
+import type {
+  CustoProducao,
+  EmbalagemEnvio,
+  FichaTecnicaProduto,
+  IntegracoesCanal,
+} from "@/lib/models/produto";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -40,6 +45,7 @@ export async function POST(request: Request) {
     integracoes: payload.integracoes as IntegracoesCanal | undefined,
     custoProducao: payload.custoProducao as CustoProducao | undefined,
     embalagemEnvio: payload.embalagemEnvio as EmbalagemEnvio | undefined,
+    fichaTecnica: payload.fichaTecnica as FichaTecnicaProduto | undefined,
   });
 
   return NextResponse.json({ produto }, { status: 201 });
