@@ -1,8 +1,9 @@
 /**
  * Consulta um item no Mercado Livre e mostra os campos relevantes de
- * atributos (Marca/Modelo/embalagem) e de frete (`shipping`), para
- * diagnosticar anúncios com problema (EDI-95/EDI-96) sem precisar abrir o
- * painel do vendedor. Não sobe nenhum servidor. Rode com:
+ * atributos (Marca/Modelo/embalagem/ficha técnica) e de frete
+ * (`shipping`), além da descrição, para diagnosticar anúncios com problema
+ * (EDI-95/EDI-96/EDI-90) sem precisar abrir o painel do vendedor. Não sobe
+ * nenhum servidor. Rode com:
  *
  *   npx tsx scripts/inspecionar-item-mercado-livre.ts MLB1234567890
  */
@@ -30,17 +31,51 @@ async function main() {
 
   const item = await resposta.json();
 
+  console.log(
+    "pictures:",
+    JSON.stringify(
+      item.pictures?.map((p: { id: string; url: string; size?: string; max_size?: string }) => ({
+        id: p.id,
+        url: p.url,
+        size: p.size,
+        max_size: p.max_size,
+      })),
+      null,
+      2
+    )
+  );
   console.log("shipping:", JSON.stringify(item.shipping, null, 2));
   console.log(
-    "attributes (BRAND/MODEL/SELLER_PACKAGE_*):",
+    "attributes (BRAND/MODEL/SELLER_PACKAGE_*/ficha técnica):",
     JSON.stringify(
       item.attributes.filter((a: { id: string }) =>
-        ["BRAND", "MODEL", "SELLER_PACKAGE_WEIGHT", "SELLER_PACKAGE_HEIGHT", "SELLER_PACKAGE_WIDTH", "SELLER_PACKAGE_LENGTH"].includes(a.id)
+        [
+          "BRAND",
+          "MODEL",
+          "SELLER_PACKAGE_WEIGHT",
+          "SELLER_PACKAGE_HEIGHT",
+          "SELLER_PACKAGE_WIDTH",
+          "SELLER_PACKAGE_LENGTH",
+          "HEIGHT",
+          "WIDTH",
+          "LENGTH",
+          "WEIGHT",
+          "MATERIAL",
+        ].includes(a.id)
       ),
       null,
       2
     )
   );
+
+  const respostaDescricao = await fetch(
+    `https://api.mercadolibre.com/items/${itemId}/description`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (respostaDescricao.ok) {
+    const descricao = await respostaDescricao.json();
+    console.log("descrição (plain_text):", descricao.plain_text);
+  }
 
   process.exit(0);
 }

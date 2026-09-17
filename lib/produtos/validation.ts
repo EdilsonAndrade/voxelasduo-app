@@ -11,6 +11,8 @@ export interface ProdutoPayload {
   custoProducao?: unknown;
   /** Peso/dimensões da embalagem para envio (EDI-96) — opcional, produto pode ser salvo sem esses dados configurados. */
   embalagemEnvio?: unknown;
+  /** Ficha técnica opcional do produto (EDI-90) — opcional, produto pode ser salvo sem nenhum campo preenchido. */
+  fichaTecnica?: unknown;
 }
 
 /** Campos monetários/numéricos obrigatórios de `custoProducao`, todos exigidos > 0 quando o objeto está presente (EDI-92). */
@@ -72,6 +74,46 @@ function validarEmbalagemEnvio(valor: unknown): string | undefined {
   for (const campo of CAMPOS_EMBALAGEM_ENVIO) {
     if (!numeroFinito(embalagem[campo]) || (embalagem[campo] as number) <= 0) {
       return `Informe um valor maior que zero para "${campo}".`;
+    }
+  }
+
+  return undefined;
+}
+
+/** Campos numéricos de `fichaTecnica`, cada um individualmente opcional e exigido > 0 só quando presente (EDI-90, distinto de `embalagemEnvio`, onde os 4 campos são exigidos em bloco). */
+const CAMPOS_FICHA_TECNICA_NUMERICOS = [
+  "alturaCm",
+  "larguraCm",
+  "comprimentoCm",
+  "pesoGramas",
+] as const;
+
+/** Valida `fichaTecnica` quando presente no payload: todos os campos são individualmente opcionais (data-model.md → "Validação"). */
+function validarFichaTecnica(valor: unknown): string | undefined {
+  if (typeof valor !== "object" || valor === null || Array.isArray(valor)) {
+    return "Formato de ficha técnica inválido.";
+  }
+
+  const ficha = valor as Record<string, unknown>;
+
+  for (const campo of CAMPOS_FICHA_TECNICA_NUMERICOS) {
+    if (ficha[campo] === undefined) continue;
+    if (!numeroFinito(ficha[campo]) || (ficha[campo] as number) <= 0) {
+      return `Informe um valor maior que zero para "${campo}".`;
+    }
+  }
+
+  if (ficha.material !== undefined && !textoValido(ficha.material)) {
+    return "Informe um material válido, ou deixe o campo em branco.";
+  }
+
+  if (ficha.itensInclusos !== undefined) {
+    const itens = ficha.itensInclusos;
+    if (
+      !Array.isArray(itens) ||
+      !itens.every((item) => typeof item === "string" && item.trim().length > 0)
+    ) {
+      return "Os itens inclusos não podem estar vazios.";
     }
   }
 
@@ -147,6 +189,13 @@ export function validarProduto(
     const erro = validarEmbalagemEnvio(payload.embalagemEnvio);
     if (erro) {
       erros.embalagemEnvio = erro;
+    }
+  }
+
+  if (payload.fichaTecnica !== undefined) {
+    const erro = validarFichaTecnica(payload.fichaTecnica);
+    if (erro) {
+      erros.fichaTecnica = erro;
     }
   }
 

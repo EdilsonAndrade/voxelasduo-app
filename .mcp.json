@@ -10,6 +10,10 @@
         "headers": {
           "Authorization": "Bearer ${MERCADOPAGO_ACCESS_TOKEN}"
         }
+      },
+      "autodesk-fusion": {
+        "type": "http",
+        "url": "http://127.0.0.1:27182/mcp"
       }
   }
 }

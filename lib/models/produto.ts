@@ -60,6 +60,29 @@ export interface EmbalagemEnvio {
   comprimentoCm: number;
 }
 
+/**
+ * Ficha técnica opcional do produto — dimensões/peso/material do produto
+ * **em si** (o que o comprador recebe), distintos da embalagem de envio
+ * (`EmbalagemEnvio`, que inclui caixa/proteção e serve só para cálculo de
+ * frete) e do peso da peça usado no custo de produção
+ * (`CustoProducao.pesoPecaGramas`). Todos os campos são individualmente
+ * opcionais — o vendedor pode preencher só um deles (EDI-90).
+ */
+export interface FichaTecnicaProduto {
+  /** Altura do produto, em centímetros. */
+  alturaCm?: number;
+  /** Largura do produto, em centímetros. */
+  larguraCm?: number;
+  /** Comprimento do produto, em centímetros. */
+  comprimentoCm?: number;
+  /** Peso do produto, em gramas. */
+  pesoGramas?: number;
+  /** Material predominante do produto (texto livre, ex: "PLA", "Madeira"). */
+  material?: string;
+  /** O que acompanha o produto na embalagem — um item por posição da lista. */
+  itensInclusos?: string[];
+}
+
 export interface Produto {
   _id?: ObjectId;
   nome: string;
@@ -76,6 +99,8 @@ export interface Produto {
   custoProducao?: CustoProducao;
   /** Dados de embalagem para cálculo de frete no Mercado Livre — ausente = ainda não configurado (EDI-96). */
   embalagemEnvio?: EmbalagemEnvio;
+  /** Ficha técnica opcional do produto (dimensões, peso, material, itens inclusos) — ausente = não preenchida (EDI-90). */
+  fichaTecnica?: FichaTecnicaProduto;
   criadoEm: Date;
   atualizadoEm: Date;
 }

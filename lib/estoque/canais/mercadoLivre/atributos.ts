@@ -1,4 +1,4 @@
-import type { EmbalagemEnvio, Produto } from "@/lib/models/produto";
+import type { EmbalagemEnvio, FichaTecnicaProduto, Produto } from "@/lib/models/produto";
 import { obterAccessTokenValido } from "./auth";
 import { erroMercadoLivre } from "./erros";
 
@@ -7,7 +7,7 @@ interface ValorAtributoCategoria {
   name: string;
 }
 
-interface AtributoCategoria {
+export interface AtributoCategoria {
   id: string;
   value_type: string;
   tags?: { required?: boolean };
@@ -21,16 +21,13 @@ export interface AtributoItem {
 }
 
 /**
- * Alguns domínios do Mercado Livre (ex: "decorations", descoberto testando
- * em produção) exigem atributos obrigatórios da categoria mesmo no modelo
- * "User Products" — o próprio Mercado Livre usa esses atributos para montar
- * o título do anúncio (research.md #4); sem eles, `POST /items` falha com
- * "attributes are required" ao tentar gerar o título. Busca os atributos
- * marcados como obrigatórios (`tags.required`) na categoria já resolvida.
+ * Busca todos os atributos aceitos por uma categoria (obrigatórios e
+ * opcionais) — usada tanto por `buscarAtributosObrigatorios` (Marca/Modelo,
+ * EDI-95) quanto por `atributosFichaTecnica` (EDI-90, que precisa saber se a
+ * categoria expõe `HEIGHT`/`WIDTH`/`LENGTH`/`WEIGHT`/`MATERIAL` mesmo sendo
+ * atributos opcionais).
  */
-export async function buscarAtributosObrigatorios(
-  categoryId: string
-): Promise<AtributoCategoria[]> {
+export async function buscarAtributosCategoria(categoryId: string): Promise<AtributoCategoria[]> {
   const token = await obterAccessTokenValido();
   const resposta = await fetch(
     `https://api.mercadolibre.com/categories/${categoryId}/attributes`,
@@ -44,7 +41,21 @@ export async function buscarAtributosObrigatorios(
     );
   }
 
-  const atributos = (await resposta.json()) as AtributoCategoria[];
+  return (await resposta.json()) as AtributoCategoria[];
+}
+
+/**
+ * Alguns domínios do Mercado Livre (ex: "decorations", descoberto testando
+ * em produção) exigem atributos obrigatórios da categoria mesmo no modelo
+ * "User Products" — o próprio Mercado Livre usa esses atributos para montar
+ * o título do anúncio (research.md #4); sem eles, `POST /items` falha com
+ * "attributes are required" ao tentar gerar o título. Filtra os atributos
+ * marcados como obrigatórios (`tags.required`) na categoria já resolvida.
+ */
+export async function buscarAtributosObrigatorios(
+  categoryId: string
+): Promise<AtributoCategoria[]> {
+  const atributos = await buscarAtributosCategoria(categoryId);
   return atributos.filter((atributo) => atributo.tags?.required);
 }
 
@@ -97,4 +108,85 @@ export function atributosEmbalagem(embalagem: EmbalagemEnvio): AtributoItem[] {
     { id: "SELLER_PACKAGE_WIDTH", value_name: `${embalagem.larguraCm} cm` },
     { id: "SELLER_PACKAGE_LENGTH", value_name: `${embalagem.comprimentoCm} cm` },
   ];
+}
+
+export interface ResultadoFichaTecnica {
+  /** Atributos a enviar no item — só os campos preenchidos cuja categoria expõe o atributo correspondente. */
+  attributes: AtributoItem[];
+  /** Campos preenchidos sem atributo correspondente na categoria — vão para a descrição complementar. */
+  paraDescricao: Array<{ rotulo: string; valor: string }>;
+}
+
+/**
+ * Campos numéricos da ficha técnica que mapeiam para um atributo
+ * `number_unit` do produto em si (research.md #1) — distintos dos
+ * `SELLER_PACKAGE_*` da embalagem de envio (EDI-96). O valor **precisa** vir
+ * com a unidade junto (`"20 cm"`, não `"20"`): testado via
+ * `POST /items/validate`, sem unidade o Mercado Livre descarta o atributo
+ * com o aviso `item.attributes.omitted` (research.md #2).
+ */
+const CAMPOS_NUMERICOS_FICHA_TECNICA: Record<
+  "alturaCm" | "larguraCm" | "comprimentoCm" | "pesoGramas",
+  { atributoId: string; unidade: string; rotulo: string }
+> = {
+  alturaCm: { atributoId: "HEIGHT", unidade: "cm", rotulo: "Altura" },
+  larguraCm: { atributoId: "WIDTH", unidade: "cm", rotulo: "Largura" },
+  comprimentoCm: { atributoId: "LENGTH", unidade: "cm", rotulo: "Comprimento" },
+  pesoGramas: { atributoId: "WEIGHT", unidade: "g", rotulo: "Peso" },
+};
+
+/**
+ * Mapeia a ficha técnica do produto (EDI-90) para atributos do Mercado
+ * Livre quando a categoria os expõe (`HEIGHT`/`WIDTH`/`LENGTH`/`WEIGHT`/
+ * `MATERIAL`, research.md #1) — cada campo é checado individualmente contra
+ * `atributosCategoria` (todos os atributos da categoria, não só os
+ * obrigatórios: esses são opcionais). Campos sem atributo correspondente
+ * (sempre o caso de `itensInclusos`, que não tem atributo padrão em nenhuma
+ * categoria testada) vão para `paraDescricao`, para quem chama decidir como
+ * complementar a descrição do anúncio.
+ *
+ * `MATERIAL` é enviado como `value_name` (texto livre) mesmo quando o valor
+ * não está entre as sugestões da categoria — `value_type` é `"string"`, não
+ * `"list"`, então não exige `value_id` (research.md #3, confirmado via
+ * `POST /items/validate`).
+ */
+export function atributosFichaTecnica(
+  fichaTecnica: FichaTecnicaProduto,
+  atributosCategoria: AtributoCategoria[]
+): ResultadoFichaTecnica {
+  const idsCategoria = new Set(atributosCategoria.map((atributo) => atributo.id));
+  const attributes: AtributoItem[] = [];
+  const paraDescricao: Array<{ rotulo: string; valor: string }> = [];
+
+  for (const chave of Object.keys(CAMPOS_NUMERICOS_FICHA_TECNICA) as Array<
+    keyof typeof CAMPOS_NUMERICOS_FICHA_TECNICA
+  >) {
+    const numero = fichaTecnica[chave];
+    if (numero === undefined) continue;
+
+    const { atributoId, unidade, rotulo } = CAMPOS_NUMERICOS_FICHA_TECNICA[chave];
+    const valor = `${numero} ${unidade}`;
+    if (idsCategoria.has(atributoId)) {
+      attributes.push({ id: atributoId, value_name: valor });
+    } else {
+      paraDescricao.push({ rotulo, valor });
+    }
+  }
+
+  if (fichaTecnica.material !== undefined) {
+    if (idsCategoria.has("MATERIAL")) {
+      attributes.push({ id: "MATERIAL", value_name: fichaTecnica.material });
+    } else {
+      paraDescricao.push({ rotulo: "Material", valor: fichaTecnica.material });
+    }
+  }
+
+  if (fichaTecnica.itensInclusos && fichaTecnica.itensInclusos.length > 0) {
+    paraDescricao.push({
+      rotulo: "Itens inclusos",
+      valor: fichaTecnica.itensInclusos.join(", "),
+    });
+  }
+
+  return { attributes, paraDescricao };
 }

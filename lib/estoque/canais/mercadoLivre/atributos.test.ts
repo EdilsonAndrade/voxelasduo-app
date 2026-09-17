@@ -5,9 +5,13 @@ vi.mock("./auth", () => ({
   obterAccessTokenValido: vi.fn().mockResolvedValue("token-valido"),
 }));
 
-const { buscarAtributosObrigatorios, valorPadraoAtributo, atributosEmbalagem } = await import(
-  "./atributos"
-);
+const {
+  buscarAtributosObrigatorios,
+  buscarAtributosCategoria,
+  valorPadraoAtributo,
+  atributosEmbalagem,
+  atributosFichaTecnica,
+} = await import("./atributos");
 
 const produtoBase: Produto = {
   _id: undefined,
@@ -46,6 +50,32 @@ describe("buscarAtributosObrigatorios", () => {
   it("lança erro quando a API responde com falha", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, text: async () => "" }));
     await expect(buscarAtributosObrigatorios("MLB12345")).rejects.toThrow("HTTP 500");
+  });
+});
+
+describe("buscarAtributosCategoria", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("retorna todos os atributos da categoria, obrigatórios e opcionais (reaproveitado por atributosFichaTecnica)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => [
+          { id: "BRAND", value_type: "list", tags: { required: true }, values: [] },
+          { id: "HEIGHT", value_type: "number_unit", tags: {} },
+        ],
+      })
+    );
+
+    const atributos = await buscarAtributosCategoria("MLB12345");
+
+    expect(atributos).toHaveLength(2);
+  });
+
+  it("lança erro quando a API responde com falha", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, text: async () => "" }));
+    await expect(buscarAtributosCategoria("MLB12345")).rejects.toThrow("HTTP 500");
   });
 });
 
@@ -111,5 +141,76 @@ describe("atributosEmbalagem", () => {
       { id: "SELLER_PACKAGE_WIDTH", value_name: "15 cm" },
       { id: "SELLER_PACKAGE_LENGTH", value_name: "20 cm" },
     ]);
+  });
+});
+
+describe("atributosFichaTecnica", () => {
+  const categoriaCompleta = [
+    { id: "HEIGHT", value_type: "number_unit", tags: {} },
+    { id: "WIDTH", value_type: "number_unit", tags: {} },
+    { id: "LENGTH", value_type: "number_unit", tags: {} },
+    { id: "WEIGHT", value_type: "number_unit", tags: {} },
+    { id: "MATERIAL", value_type: "string", tags: {} },
+  ];
+
+  it("inclui cada campo preenchido como atributo quando a categoria expõe o atributo correspondente", () => {
+    const resultado = atributosFichaTecnica(
+      { alturaCm: 20, larguraCm: 15, comprimentoCm: 10, pesoGramas: 250, material: "PLA" },
+      categoriaCompleta
+    );
+
+    expect(resultado.attributes).toEqual(
+      expect.arrayContaining([
+        { id: "HEIGHT", value_name: "20 cm" },
+        { id: "WIDTH", value_name: "15 cm" },
+        { id: "LENGTH", value_name: "10 cm" },
+        { id: "WEIGHT", value_name: "250 g" },
+        { id: "MATERIAL", value_name: "PLA" },
+      ])
+    );
+    expect(resultado.paraDescricao).toEqual([]);
+  });
+
+  it("MATERIAL aceita texto livre mesmo fora da lista de sugestões da categoria", () => {
+    const resultado = atributosFichaTecnica(
+      { material: "PLA (impressão 3D)" },
+      [{ id: "MATERIAL", value_type: "string", tags: {}, values: [{ id: "1", name: "Madeira" }] }]
+    );
+
+    expect(resultado.attributes).toEqual([{ id: "MATERIAL", value_name: "PLA (impressão 3D)" }]);
+  });
+
+  it("campo preenchido sem atributo correspondente na categoria vai para paraDescricao", () => {
+    const resultado = atributosFichaTecnica(
+      { pesoGramas: 250, material: "PLA" },
+      [{ id: "HEIGHT", value_type: "number_unit", tags: {} }] // categoria sem WEIGHT nem MATERIAL
+    );
+
+    expect(resultado.attributes).toEqual([]);
+    expect(resultado.paraDescricao).toEqual(
+      expect.arrayContaining([
+        { rotulo: "Peso", valor: "250 g" },
+        { rotulo: "Material", valor: "PLA" },
+      ])
+    );
+  });
+
+  it("itensInclusos sempre vai para paraDescricao, mesmo com a categoria completa", () => {
+    const resultado = atributosFichaTecnica(
+      { itensInclusos: ["1 vaso", "1 prato"] },
+      categoriaCompleta
+    );
+
+    expect(resultado.attributes).toEqual([]);
+    expect(resultado.paraDescricao).toEqual([
+      { rotulo: "Itens inclusos", valor: "1 vaso, 1 prato" },
+    ]);
+  });
+
+  it("ficha técnica vazia: nenhum atributo e nenhum texto para descrição", () => {
+    const resultado = atributosFichaTecnica({}, categoriaCompleta);
+
+    expect(resultado.attributes).toEqual([]);
+    expect(resultado.paraDescricao).toEqual([]);
   });
 });

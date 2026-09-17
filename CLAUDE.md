@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/013-ml-fix-atributos-frete/plan.md
+at specs/014-ml-ficha-tecnica-produto/plan.md
 
 ## RULES
 

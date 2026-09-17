@@ -16,14 +16,19 @@ vi.mock("./previsorCategoria", () => ({
 }));
 vi.mock("./atributos", () => ({
   buscarAtributosObrigatorios: vi.fn().mockResolvedValue([]),
+  buscarAtributosCategoria: vi.fn().mockResolvedValue([]),
   valorPadraoAtributo: vi.fn((atributo) => ({ id: atributo.id, value_name: "valor-padrao" })),
   atributosEmbalagem: vi.fn().mockReturnValue([]),
+  atributosFichaTecnica: vi.fn().mockReturnValue({ attributes: [], paraDescricao: [] }),
 }));
 
-const { criarAnuncio, despublicarAnuncio, atualizarAtributosAnuncio } = await import("./anuncios");
+const { criarAnuncio, despublicarAnuncio, atualizarAtributosAnuncio, aplicarFichaTecnicaNaDescricao } =
+  await import("./anuncios");
 const { resolverCategoriaMercadoLivre } = await import("./categorias");
 const { preverCategoriaMercadoLivre } = await import("./previsorCategoria");
-const { buscarAtributosObrigatorios, atributosEmbalagem } = await import("./atributos");
+const { buscarAtributosObrigatorios, atributosEmbalagem, atributosFichaTecnica } = await import(
+  "./atributos"
+);
 
 const produtoBase: Produto = {
   _id: undefined,
@@ -37,6 +42,47 @@ const produtoBase: Produto = {
   criadoEm: new Date(),
   atualizadoEm: new Date(),
 };
+
+describe("aplicarFichaTecnicaNaDescricao", () => {
+  it("sem marcador existente: concatena o bloco ao final, preservando o texto original", () => {
+    const resultado = aplicarFichaTecnicaNaDescricao("Vaso impresso em 3D.", [
+      { rotulo: "Material", valor: "PLA" },
+      { rotulo: "Peso", valor: "250 g" },
+    ]);
+
+    expect(resultado).toBe(
+      "Vaso impresso em 3D.\n\n---\nFicha técnica:\n- Material: PLA\n- Peso: 250 g"
+    );
+  });
+
+  it("com marcador existente: substitui só o bloco após o marcador, preservando o texto antes dele", () => {
+    const descricaoAtual =
+      "Vaso impresso em 3D.\n\n---\nFicha técnica:\n- Material: PLA antigo";
+
+    const resultado = aplicarFichaTecnicaNaDescricao(descricaoAtual, [
+      { rotulo: "Material", valor: "PETG" },
+    ]);
+
+    expect(resultado).toBe("Vaso impresso em 3D.\n\n---\nFicha técnica:\n- Material: PETG");
+  });
+
+  it("com paraDescricao vazio: remove o marcador e o bloco, mantendo só o texto original", () => {
+    const descricaoAtual = "Vaso impresso em 3D.\n\n---\nFicha técnica:\n- Material: PLA";
+
+    const resultado = aplicarFichaTecnicaNaDescricao(descricaoAtual, []);
+
+    expect(resultado).toBe("Vaso impresso em 3D.");
+  });
+
+  it("idempotente: aplicar duas vezes com os mesmos dados produz o mesmo resultado (FR-007)", () => {
+    const primeira = aplicarFichaTecnicaNaDescricao("Vaso impresso em 3D.", [
+      { rotulo: "Material", valor: "PLA" },
+    ]);
+    const segunda = aplicarFichaTecnicaNaDescricao(primeira, [{ rotulo: "Material", valor: "PLA" }]);
+
+    expect(segunda).toBe(primeira);
+  });
+});
 
 describe("criarAnuncio", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -216,6 +262,79 @@ describe("criarAnuncio", () => {
     const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(corpoItem.shipping).toBeUndefined();
   });
+
+  it("inclui atributos da ficha técnica no corpo do item quando a categoria expõe o atributo correspondente (EDI-90)", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    vi.mocked(atributosFichaTecnica).mockReturnValue({
+      attributes: [{ id: "HEIGHT", value_name: "20 cm" }],
+      paraDescricao: [],
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const produtoComFicha: Produto = { ...produtoBase, fichaTecnica: { alturaCm: 20 } };
+
+    await criarAnuncio(produtoComFicha);
+
+    const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpoItem.attributes).toEqual(
+      expect.arrayContaining([{ id: "HEIGHT", value_name: "20 cm" }])
+    );
+    const corpoDescricao = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+    expect(corpoDescricao.plain_text).toBe(produtoBase.descricao);
+  });
+
+  it("inclui na descrição os campos da ficha técnica sem atributo correspondente na categoria (EDI-90)", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    vi.mocked(atributosFichaTecnica).mockReturnValue({
+      attributes: [],
+      paraDescricao: [{ rotulo: "Itens inclusos", valor: "1 vaso, 1 prato" }],
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const produtoComFicha: Produto = {
+      ...produtoBase,
+      fichaTecnica: { itensInclusos: ["1 vaso", "1 prato"] },
+    };
+
+    await criarAnuncio(produtoComFicha);
+
+    const corpoDescricao = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+    expect(corpoDescricao.plain_text).toBe(
+      `${produtoBase.descricao}\n\n---\nFicha técnica:\n- Itens inclusos: 1 vaso, 1 prato`
+    );
+  });
+
+  it("sem fichaTecnica: não chama atributosFichaTecnica e a descrição não é alterada", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await criarAnuncio(produtoBase);
+
+    expect(atributosFichaTecnica).not.toHaveBeenCalled();
+    const corpoDescricao = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+    expect(corpoDescricao.plain_text).toBe(produtoBase.descricao);
+  });
 });
 
 describe("despublicarAnuncio", () => {
@@ -345,5 +464,63 @@ describe("atualizarAtributosAnuncio", () => {
     expect(atributosEmbalagem).not.toHaveBeenCalled();
     const corpo = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(corpo.shipping).toBeUndefined();
+  });
+
+  it("todos os campos da ficha técnica têm atributo correspondente: não busca nem atualiza a descrição (EDI-90)", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    vi.mocked(atributosFichaTecnica).mockReturnValue({
+      attributes: [{ id: "HEIGHT", value_name: "20 cm" }],
+      paraDescricao: [],
+    });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await atualizarAtributosAnuncio("MLB999", { ...produtoBase, fichaTecnica: { alturaCm: 20 } });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const corpo = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpo.attributes).toEqual(
+      expect.arrayContaining([{ id: "HEIGHT", value_name: "20 cm" }])
+    );
+  });
+
+  it("campos da ficha técnica sem atributo correspondente: busca a descrição atual e atualiza via PUT (EDI-90)", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    vi.mocked(atributosFichaTecnica).mockReturnValue({
+      attributes: [],
+      paraDescricao: [{ rotulo: "Material", valor: "PLA" }],
+    });
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url === "https://api.mercadolibre.com/items/MLB999/description" && init?.method === undefined) {
+        return Promise.resolve({ ok: true, json: async () => ({ plain_text: "Descrição atual." }) });
+      }
+      return Promise.resolve({ ok: true });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const produtoComFicha: Produto = { ...produtoBase, fichaTecnica: { material: "PLA" } };
+    await atualizarAtributosAnuncio("MLB999", produtoComFicha);
+
+    const chamadas = fetchMock.mock.calls;
+    expect(chamadas[0][0]).toBe("https://api.mercadolibre.com/items/MLB999");
+    expect(chamadas[1][0]).toBe("https://api.mercadolibre.com/items/MLB999/description");
+    expect((chamadas[1][1] as RequestInit | undefined)?.method).toBeUndefined();
+    expect(chamadas[2][0]).toBe("https://api.mercadolibre.com/items/MLB999/description");
+    expect((chamadas[2][1] as RequestInit).method).toBe("PUT");
+    const corpoDescricao = JSON.parse((chamadas[2][1] as RequestInit).body as string);
+    expect(corpoDescricao.plain_text).toBe(
+      "Descrição atual.\n\n---\nFicha técnica:\n- Material: PLA"
+    );
+  });
+
+  it("sem fichaTecnica: não chama atributosFichaTecnica nem toca a descrição", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await atualizarAtributosAnuncio("MLB999", produtoBase);
+
+    expect(atributosFichaTecnica).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
