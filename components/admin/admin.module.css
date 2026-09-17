@@ -266,6 +266,7 @@
   border-radius: 12px;
   overflow: hidden;
   border: 2px solid var(--surface-line);
+  cursor: grab;
 }
 
 .foto img {
@@ -286,6 +287,82 @@
   cursor: pointer;
   line-height: 1;
   padding: 3px 6px;
+}
+
+.fotoArrastando {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.fotoSobreAlvo {
+  outline: 2px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+.fotoOrdem {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.fotoMover {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 2px 3px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.fotoMoverBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 0.7rem;
+  padding: 1px 3px;
+  color: var(--preto);
+}
+
+.fotoMoverBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.fotoMlIncluida,
+.fotoMlExcluida {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.58rem;
+  border-radius: 999px;
+  padding: 1px 5px;
+  line-height: 1.4;
+}
+
+.fotoMlIncluida {
+  color: var(--texto-soft);
+}
+
+.fotoMlExcluida {
+  background: #b3701f;
+  color: #fff;
 }
 
 .actions {

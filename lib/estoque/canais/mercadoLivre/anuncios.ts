@@ -11,6 +11,7 @@ import {
   valorPadraoAtributo,
 } from "./atributos";
 import { erroMercadoLivre } from "./erros";
+import { fotosParaAnuncio } from "./fotos";
 
 /**
  * Marca o início do bloco complementar de ficha técnica (EDI-90) dentro da
@@ -122,6 +123,10 @@ async function montarAtributos(categoryId: string, produto: Produto) {
  * separado**: `POST /pictures/items/upload` só aceita arquivo binário
  * (`multipart/form-data` com campo `file`), rejeitando `source` com HTTP 400
  * (descoberto durante o teste em produção — corrigido aqui).
+ *
+ * Só as até 6 primeiras fotos de `produto.fotos` (na ordem definida pelo
+ * vendedor no admin) são enviadas — limite da API do Mercado Livre para o
+ * array `pictures` (EDI-99, `fotosParaAnuncio`).
  */
 export interface AnuncioCriado {
   id: string;
@@ -160,7 +165,7 @@ export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
       available_quantity: produto.estoque,
       condition: "new",
       listing_type_id: LISTING_TYPE_ID,
-      pictures: produto.fotos.map((source) => ({ source })),
+      pictures: fotosParaAnuncio(produto.fotos).map((source) => ({ source })),
       attributes,
     }),
   });

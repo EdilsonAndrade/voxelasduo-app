@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/014-ml-ficha-tecnica-produto/plan.md
+at specs/015-ml-ordenar-fotos-video/plan.md
 
 ## RULES
 

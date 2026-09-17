@@ -24,6 +24,7 @@ import {
   VAZIO_FICHA_TECNICA,
   type FichaTecnicaFormValores,
 } from "@/lib/produtos/fichaTecnicaFormulario";
+import { LIMITE_FOTOS_MERCADO_LIVRE } from "@/lib/estoque/canais/mercadoLivre/fotos";
 
 export type { CustoProducaoFormValores, EmbalagemEnvioFormValores, FichaTecnicaFormValores };
 
@@ -97,6 +98,8 @@ export default function ProdutoForm({
   const router = useRouter();
   const [valores, setValores] = useState(valoresIniciais);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const [fotoArrastada, setFotoArrastada] = useState<number | null>(null);
+  const [fotoAlvo, setFotoAlvo] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [publicandoMercadoLivre, setPublicandoMercadoLivre] = useState(false);
@@ -217,6 +220,23 @@ export default function ProdutoForm({
 
   function removerFoto(url: string) {
     setValores((atual) => ({ ...atual, fotos: atual.fotos.filter((f) => f !== url) }));
+  }
+
+  /** Reordena as fotos (drag-and-drop ou botões ◀/▶) — a posição no array é a mesma ordem usada na galeria do site e no anúncio do Mercado Livre (EDI-99). */
+  function moverFoto(origem: number, destino: number) {
+    if (destino < 0 || destino >= valores.fotos.length || origem === destino) return;
+    setValores((atual) => {
+      const fotos = [...atual.fotos];
+      const [foto] = fotos.splice(origem, 1);
+      fotos.splice(destino, 0, foto);
+      return { ...atual, fotos };
+    });
+  }
+
+  function handleDrop(indexAlvo: number) {
+    if (fotoArrastada !== null) moverFoto(fotoArrastada, indexAlvo);
+    setFotoArrastada(null);
+    setFotoAlvo(null);
   }
 
   async function handleSubmit(evento: React.FormEvent) {
@@ -913,15 +933,71 @@ export default function ProdutoForm({
         {camposErro.fotos && <span className={styles.fieldError}>{camposErro.fotos}</span>}
         {avisoFotos && <span className={styles.fieldWarning}>{avisoFotos}</span>}
         <div className={styles.fotos}>
-          {valores.fotos.map((url) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <div className={styles.foto} key={url}>
-              <img src={url} alt="" />
-              <button type="button" className={styles.fotoRemover} onClick={() => removerFoto(url)}>
-                remover
-              </button>
-            </div>
-          ))}
+          {valores.fotos.map((url, index) => {
+            const vaiParaOMercadoLivre = index < LIMITE_FOTOS_MERCADO_LIVRE;
+            const classes = [styles.foto];
+            if (fotoArrastada === index) classes.push(styles.fotoArrastando);
+            if (fotoAlvo === index && fotoArrastada !== null && fotoArrastada !== index) {
+              classes.push(styles.fotoSobreAlvo);
+            }
+
+            return (
+              <div
+                key={url}
+                className={classes.join(" ")}
+                draggable
+                onDragStart={() => setFotoArrastada(index)}
+                onDragOver={(evento) => {
+                  evento.preventDefault();
+                  setFotoAlvo(index);
+                }}
+                onDrop={() => handleDrop(index)}
+                onDragEnd={() => {
+                  setFotoArrastada(null);
+                  setFotoAlvo(null);
+                }}
+              >
+                <span className={styles.fotoOrdem}>{index + 1}</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" />
+                <button type="button" className={styles.fotoRemover} onClick={() => removerFoto(url)}>
+                  remover
+                </button>
+                <div className={styles.fotoMover}>
+                  <button
+                    type="button"
+                    className={styles.fotoMoverBtn}
+                    onClick={() => moverFoto(index, index - 1)}
+                    disabled={index === 0}
+                    aria-label={`Mover foto ${index + 1} para trás`}
+                  >
+                    ◀
+                  </button>
+                  {valores.fotos.length > LIMITE_FOTOS_MERCADO_LIVRE && (
+                    <span
+                      className={vaiParaOMercadoLivre ? styles.fotoMlIncluida : styles.fotoMlExcluida}
+                      title={
+                        vaiParaOMercadoLivre
+                          ? "Vai para o anúncio do Mercado Livre"
+                          : `Não vai para o anúncio do Mercado Livre (limite de ${LIMITE_FOTOS_MERCADO_LIVRE} fotos)`
+                      }
+                    >
+                      {vaiParaOMercadoLivre ? "ML" : "Fora"}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.fotoMoverBtn}
+                    onClick={() => moverFoto(index, index + 1)}
+                    disabled={index === valores.fotos.length - 1}
+                    aria-label={`Mover foto ${index + 1} para frente`}
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

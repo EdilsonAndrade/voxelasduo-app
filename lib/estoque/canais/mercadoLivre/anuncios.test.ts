@@ -171,6 +171,30 @@ describe("criarAnuncio", () => {
     expect(chamadaDescricao[0]).toBe("https://api.mercadolibre.com/items/MLB999/description");
   });
 
+  it("produto com mais de 6 fotos: envia só as 6 primeiras, na ordem do produto (EDI-99)", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const produtoComOitoFotos: Produto = {
+      ...produtoBase,
+      fotos: Array.from({ length: 8 }, (_, i) => `https://exemplo.com/foto${i + 1}.jpg`),
+    };
+
+    await criarAnuncio(produtoComOitoFotos);
+
+    const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpoItem.pictures).toEqual(
+      Array.from({ length: 6 }, (_, i) => ({ source: `https://exemplo.com/foto${i + 1}.jpg` }))
+    );
+  });
+
   it("inclui atributos obrigatórios da categoria no corpo do item (ex: domínio 'decorations')", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
     vi.mocked(buscarAtributosObrigatorios).mockResolvedValue([
