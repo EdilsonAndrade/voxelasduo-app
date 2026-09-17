@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buscarProdutoPorCategoriaESlug } from "@/lib/produtos/repository";
+import { decodificarSegmentoRota } from "@/lib/produtos/slug";
 import { formatarPreco } from "@/lib/produtos/formato";
 import { buscarAvaliacoesProduto } from "@/lib/avaliacoes/repository";
 import BotaoAdicionarCarrinho from "@/components/carrinho/BotaoAdicionarCarrinho";
@@ -23,7 +24,7 @@ export default async function ProdutoDetalhePage({
   params: Promise<{ categoria: string; slug: string }>;
 }) {
   const { categoria, slug } = await params;
-  const produto = await buscarProdutoPorCategoriaESlug(categoria, slug);
+  const produto = await buscarProdutoPorCategoriaESlug(decodificarSegmentoRota(categoria), slug);
 
   if (!produto) {
     notFound();

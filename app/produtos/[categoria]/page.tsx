@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ProdutoCard from "@/components/produtos/ProdutoCard";
 import { listarCategorias, listarProdutos } from "@/lib/produtos/repository";
+import { decodificarSegmentoRota } from "@/lib/produtos/slug";
 import styles from "@/components/produtos/produtos.module.css";
 
 export default async function ProdutosPorCategoriaPage({
@@ -10,7 +11,8 @@ export default async function ProdutosPorCategoriaPage({
   params: Promise<{ categoria: string }>;
   searchParams: Promise<{ q?: string }>;
 }) {
-  const { categoria } = await params;
+  const { categoria: categoriaParam } = await params;
+  const categoria = decodificarSegmentoRota(categoriaParam);
   const { q } = await searchParams;
   const [produtos, categorias] = await Promise.all([
     listarProdutos({ categoria, q }),
