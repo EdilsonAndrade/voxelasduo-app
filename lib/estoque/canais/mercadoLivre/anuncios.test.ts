@@ -30,6 +30,7 @@ const {
   atualizarAtributosAnuncio,
   aplicarFichaTecnicaNaDescricao,
 } = await import("./anuncios");
+
 const { resolverCategoriaMercadoLivre } = await import("./categorias");
 const { preverCategoriaMercadoLivre } = await import("./previsorCategoria");
 const { buscarAtributosObrigatorios, atributosEmbalagem, atributosFichaTecnica } = await import(
