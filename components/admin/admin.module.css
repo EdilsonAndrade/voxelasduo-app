@@ -301,6 +301,40 @@
   color: var(--texto-soft);
 }
 
+.channelCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+}
+
+.channelCard + .channelCard {
+  margin-top: 0.9rem;
+}
+
+.channelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.channelName {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--preto);
+}
+
+.channelActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
 .formSuccess {
   font-family: var(--font-body);
   font-weight: 700;

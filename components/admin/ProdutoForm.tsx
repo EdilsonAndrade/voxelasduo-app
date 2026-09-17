@@ -19,8 +19,13 @@ import {
   VAZIO_EMBALAGEM_ENVIO,
   type EmbalagemEnvioFormValores,
 } from "@/lib/produtos/embalagemEnvioFormulario";
+import {
+  montarFichaTecnica,
+  VAZIO_FICHA_TECNICA,
+  type FichaTecnicaFormValores,
+} from "@/lib/produtos/fichaTecnicaFormulario";
 
-export type { CustoProducaoFormValores, EmbalagemEnvioFormValores };
+export type { CustoProducaoFormValores, EmbalagemEnvioFormValores, FichaTecnicaFormValores };
 
 export interface ProdutoFormValores {
   id?: string;
@@ -34,12 +39,16 @@ export interface ProdutoFormValores {
   mercadoLivreId?: string;
   /** URL pública do anúncio, devolvida pela API do Mercado Livre na publicação — não reconstruir manualmente. */
   mercadoLivrePermalink?: string;
+  /** `true` quando o anúncio foi pausado (não despublicado) — precisa ser preservado ao salvar o produto, senão some no próximo `PATCH`. */
+  mercadoLivrePausado?: boolean;
   /** ID do anúncio correspondente na Shopee — vazio = sem anúncio nesse canal (Tarefa 5). */
   shopeeItemId?: string;
   /** Custo de produção (COGS) — opcional, ausência não bloqueia o cadastro (EDI-92). */
   custoProducao: CustoProducaoFormValores;
   /** Peso/dimensões da embalagem para envio — opcional, ausência não bloqueia a publicação (EDI-96). */
   embalagemEnvio: EmbalagemEnvioFormValores;
+  /** Ficha técnica opcional do produto — cada campo é independente, ausência não bloqueia a publicação (EDI-90). */
+  fichaTecnica: FichaTecnicaFormValores;
 }
 
 const VAZIO: ProdutoFormValores = {
@@ -51,9 +60,11 @@ const VAZIO: ProdutoFormValores = {
   fotos: [],
   mercadoLivreId: "",
   mercadoLivrePermalink: "",
+  mercadoLivrePausado: false,
   shopeeItemId: "",
   custoProducao: VAZIO_CUSTO_PRODUCAO,
   embalagemEnvio: VAZIO_EMBALAGEM_ENVIO,
+  fichaTecnica: VAZIO_FICHA_TECNICA,
 };
 
 export default function ProdutoForm({
@@ -68,6 +79,7 @@ export default function ProdutoForm({
   const [excluindo, setExcluindo] = useState(false);
   const [publicandoMercadoLivre, setPublicandoMercadoLivre] = useState(false);
   const [despublicandoMercadoLivre, setDespublicandoMercadoLivre] = useState(false);
+  const [pausandoMercadoLivre, setPausandoMercadoLivre] = useState(false);
   const [corrigindoAtributos, setCorrigindoAtributos] = useState(false);
   const [erroCorrecaoAtributos, setErroCorrecaoAtributos] = useState<string | null>(null);
   const [camposErro, setCamposErro] = useState<Record<string, string>>({});
@@ -103,6 +115,16 @@ export default function ProdutoForm({
     }));
   }
 
+  function atualizarCampoFichaTecnica<K extends keyof FichaTecnicaFormValores>(
+    campo: K,
+    valor: string
+  ) {
+    setValores((atual) => ({
+      ...atual,
+      fichaTecnica: { ...atual.fichaTecnica, [campo]: valor },
+    }));
+  }
+
   const camposCustoFaltando = useMemo(
     () => camposCustoProducaoFaltando(valores.custoProducao),
     [valores.custoProducao]
@@ -123,6 +145,11 @@ export default function ProdutoForm({
   const embalagemEnvioCalculada = useMemo(
     () => montarEmbalagemEnvio(valores.embalagemEnvio),
     [valores.embalagemEnvio]
+  );
+
+  const fichaTecnicaCalculada = useMemo(
+    () => montarFichaTecnica(valores.fichaTecnica),
+    [valores.fichaTecnica]
   );
 
   async function handleUpload(evento: React.ChangeEvent<HTMLInputElement>) {
@@ -170,10 +197,12 @@ export default function ProdutoForm({
       integracoes: {
         mercadoLivreId: valores.mercadoLivreId?.trim() || undefined,
         mercadoLivrePermalink: valores.mercadoLivrePermalink?.trim() || undefined,
+        mercadoLivrePausado: valores.mercadoLivrePausado || undefined,
         shopeeItemId: valores.shopeeItemId?.trim() || undefined,
       },
       custoProducao: custoProducaoCalculado ?? undefined,
       embalagemEnvio: embalagemEnvioCalculada ?? undefined,
+      fichaTecnica: fichaTecnicaCalculada ?? undefined,
     };
 
     try {
@@ -247,6 +276,54 @@ export default function ProdutoForm({
       router.refresh();
     } finally {
       setDespublicandoMercadoLivre(false);
+    }
+  }
+
+  async function handlePausarMercadoLivre() {
+    if (!valoresIniciais.id) return;
+
+    setPausandoMercadoLivre(true);
+    setErroPublicacao(null);
+    try {
+      const resposta = await fetch(`/api/produtos/${valoresIniciais.id}/mercado-livre/pausar`, {
+        method: "POST",
+      });
+      const dados = await resposta.json();
+
+      if (!resposta.ok) {
+        setErroPublicacao(dados.erro ?? "Não foi possível pausar o anúncio no Mercado Livre.");
+        return;
+      }
+
+      atualizarCampo("mercadoLivrePausado", true);
+      setToastMensagem("Anúncio pausado no Mercado Livre.");
+      router.refresh();
+    } finally {
+      setPausandoMercadoLivre(false);
+    }
+  }
+
+  async function handleReativarMercadoLivre() {
+    if (!valoresIniciais.id) return;
+
+    setPausandoMercadoLivre(true);
+    setErroPublicacao(null);
+    try {
+      const resposta = await fetch(`/api/produtos/${valoresIniciais.id}/mercado-livre/pausar`, {
+        method: "DELETE",
+      });
+      const dados = await resposta.json();
+
+      if (!resposta.ok) {
+        setErroPublicacao(dados.erro ?? "Não foi possível reativar o anúncio no Mercado Livre.");
+        return;
+      }
+
+      atualizarCampo("mercadoLivrePausado", false);
+      setToastMensagem("Anúncio reativado no Mercado Livre.");
+      router.refresh();
+    } finally {
+      setPausandoMercadoLivre(false);
     }
   }
 
@@ -578,6 +655,73 @@ export default function ProdutoForm({
         )}
       </fieldset>
 
+      <fieldset className={styles.field}>
+        <legend>Ficha técnica (opcional)</legend>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="fichaTecnicaAltura">Altura do produto (cm)</label>
+            <input
+              id="fichaTecnicaAltura"
+              inputMode="decimal"
+              placeholder="20"
+              value={valores.fichaTecnica.alturaCm}
+              onChange={(e) => atualizarCampoFichaTecnica("alturaCm", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="fichaTecnicaLargura">Largura do produto (cm)</label>
+            <input
+              id="fichaTecnicaLargura"
+              inputMode="decimal"
+              placeholder="15"
+              value={valores.fichaTecnica.larguraCm}
+              onChange={(e) => atualizarCampoFichaTecnica("larguraCm", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="fichaTecnicaComprimento">Comprimento do produto (cm)</label>
+            <input
+              id="fichaTecnicaComprimento"
+              inputMode="decimal"
+              placeholder="10"
+              value={valores.fichaTecnica.comprimentoCm}
+              onChange={(e) => atualizarCampoFichaTecnica("comprimentoCm", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="fichaTecnicaPeso">Peso do produto (g)</label>
+            <input
+              id="fichaTecnicaPeso"
+              inputMode="decimal"
+              placeholder="250"
+              value={valores.fichaTecnica.pesoGramas}
+              onChange={(e) => atualizarCampoFichaTecnica("pesoGramas", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <label htmlFor="fichaTecnicaMaterial">Material</label>
+        <input
+          id="fichaTecnicaMaterial"
+          placeholder="Ex: PLA"
+          value={valores.fichaTecnica.material}
+          onChange={(e) => atualizarCampoFichaTecnica("material", e.target.value)}
+        />
+
+        <label htmlFor="fichaTecnicaItensInclusos">Itens inclusos (um por linha)</label>
+        <textarea
+          id="fichaTecnicaItensInclusos"
+          rows={3}
+          placeholder={"1 vaso\n1 prato"}
+          value={valores.fichaTecnica.itensInclusos}
+          onChange={(e) => atualizarCampoFichaTecnica("itensInclusos", e.target.value)}
+        />
+
+        {camposErro.fichaTecnica && (
+          <span className={styles.fieldError}>{camposErro.fichaTecnica}</span>
+        )}
+      </fieldset>
+
       <SimuladorPrecificacao
         nome={valores.nome}
         categoria={valores.categoria}
@@ -586,74 +730,123 @@ export default function ProdutoForm({
         onAplicarPrecoSugerido={(preco) => atualizarCampo("precoReais", preco)}
       />
 
-      <div className={styles.row}>
-        <div className={styles.field}>
-          <label htmlFor="mercadoLivreId">ID do anúncio no Mercado Livre (opcional)</label>
-          <input
-            id="mercadoLivreId"
-            placeholder="Ex: MLB1234567890"
-            value={valores.mercadoLivreId ?? ""}
-            onChange={(e) => atualizarCampo("mercadoLivreId", e.target.value)}
-          />
+      <fieldset className={styles.field}>
+        <legend>Canais de venda</legend>
+
+        <div className={styles.channelCard}>
+          <div className={styles.channelHeader}>
+            <span className={styles.channelName}>Mercado Livre</span>
+            {editando && !valores.mercadoLivreId?.trim() && (
+              <span className={styles.badgeZero}>Não publicado</span>
+            )}
+            {editando && valores.mercadoLivreId?.trim() && valores.mercadoLivrePausado && (
+              <span className={styles.badgeStatusPendente}>Pausado</span>
+            )}
+            {editando && valores.mercadoLivreId?.trim() && !valores.mercadoLivrePausado && (
+              <span className={styles.badgeStatusPago}>Publicado</span>
+            )}
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="mercadoLivreId">ID do anúncio (opcional)</label>
+            <input
+              id="mercadoLivreId"
+              placeholder="Ex: MLB1234567890"
+              value={valores.mercadoLivreId ?? ""}
+              onChange={(e) => atualizarCampo("mercadoLivreId", e.target.value)}
+            />
+          </div>
+
           {editando && !valores.mercadoLivreId?.trim() && (
-            <button
-              type="button"
-              className={styles.btnGhost}
-              onClick={handlePublicarMercadoLivre}
-              disabled={publicandoMercadoLivre}
-            >
-              {publicandoMercadoLivre ? "Publicando…" : "Publicar no Mercado Livre"}
-            </button>
-          )}
-          {editando && valores.mercadoLivreId?.trim() && (
-            <button
-              type="button"
-              className={styles.btnGhost}
-              onClick={() => setConfirmandoDespublicar(true)}
-              disabled={despublicandoMercadoLivre}
-            >
-              {despublicandoMercadoLivre ? "Despublicando…" : "Despublicar do Mercado Livre"}
-            </button>
-          )}
-          {editando && valores.mercadoLivreId?.trim() && (
-            <div className={styles.mlLinkBox}>
-              {valores.mercadoLivrePermalink?.trim() && (
-                <a
-                  href={valores.mercadoLivrePermalink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.mlLink}
-                >
-                  Ver anúncio na loja ↗
-                </a>
-              )}
-              <span className={styles.mlLinkAviso}>
-                Pode levar de 5 a 10 minutos para aparecer na loja depois da publicação.
-              </span>
-              <span className={styles.mlLinkAviso}>
-                Preço, estoque e descrição são atualizados automaticamente no anúncio ao salvar o
-                produto. Nome, categoria e fotos não são atualizados sozinhos — para refletir essas
-                mudanças, despublique e publique de novo.
-              </span>
+            <div className={styles.channelActions}>
               <button
                 type="button"
-                className={styles.btnGhost}
-                onClick={handleCorrigirAtributos}
-                disabled={corrigindoAtributos}
+                className={styles.btnPrimary}
+                onClick={handlePublicarMercadoLivre}
+                disabled={publicandoMercadoLivre}
               >
-                {corrigindoAtributos ? "Corrigindo…" : "Corrigir atributos no Mercado Livre"}
+                {publicandoMercadoLivre ? "Publicando…" : "Publicar no Mercado Livre"}
               </button>
-              <span className={styles.mlLinkAviso}>
-                Reaplica Marca/Modelo e peso/dimensões de embalagem corrigidos no anúncio já
-                publicado, sem precisar despublicar e publicar de novo.
-              </span>
-              {erroCorrecaoAtributos && (
-                <span className={styles.fieldError}>{erroCorrecaoAtributos}</span>
-              )}
             </div>
           )}
+
+          {editando && valores.mercadoLivreId?.trim() && (
+            <>
+              <div className={styles.channelActions}>
+                {valores.mercadoLivrePausado ? (
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    onClick={handleReativarMercadoLivre}
+                    disabled={pausandoMercadoLivre}
+                  >
+                    {pausandoMercadoLivre ? "Reativando…" : "Reativar anúncio"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.btnGhost}
+                    onClick={handlePausarMercadoLivre}
+                    disabled={pausandoMercadoLivre}
+                  >
+                    {pausandoMercadoLivre ? "Pausando…" : "Pausar anúncio"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={styles.btnGhost}
+                  onClick={handleCorrigirAtributos}
+                  disabled={corrigindoAtributos}
+                >
+                  {corrigindoAtributos ? "Corrigindo…" : "Corrigir atributos"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnDanger}
+                  onClick={() => setConfirmandoDespublicar(true)}
+                  disabled={despublicandoMercadoLivre}
+                >
+                  {despublicandoMercadoLivre ? "Despublicando…" : "Despublicar"}
+                </button>
+              </div>
+
+              <div className={styles.mlLinkBox}>
+                {valores.mercadoLivrePermalink?.trim() && (
+                  <a
+                    href={valores.mercadoLivrePermalink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.mlLink}
+                  >
+                    Ver anúncio na loja ↗
+                  </a>
+                )}
+                <span className={styles.mlLinkAviso}>
+                  Pode levar de 5 a 10 minutos para aparecer na loja depois da publicação.
+                </span>
+                <span className={styles.mlLinkAviso}>
+                  Preço, estoque e descrição são atualizados automaticamente no anúncio ao salvar o
+                  produto. Nome, categoria e fotos não são atualizados sozinhos — para refletir essas
+                  mudanças, despublique e publique de novo.
+                </span>
+                <span className={styles.mlLinkAviso}>
+                  Pausar some da vitrine mas mantém o anúncio (reversível a qualquer momento).
+                  Despublicar fecha o anúncio — é praticamente definitivo.
+                </span>
+                <span className={styles.mlLinkAviso}>
+                  &quot;Corrigir atributos&quot; reaplica Marca/Modelo e peso/dimensões de embalagem
+                  no anúncio já publicado, sem precisar despublicar e publicar de novo.
+                </span>
+                {erroCorrecaoAtributos && (
+                  <span className={styles.fieldError}>{erroCorrecaoAtributos}</span>
+                )}
+              </div>
+            </>
+          )}
+
           {erroPublicacao && <span className={styles.fieldError}>{erroPublicacao}</span>}
         </div>
+
         <div className={styles.field}>
           <label htmlFor="shopeeItemId">ID do anúncio na Shopee (opcional)</label>
           <input
@@ -663,7 +856,7 @@ export default function ProdutoForm({
             onChange={(e) => atualizarCampo("shopeeItemId", e.target.value)}
           />
         </div>
-      </div>
+      </fieldset>
       {camposErro.integracoes && <p className={styles.formError}>{camposErro.integracoes}</p>}
 
       <div className={styles.field}>
