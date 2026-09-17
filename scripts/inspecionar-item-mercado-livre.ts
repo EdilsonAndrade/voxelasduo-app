@@ -31,6 +31,7 @@ async function main() {
 
   const item = await resposta.json();
 
+  console.log("status/sub_status:", item.status, item.sub_status);
   console.log(
     "pictures:",
     JSON.stringify(

@@ -7,6 +7,16 @@ import BotaoAdicionarCarrinho from "@/components/carrinho/BotaoAdicionarCarrinho
 import AvaliacoesProduto from "@/components/produtos/AvaliacoesProduto";
 import styles from "@/components/produtos/produtos.module.css";
 
+// Sem `searchParams`/cookies/headers, essa página não tem nenhuma API que
+// force renderização dinâmica por padrão — o Next.js a trata como estática e
+// cacheia o resultado (incluindo `notFound()`), então um produto criado
+// depois do primeiro acesso à URL (ou renomeado, mudando o slug) fica preso
+// mostrando "não encontrado" até o próximo deploy. Catálogo pequeno, sem
+// exigência de performance (specs/003-carrinho-checkout/plan.md) — forçar
+// dinâmico garante que estoque/preço/existência do produto sempre refletem o
+// banco na hora.
+export const dynamic = "force-dynamic";
+
 export default async function ProdutoDetalhePage({
   params,
 }: {

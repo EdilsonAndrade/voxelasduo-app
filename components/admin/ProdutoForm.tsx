@@ -27,6 +27,28 @@ import {
 
 export type { CustoProducaoFormValores, EmbalagemEnvioFormValores, FichaTecnicaFormValores };
 
+/** Limite do `family_name` no Mercado Livre (substitui `title` nesta conta, modelo "User Products") — passar disso derruba a publicação com `item.family_name.length_invalid`. */
+const NOME_LIMITE_MERCADO_LIVRE = 60;
+
+/** Resolução mínima recomendada pelo Mercado Livre para fotos de produto (1200x1200 é o ideal, mas abaixo disso a foto de capa já é sinalizada como fora do padrão no anúncio). */
+const RESOLUCAO_MINIMA_MERCADO_LIVRE = 500;
+
+function obterDimensoesImagem(arquivo: File): Promise<{ largura: number; altura: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(arquivo);
+    const imagem = new Image();
+    imagem.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ largura: imagem.naturalWidth, altura: imagem.naturalHeight });
+    };
+    imagem.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Não foi possível ler as dimensões da imagem."));
+    };
+    imagem.src = url;
+  });
+}
+
 export interface ProdutoFormValores {
   id?: string;
   nome: string;
@@ -84,6 +106,7 @@ export default function ProdutoForm({
   const [erroCorrecaoAtributos, setErroCorrecaoAtributos] = useState<string | null>(null);
   const [camposErro, setCamposErro] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [avisoFotos, setAvisoFotos] = useState<string | null>(null);
   const [erroPublicacao, setErroPublicacao] = useState<string | null>(null);
   const [confirmandoDespublicar, setConfirmandoDespublicar] = useState(false);
   const [confirmandoExcluir, setConfirmandoExcluir] = useState(false);
@@ -158,8 +181,19 @@ export default function ProdutoForm({
 
     setEnviandoFoto(true);
     setErroGeral(null);
+    setAvisoFotos(null);
+    const fotosPequenas: string[] = [];
     try {
       for (const arquivo of Array.from(arquivos)) {
+        try {
+          const { largura, altura } = await obterDimensoesImagem(arquivo);
+          if (largura < RESOLUCAO_MINIMA_MERCADO_LIVRE || altura < RESOLUCAO_MINIMA_MERCADO_LIVRE) {
+            fotosPequenas.push(`${arquivo.name} (${largura}x${altura}px)`);
+          }
+        } catch {
+          // Não bloqueia o envio se não conseguir ler as dimensões (ex: formato não suportado pelo navegador).
+        }
+
         const formData = new FormData();
         formData.append("arquivo", arquivo);
         const resposta = await fetch("/api/produtos/upload", { method: "POST", body: formData });
@@ -169,6 +203,11 @@ export default function ProdutoForm({
           continue;
         }
         setValores((atual) => ({ ...atual, fotos: [...atual.fotos, dados.url as string] }));
+      }
+      if (fotosPequenas.length > 0) {
+        setAvisoFotos(
+          `Abaixo do mínimo de ${RESOLUCAO_MINIMA_MERCADO_LIVRE}x${RESOLUCAO_MINIMA_MERCADO_LIVRE}px recomendado pelo Mercado Livre (a foto ainda é enviada, mas pode ser sinalizada como fora do padrão no anúncio): ${fotosPequenas.join(", ")}.`
+        );
       }
     } finally {
       setEnviandoFoto(false);
@@ -382,6 +421,15 @@ export default function ProdutoForm({
           onChange={(e) => atualizarCampo("nome", e.target.value)}
           required
         />
+        <span
+          className={
+            valores.nome.length > NOME_LIMITE_MERCADO_LIVRE
+              ? styles.charCounterExcedido
+              : styles.charCounter
+          }
+        >
+          {valores.nome.length}/{NOME_LIMITE_MERCADO_LIVRE} — limite do Mercado Livre
+        </span>
         {camposErro.nome && <span className={styles.fieldError}>{camposErro.nome}</span>}
       </div>
 
@@ -863,6 +911,7 @@ export default function ProdutoForm({
         <label htmlFor="fotos">Fotos</label>
         <input id="fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleUpload} disabled={enviandoFoto} />
         {camposErro.fotos && <span className={styles.fieldError}>{camposErro.fotos}</span>}
+        {avisoFotos && <span className={styles.fieldWarning}>{avisoFotos}</span>}
         <div className={styles.fotos}>
           {valores.fotos.map((url) => (
             // eslint-disable-next-line @next/next/no-img-element

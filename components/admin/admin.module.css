@@ -227,6 +227,26 @@
   color: #c23a3a;
 }
 
+.charCounter {
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  color: var(--texto-soft);
+  align-self: flex-end;
+}
+
+.charCounterExcedido {
+  composes: charCounter;
+  color: #c23a3a;
+  font-weight: 700;
+}
+
+.fieldWarning {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #b3701f;
+}
+
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
