@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/016-ml-webhooks-questions-claims/plan.md
+at specs/017-ml-webhook-shipments/plan.md
 
 ## RULES
 

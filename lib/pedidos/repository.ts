@@ -46,6 +46,12 @@ export async function buscarPedidoPorIdempotencia(idempotencia: string) {
   return colecao.findOne({ idempotencia });
 }
 
+/** Resolve o pedido a partir do id da venda no canal externo (EDI-101, mesmo campo usado por `orders_v2`). */
+export async function buscarPedidoPorOrigemExterna(pedidoExternoId: string) {
+  const colecao = await colecaoPedidos();
+  return colecao.findOne({ "origemExterna.pedidoExternoId": pedidoExternoId });
+}
+
 export interface FiltroPedidos {
   canal?: CanalOrigem;
   status?: StatusPedido;
