@@ -73,6 +73,41 @@ describe("buscarEnvioMercadoLivre", () => {
     expect(envio.trackingNumber).toBeUndefined();
   });
 
+  it("envio represado (buffered): retorna aguardandoLiberacaoAte com a data de liberação", async () => {
+    mockFetchPorUrl({
+      "/shipments/999/items": { ok: true, json: async () => [{ order_id: 12345 }] },
+      "/shipments/999": {
+        ok: true,
+        json: async () => ({
+          id: 999,
+          status: "pending",
+          substatus: "buffered",
+          tracking_number: null,
+          buffering: { date: "2026-10-01T00:00:00.000-03:00" },
+        }),
+      },
+    });
+
+    const envio = await buscarEnvioMercadoLivre("999");
+
+    expect(envio.aguardandoLiberacaoAte).toEqual(new Date("2026-10-01T00:00:00.000-03:00"));
+    expect(envio.despachado).toBe(false);
+  });
+
+  it("substatus diferente de buffered: aguardandoLiberacaoAte fica undefined", async () => {
+    mockFetchPorUrl({
+      "/shipments/999/items": { ok: true, json: async () => [{ order_id: 12345 }] },
+      "/shipments/999": {
+        ok: true,
+        json: async () => ({ id: 999, status: "shipped", substatus: "in_hub", tracking_number: "BR1" }),
+      },
+    });
+
+    const envio = await buscarEnvioMercadoLivre("999");
+
+    expect(envio.aguardandoLiberacaoAte).toBeUndefined();
+  });
+
   it("lança erro quando a consulta ao envio falha", async () => {
     mockFetchPorUrl({
       "/shipments/999/items": { ok: true, json: async () => [{ order_id: 12345 }] },

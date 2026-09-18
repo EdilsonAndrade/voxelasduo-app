@@ -39,6 +39,16 @@ const CLASSE_BADGE_CANAL: Record<PedidoResumo["canalOrigem"], string> = {
   shopee: styles.badgeCanalShopeeEmBreve,
 };
 
+function formatarAvisoLiberacao(data: Date | string): string {
+  const dataLiberacao = new Date(data);
+  if (dataLiberacao.getTime() <= Date.now()) {
+    // Data já passou, mas o envio segue represado — não repete uma data enganosa (research.md #4/EDI-105).
+    return "aguardando liberação para postagem";
+  }
+  const dataFormatada = dataLiberacao.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return `aguardando liberação — libera em ${dataFormatada}`;
+}
+
 function formatarData(data: Date | string): string {
   return new Date(data).toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -221,6 +231,15 @@ export default function PedidosLista({
                   <span className={styles.badgeZero} title="Um ou mais itens não têm produto correspondente no catálogo">
                     {" "}
                     item sem correspondência
+                  </span>
+                )}
+                {pedido.envioAguardandoLiberacaoAte && (
+                  <span
+                    className={styles.badgeAguardandoLiberacao}
+                    title="O Mercado Livre ainda não liberou a etiqueta para postagem desta venda"
+                  >
+                    {" "}
+                    ⏳ {formatarAvisoLiberacao(pedido.envioAguardandoLiberacaoAte)}
                   </span>
                 )}
               </td>

@@ -10,12 +10,20 @@ export interface EnvioDetalheMercadoLivre {
   despachado: boolean;
   /** `true` quando o status do envio indica entrega confirmada (research.md #2). */
   entregue: boolean;
+  /**
+   * Data em que a etiqueta poderá ser impressa, quando o envio está represado
+   * (`substatus: "buffered"` — EDI-105, research.md #1). `undefined` quando o
+   * envio não está nesse estado.
+   */
+  aguardandoLiberacaoAte?: Date;
 }
 
 interface ShipmentMercadoLivreResponse {
   id: number;
   status: string;
+  substatus?: string | null;
   tracking_number?: string | null;
+  buffering?: { date?: string | null } | null;
 }
 
 interface ShipmentItemsMercadoLivreResponse {
@@ -48,11 +56,15 @@ export async function buscarEnvioMercadoLivre(shipmentId: string): Promise<Envio
   const envio = (await respostaEnvio.json()) as ShipmentMercadoLivreResponse;
   const itens = (await respostaItens.json()) as ShipmentItemsMercadoLivreResponse[];
 
+  const emBuffering = envio.substatus === "buffered";
+
   return {
     shipmentId: String(envio.id),
     orderId: itens[0]?.order_id !== undefined ? String(itens[0].order_id) : undefined,
     trackingNumber: envio.tracking_number ?? undefined,
     despachado: envio.status === "shipped",
     entregue: envio.status === "delivered",
+    aguardandoLiberacaoAte:
+      emBuffering && envio.buffering?.date ? new Date(envio.buffering.date) : undefined,
   };
 }

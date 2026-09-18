@@ -37,3 +37,24 @@ export async function atualizarRastreioPedido(
 
   return resultado;
 }
+
+/**
+ * Preenche ou limpa o aviso de "envio aguardando liberação para postagem"
+ * (EDI-105 — substatus `buffered` do Mercado Livre). `data: null` limpa o
+ * campo quando o envio deixa desse estado (research.md #3 do EDI-105).
+ */
+export async function atualizarAguardandoLiberacaoPedido(
+  id: string,
+  data: Date | null
+): Promise<Pedido | null> {
+  const colecao = await colecaoPedidos();
+  const resultado = await colecao.findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    data
+      ? { $set: { envioAguardandoLiberacaoAte: data, atualizadoEm: new Date() } }
+      : { $unset: { envioAguardandoLiberacaoAte: "" }, $set: { atualizadoEm: new Date() } },
+    { returnDocument: "after" }
+  );
+
+  return resultado;
+}

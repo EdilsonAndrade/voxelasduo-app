@@ -6,14 +6,20 @@ const { buscarEnvioMercadoLivre } = vi.hoisted(() => ({ buscarEnvioMercadoLivre:
 const { buscarPedidoPorOrigemExterna } = vi.hoisted(() => ({
   buscarPedidoPorOrigemExterna: vi.fn(),
 }));
-const { atualizarRastreioPedido, atualizarStatusPedido } = vi.hoisted(() => ({
-  atualizarRastreioPedido: vi.fn(),
-  atualizarStatusPedido: vi.fn(),
-}));
+const { atualizarRastreioPedido, atualizarStatusPedido, atualizarAguardandoLiberacaoPedido } =
+  vi.hoisted(() => ({
+    atualizarRastreioPedido: vi.fn(),
+    atualizarStatusPedido: vi.fn(),
+    atualizarAguardandoLiberacaoPedido: vi.fn(),
+  }));
 
 vi.mock("@/lib/estoque/canais/mercadoLivre/envios", () => ({ buscarEnvioMercadoLivre }));
 vi.mock("@/lib/pedidos/repository", () => ({ buscarPedidoPorOrigemExterna }));
-vi.mock("@/lib/pedidos/atualizarStatus", () => ({ atualizarRastreioPedido, atualizarStatusPedido }));
+vi.mock("@/lib/pedidos/atualizarStatus", () => ({
+  atualizarRastreioPedido,
+  atualizarStatusPedido,
+  atualizarAguardandoLiberacaoPedido,
+}));
 
 const { POST } = await import("./route");
 
@@ -105,6 +111,43 @@ describe("POST /api/webhooks/mercado-livre/envios", () => {
 
     expect(resposta.status).toBe(200);
     expect(atualizarRastreioPedido).not.toHaveBeenCalled();
+  });
+
+  it("envio represado (buffered): registra o aviso de aguardando liberação, sem mexer no status (FR-004)", async () => {
+    const dataLiberacao = new Date("2026-10-01T00:00:00.000-03:00");
+    buscarEnvioMercadoLivre.mockResolvedValue({
+      shipmentId: "999",
+      orderId: "12345",
+      trackingNumber: undefined,
+      despachado: false,
+      entregue: false,
+      aguardandoLiberacaoAte: dataLiberacao,
+    });
+    buscarPedidoPorOrigemExterna.mockResolvedValue(pedidoMock);
+
+    await POST(requisicao(notificacaoBase));
+
+    expect(atualizarAguardandoLiberacaoPedido).toHaveBeenCalledWith(
+      pedidoMock._id!.toString(),
+      dataLiberacao
+    );
+    expect(atualizarStatusPedido).not.toHaveBeenCalled();
+  });
+
+  it("envio sai do estado represado: limpa o aviso de aguardando liberação", async () => {
+    buscarEnvioMercadoLivre.mockResolvedValue({
+      shipmentId: "999",
+      orderId: "12345",
+      trackingNumber: "BR123456789",
+      despachado: true,
+      entregue: false,
+      aguardandoLiberacaoAte: undefined,
+    });
+    buscarPedidoPorOrigemExterna.mockResolvedValue(pedidoMock);
+
+    await POST(requisicao(notificacaoBase));
+
+    expect(atualizarAguardandoLiberacaoPedido).toHaveBeenCalledWith(pedidoMock._id!.toString(), null);
   });
 
   it("falha transitória ao consultar o envio: responde 500 para o Mercado Livre reenviar", async () => {

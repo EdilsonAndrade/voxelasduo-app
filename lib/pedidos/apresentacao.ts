@@ -10,6 +10,7 @@ export interface PedidoResumo {
   criadoEm: Date;
   temItemSemCorrespondencia: boolean;
   rastreio?: Pedido["rastreio"];
+  envioAguardandoLiberacaoAte?: Pedido["envioAguardandoLiberacaoAte"];
 }
 
 export interface ItemPedidoDetalhe {
@@ -32,6 +33,7 @@ export interface PedidoDetalhado {
   criadoEm: Date;
   atualizadoEm: Date;
   rastreio?: Pedido["rastreio"];
+  envioAguardandoLiberacaoAte?: Pedido["envioAguardandoLiberacaoAte"];
 }
 
 function resolverItem(
@@ -62,6 +64,7 @@ export function paraPedidoResumo(pedido: Pedido, produtos: Map<string, Produto>)
     criadoEm: pedido.criadoEm,
     temItemSemCorrespondencia,
     rastreio: pedido.rastreio,
+    envioAguardandoLiberacaoAte: pedido.envioAguardandoLiberacaoAte,
   };
 }
 
@@ -81,5 +84,6 @@ export function paraPedidoDetalhado(
     criadoEm: pedido.criadoEm,
     atualizadoEm: pedido.atualizadoEm,
     rastreio: pedido.rastreio,
+    envioAguardandoLiberacaoAte: pedido.envioAguardandoLiberacaoAte,
   };
 }

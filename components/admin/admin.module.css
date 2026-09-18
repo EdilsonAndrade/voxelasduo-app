@@ -86,6 +86,14 @@
   color: var(--texto-soft);
 }
 
+/* Aviso "aguardando liberação para postagem" (EDI-105) — informativo, não é status nem erro. */
+.badgeAguardandoLiberacao {
+  composes: badge;
+  color: var(--texto-soft);
+  border-style: dashed;
+  white-space: nowrap;
+}
+
 .badgeStatusPendente {
   composes: badge;
   color: #b3701f;

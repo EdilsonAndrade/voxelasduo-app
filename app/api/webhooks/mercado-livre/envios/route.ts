@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { buscarEnvioMercadoLivre } from "@/lib/estoque/canais/mercadoLivre/envios";
 import { buscarPedidoPorOrigemExterna } from "@/lib/pedidos/repository";
-import { atualizarRastreioPedido, atualizarStatusPedido } from "@/lib/pedidos/atualizarStatus";
+import {
+  atualizarAguardandoLiberacaoPedido,
+  atualizarRastreioPedido,
+  atualizarStatusPedido,
+} from "@/lib/pedidos/atualizarStatus";
 
 interface NotificacaoMercadoLivre {
   resource?: string;
@@ -54,6 +58,11 @@ export async function POST(request: Request) {
   } else if (envio.entregue) {
     await atualizarStatusPedido(pedidoId, "entregue");
   }
+
+  // Aviso de "aguardando liberação para postagem" (EDI-105) — sempre reflete
+  // o estado mais recente do envio, mesmo comportamento de idempotência já
+  // usado para rastreio/status (research.md #3 do EDI-105).
+  await atualizarAguardandoLiberacaoPedido(pedidoId, envio.aguardandoLiberacaoAte ?? null);
 
   return NextResponse.json({ recebido: true });
 }

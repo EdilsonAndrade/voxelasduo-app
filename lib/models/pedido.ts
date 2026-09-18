@@ -98,6 +98,12 @@ export interface Pedido {
   clienteId?: ObjectId;
   /** Dados de rastreio, quando disponíveis (Tarefa 10/EDI-84). */
   rastreio?: RastreioPedido;
+  /**
+   * Presente quando o envio do Mercado Livre está represado aguardando
+   * liberação para postar (substatus `buffered` — ex.: greve dos Correios,
+   * EDI-105). Puramente informativo: nunca altera `status` (FR-004).
+   */
+  envioAguardandoLiberacaoAte?: Date;
   criadoEm: Date;
   atualizadoEm: Date;
 }
