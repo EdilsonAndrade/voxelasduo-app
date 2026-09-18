@@ -32,5 +32,11 @@ export function rotaExigeAutenticacao(pathname: string, method: string): Veredic
     return { protegida: true, tipoResposta: "json" };
   }
 
+  // Ações do admin sobre perguntas/reclamações/mensagens do Mercado Livre (EDI-98)
+  // — nunca chamadas pelo Mercado Livre, diferente de /api/webhooks/mercado-livre/*.
+  if (pathname.startsWith("/api/admin/")) {
+    return { protegida: true, tipoResposta: "json" };
+  }
+
   return { protegida: false };
 }

@@ -77,6 +77,7 @@ export const config = {
     "/admin/:path*",
     "/api/produtos/:path*",
     "/api/pedidos/:path*",
+    "/api/admin/:path*",
     "/minha-conta/:path*",
     "/api/clientes/:path*",
   ],

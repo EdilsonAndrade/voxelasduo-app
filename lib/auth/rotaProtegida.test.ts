@@ -70,6 +70,13 @@ describe("rotaExigeAutenticacao", () => {
     });
   });
 
+  it("protege toda a família /api/admin/** (ações do admin sobre perguntas/reclamações/mensagens, EDI-98)", () => {
+    expect(rotaExigeAutenticacao("/api/admin/atendimento/perguntas/abc123/responder", "POST")).toEqual({
+      protegida: true,
+      tipoResposta: "json",
+    });
+  });
+
   it("não protege rotas fora do escopo desta tarefa (checkout, pagamentos, webhooks, cron)", () => {
     expect(rotaExigeAutenticacao("/produtos", "GET")).toEqual({ protegida: false });
     expect(rotaExigeAutenticacao("/api/pagamentos", "POST")).toEqual({ protegida: false });
