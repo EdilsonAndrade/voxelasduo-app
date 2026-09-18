@@ -11,6 +11,7 @@ const {
   valorPadraoAtributo,
   atributosEmbalagem,
   atributosFichaTecnica,
+  atributosFixos,
 } = await import("./atributos");
 
 const produtoBase: Produto = {
@@ -212,5 +213,56 @@ describe("atributosFichaTecnica", () => {
 
     expect(resultado.attributes).toEqual([]);
     expect(resultado.paraDescricao).toEqual([]);
+  });
+
+  it("modelo preenchido vai para o atributo MODEL quando a categoria o expõe", () => {
+    const resultado = atributosFichaTecnica(
+      { modelo: "Estrela Led 15cm" },
+      [{ id: "MODEL", value_type: "string", tags: {} }]
+    );
+
+    expect(resultado.attributes).toEqual([{ id: "MODEL", value_name: "Estrela Led 15cm" }]);
+    expect(resultado.paraDescricao).toEqual([]);
+  });
+
+  it("modelo preenchido sem atributo MODEL na categoria vai para paraDescricao", () => {
+    const resultado = atributosFichaTecnica({ modelo: "Estrela Led 15cm" }, []);
+
+    expect(resultado.attributes).toEqual([]);
+    expect(resultado.paraDescricao).toEqual([
+      { rotulo: "Modelo", valor: "Estrela Led 15cm" },
+    ]);
+  });
+});
+
+describe("atributosFixos", () => {
+  const categoriaComFabricanteECabo = [
+    { id: "MANUFACTURER", value_type: "string", tags: {} },
+    { id: "CABLE_COLOR", value_type: "string", tags: {} },
+  ];
+
+  it("sempre envia Fabricante como 'Voxelas Duo', com ou sem ficha técnica", () => {
+    expect(atributosFixos(categoriaComFabricanteECabo, undefined)).toEqual(
+      expect.arrayContaining([{ id: "MANUFACTURER", value_name: "Voxelas Duo" }])
+    );
+  });
+
+  it("Cor do cabo sem preenchimento na ficha técnica usa 'Não possui cabo'", () => {
+    expect(atributosFixos(categoriaComFabricanteECabo, undefined)).toEqual(
+      expect.arrayContaining([{ id: "CABLE_COLOR", value_name: "Não possui cabo" }])
+    );
+    expect(atributosFixos(categoriaComFabricanteECabo, {})).toEqual(
+      expect.arrayContaining([{ id: "CABLE_COLOR", value_name: "Não possui cabo" }])
+    );
+  });
+
+  it("Cor do cabo preenchida na ficha técnica substitui o padrão", () => {
+    expect(atributosFixos(categoriaComFabricanteECabo, { corCabo: "Branco" })).toEqual(
+      expect.arrayContaining([{ id: "CABLE_COLOR", value_name: "Branco" }])
+    );
+  });
+
+  it("categoria sem MANUFACTURER/CABLE_COLOR: não envia nenhum dos dois", () => {
+    expect(atributosFixos([], { corCabo: "Branco" })).toEqual([]);
   });
 });

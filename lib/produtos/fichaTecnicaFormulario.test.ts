@@ -28,6 +28,8 @@ describe("montarFichaTecnica", () => {
       pesoGramas: "250",
       material: "PLA",
       itensInclusos: "1 vaso\n1 prato",
+      modelo: "Estrela Led 15cm",
+      corCabo: "Branco",
     };
     expect(montarFichaTecnica(form)).toEqual({
       alturaCm: 20,
@@ -36,6 +38,8 @@ describe("montarFichaTecnica", () => {
       pesoGramas: 250,
       material: "PLA",
       itensInclusos: ["1 vaso", "1 prato"],
+      modelo: "Estrela Led 15cm",
+      corCabo: "Branco",
     });
   });
 
@@ -90,6 +94,8 @@ describe("fichaTecnicaParaFormulario", () => {
         pesoGramas: 250,
         material: "PLA",
         itensInclusos: ["1 vaso", "1 prato"],
+        modelo: "Estrela Led 15cm",
+        corCabo: "Branco",
       })
     ).toEqual({
       alturaCm: "20",
@@ -98,6 +104,8 @@ describe("fichaTecnicaParaFormulario", () => {
       pesoGramas: "250",
       material: "PLA",
       itensInclusos: "1 vaso\n1 prato",
+      modelo: "Estrela Led 15cm",
+      corCabo: "Branco",
     });
   });
 

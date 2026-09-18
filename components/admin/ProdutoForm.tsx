@@ -776,6 +776,22 @@ export default function ProdutoForm({
           onChange={(e) => atualizarCampoFichaTecnica("material", e.target.value)}
         />
 
+        <label htmlFor="fichaTecnicaModelo">Modelo</label>
+        <input
+          id="fichaTecnicaModelo"
+          placeholder="Ex: Estrela Led 15cm"
+          value={valores.fichaTecnica.modelo}
+          onChange={(e) => atualizarCampoFichaTecnica("modelo", e.target.value)}
+        />
+
+        <label htmlFor="fichaTecnicaCorCabo">Cor do cabo</label>
+        <input
+          id="fichaTecnicaCorCabo"
+          placeholder="Em branco = Não possui cabo"
+          value={valores.fichaTecnica.corCabo}
+          onChange={(e) => atualizarCampoFichaTecnica("corCabo", e.target.value)}
+        />
+
         <label htmlFor="fichaTecnicaItensInclusos">Itens inclusos (um por linha)</label>
         <textarea
           id="fichaTecnicaItensInclusos"

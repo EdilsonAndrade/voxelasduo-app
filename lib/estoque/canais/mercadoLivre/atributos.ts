@@ -117,6 +117,42 @@ export interface ResultadoFichaTecnica {
   paraDescricao: Array<{ rotulo: string; valor: string }>;
 }
 
+/** Fabricante de todo produto vendido — nunca vem do produto, é sempre o mesmo. */
+const FABRICANTE = "Voxelas Duo";
+
+/** Valor de "Cor do cabo" quando o vendedor não preenche o campo na ficha técnica. */
+const COR_CABO_PADRAO = "Não possui cabo";
+
+/**
+ * Atributos que toda publicação deve enviar quando a categoria os expõe,
+ * independentemente de o produto ter `fichaTecnica` preenchida: "Fabricante"
+ * é fixo (sempre Voxelas Duo, nunca o nome do produto) e "Cor do cabo" tem um
+ * padrão ("Não possui cabo") para produtos sem cabo — só é substituído
+ * quando o vendedor preenche `fichaTecnica.corCabo`. Preenchidos aqui, e não
+ * em `valorPadraoAtributo`, porque valem mesmo quando a categoria não marca
+ * esses atributos como obrigatórios (era o caso observado em produção: a
+ * qualidade do anúncio caía por "Fabricante"/"Cor do cabo" ausentes, mesmo
+ * sem serem exigidos para publicar).
+ */
+export function atributosFixos(
+  atributosCategoria: AtributoCategoria[],
+  fichaTecnica?: FichaTecnicaProduto
+): AtributoItem[] {
+  const idsCategoria = new Set(atributosCategoria.map((atributo) => atributo.id));
+  const attributes: AtributoItem[] = [];
+
+  if (idsCategoria.has("MANUFACTURER")) {
+    attributes.push({ id: "MANUFACTURER", value_name: FABRICANTE });
+  }
+
+  if (idsCategoria.has("CABLE_COLOR")) {
+    const corCabo = fichaTecnica?.corCabo?.trim();
+    attributes.push({ id: "CABLE_COLOR", value_name: corCabo || COR_CABO_PADRAO });
+  }
+
+  return attributes;
+}
+
 /**
  * Campos numéricos da ficha técnica que mapeiam para um atributo
  * `number_unit` do produto em si (research.md #1) — distintos dos
@@ -138,7 +174,7 @@ const CAMPOS_NUMERICOS_FICHA_TECNICA: Record<
 /**
  * Mapeia a ficha técnica do produto (EDI-90) para atributos do Mercado
  * Livre quando a categoria os expõe (`HEIGHT`/`WIDTH`/`LENGTH`/`WEIGHT`/
- * `MATERIAL`, research.md #1) — cada campo é checado individualmente contra
+ * `MATERIAL`/`MODEL`, research.md #1) — cada campo é checado individualmente contra
  * `atributosCategoria` (todos os atributos da categoria, não só os
  * obrigatórios: esses são opcionais). Campos sem atributo correspondente
  * (sempre o caso de `itensInclusos`, que não tem atributo padrão em nenhuma
@@ -178,6 +214,14 @@ export function atributosFichaTecnica(
       attributes.push({ id: "MATERIAL", value_name: fichaTecnica.material });
     } else {
       paraDescricao.push({ rotulo: "Material", valor: fichaTecnica.material });
+    }
+  }
+
+  if (fichaTecnica.modelo !== undefined) {
+    if (idsCategoria.has("MODEL")) {
+      attributes.push({ id: "MODEL", value_name: fichaTecnica.modelo });
+    } else {
+      paraDescricao.push({ rotulo: "Modelo", valor: fichaTecnica.modelo });
     }
   }
 

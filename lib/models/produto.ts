@@ -83,6 +83,14 @@ export interface FichaTecnicaProduto {
   material?: string;
   /** O que acompanha o produto na embalagem — um item por posição da lista. */
   itensInclusos?: string[];
+  /** Modelo do produto (atributo `MODEL` no Mercado Livre) — texto livre por produto. */
+  modelo?: string;
+  /**
+   * Cor do cabo do produto (atributo `CABLE_COLOR` no Mercado Livre). Ausente
+   * ou em branco é tratado como "Não possui cabo" ao publicar/atualizar o
+   * anúncio — só precisa ser preenchido quando o produto realmente tem cabo.
+   */
+  corCabo?: string;
 }
 
 export interface Produto {

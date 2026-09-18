@@ -20,6 +20,9 @@ export interface FichaTecnicaFormValores {
   material: string;
   /** Um item por linha — convertido para `string[]` ao salvar. */
   itensInclusos: string;
+  modelo: string;
+  /** Em branco vira "Não possui cabo" na publicação no Mercado Livre, não aqui. */
+  corCabo: string;
 }
 
 export const VAZIO_FICHA_TECNICA: FichaTecnicaFormValores = {
@@ -29,6 +32,8 @@ export const VAZIO_FICHA_TECNICA: FichaTecnicaFormValores = {
   pesoGramas: "",
   material: "",
   itensInclusos: "",
+  modelo: "",
+  corCabo: "",
 };
 
 const CAMPOS_NUMERICOS: Array<{
@@ -85,6 +90,16 @@ export function montarFichaTecnica(form: FichaTecnicaFormValores): FichaTecnicaP
     ficha.itensInclusos = itens;
   }
 
+  const modelo = form.modelo.trim();
+  if (modelo !== "") {
+    ficha.modelo = modelo;
+  }
+
+  const corCabo = form.corCabo.trim();
+  if (corCabo !== "") {
+    ficha.corCabo = corCabo;
+  }
+
   return Object.keys(ficha).length > 0 ? ficha : undefined;
 }
 
@@ -99,5 +114,7 @@ export function fichaTecnicaParaFormulario(fichaTecnica?: FichaTecnicaProduto): 
     pesoGramas: fichaTecnica.pesoGramas !== undefined ? String(fichaTecnica.pesoGramas) : "",
     material: fichaTecnica.material ?? "",
     itensInclusos: fichaTecnica.itensInclusos?.join("\n") ?? "",
+    modelo: fichaTecnica.modelo ?? "",
+    corCabo: fichaTecnica.corCabo ?? "",
   };
 }

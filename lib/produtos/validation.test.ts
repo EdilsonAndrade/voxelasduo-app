@@ -175,6 +175,8 @@ describe("validarProduto", () => {
           pesoGramas: 250,
           material: "PLA",
           itensInclusos: ["1 vaso", "1 prato"],
+          modelo: "Estrela Led 15cm",
+          corCabo: "Branco",
         },
       })
     ).toEqual({});
@@ -198,6 +200,18 @@ describe("validarProduto", () => {
   it("rejeita material vazio quando presente", () => {
     expect(
       validarProduto({ ...payloadValido, fichaTecnica: { material: "" } })
+    ).toHaveProperty("fichaTecnica");
+  });
+
+  it("rejeita modelo vazio quando presente", () => {
+    expect(
+      validarProduto({ ...payloadValido, fichaTecnica: { modelo: "" } })
+    ).toHaveProperty("fichaTecnica");
+  });
+
+  it("rejeita corCabo vazio quando presente", () => {
+    expect(
+      validarProduto({ ...payloadValido, fichaTecnica: { corCabo: "" } })
     ).toHaveProperty("fichaTecnica");
   });
 

@@ -6,6 +6,7 @@ import { preverCategoriaMercadoLivre } from "./previsorCategoria";
 import {
   atributosEmbalagem,
   atributosFichaTecnica,
+  atributosFixos,
   buscarAtributosCategoria,
   buscarAtributosObrigatorios,
   valorPadraoAtributo,
@@ -76,29 +77,45 @@ async function resolverCategoriaOuFalhar(produto: Produto): Promise<string> {
 /**
  * Monta os atributos obrigatórios da categoria (Marca/Modelo etc., já com o
  * valor padrão corrigido — EDI-95), os atributos de embalagem quando o
- * produto tiver `embalagemEnvio` configurado (EDI-96), e os atributos de
- * ficha técnica quando o produto tiver `fichaTecnica` configurada (EDI-90)
- * — reaproveitada tanto na criação quanto na correção retroativa de um
- * anúncio já publicado. Os campos de ficha técnica sem atributo
- * correspondente na categoria voltam em `paraDescricao`, para quem chama
- * decidir como complementar a descrição do anúncio.
+ * produto tiver `embalagemEnvio` configurado (EDI-96), os atributos fixos do
+ * negócio (Fabricante/Cor do cabo, sempre que a categoria os expõe, com ou
+ * sem `fichaTecnica` preenchida) e os atributos de ficha técnica quando o
+ * produto tiver `fichaTecnica` configurada (EDI-90) — reaproveitada tanto na
+ * criação quanto na correção retroativa de um anúncio já publicado. Os
+ * campos de ficha técnica sem atributo correspondente na categoria voltam em
+ * `paraDescricao`, para quem chama decidir como complementar a descrição do
+ * anúncio.
+ *
+ * Atributos fixos/ficha técnica são aplicados por último e indexados por
+ * `id` num Map: se a categoria também marcar um deles (ex: `MANUFACTURER`)
+ * como obrigatório, o fallback genérico de `valorPadraoAtributo` é
+ * substituído pelo valor correto, em vez de gerar entradas duplicadas.
  */
 async function montarAtributos(categoryId: string, produto: Produto) {
   const atributosObrigatorios = await buscarAtributosObrigatorios(categoryId);
-  const attributes = atributosObrigatorios.map((atributo) =>
-    valorPadraoAtributo(atributo, produto)
-  );
+  const atributosCategoria = await buscarAtributosCategoria(categoryId);
 
-  if (produto.embalagemEnvio) {
-    attributes.push(...atributosEmbalagem(produto.embalagemEnvio));
+  const attributesPorId = new Map<string, ReturnType<typeof valorPadraoAtributo>>();
+  for (const atributo of atributosObrigatorios) {
+    attributesPorId.set(atributo.id, valorPadraoAtributo(atributo, produto));
+  }
+  for (const atributo of atributosFixos(atributosCategoria, produto.fichaTecnica)) {
+    attributesPorId.set(atributo.id, atributo);
   }
 
   let paraDescricao: Array<{ rotulo: string; valor: string }> = [];
   if (produto.fichaTecnica) {
-    const atributosCategoria = await buscarAtributosCategoria(categoryId);
     const resultado = atributosFichaTecnica(produto.fichaTecnica, atributosCategoria);
-    attributes.push(...resultado.attributes);
+    for (const atributo of resultado.attributes) {
+      attributesPorId.set(atributo.id, atributo);
+    }
     paraDescricao = resultado.paraDescricao;
+  }
+
+  const attributes = [...attributesPorId.values()];
+
+  if (produto.embalagemEnvio) {
+    attributes.push(...atributosEmbalagem(produto.embalagemEnvio));
   }
 
   return { attributes, paraDescricao };

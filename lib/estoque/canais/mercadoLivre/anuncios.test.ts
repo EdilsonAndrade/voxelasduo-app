@@ -19,6 +19,7 @@ vi.mock("./atributos", () => ({
   buscarAtributosCategoria: vi.fn().mockResolvedValue([]),
   valorPadraoAtributo: vi.fn((atributo) => ({ id: atributo.id, value_name: "valor-padrao" })),
   atributosEmbalagem: vi.fn().mockReturnValue([]),
+  atributosFixos: vi.fn().mockReturnValue([]),
   atributosFichaTecnica: vi.fn().mockReturnValue({ attributes: [], paraDescricao: [] }),
 }));
 

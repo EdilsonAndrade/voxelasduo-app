@@ -107,6 +107,14 @@ function validarFichaTecnica(valor: unknown): string | undefined {
     return "Informe um material válido, ou deixe o campo em branco.";
   }
 
+  if (ficha.modelo !== undefined && !textoValido(ficha.modelo)) {
+    return "Informe um modelo válido, ou deixe o campo em branco.";
+  }
+
+  if (ficha.corCabo !== undefined && !textoValido(ficha.corCabo)) {
+    return "Informe uma cor de cabo válida, ou deixe o campo em branco.";
+  }
+
   if (ficha.itensInclusos !== undefined) {
     const itens = ficha.itensInclusos;
     if (
