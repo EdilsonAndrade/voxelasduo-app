@@ -6,6 +6,7 @@ import { formatarPreco } from "@/lib/produtos/formato";
 import { buscarAvaliacoesProduto } from "@/lib/avaliacoes/repository";
 import BotaoAdicionarCarrinho from "@/components/carrinho/BotaoAdicionarCarrinho";
 import AvaliacoesProduto from "@/components/produtos/AvaliacoesProduto";
+import GaleriaFotosProduto from "@/components/produtos/GaleriaFotosProduto";
 import styles from "@/components/produtos/produtos.module.css";
 
 // Sem `searchParams`/cookies/headers, essa página não tem nenhuma API que
@@ -41,22 +42,7 @@ export default async function ProdutoDetalhePage({
       </p>
 
       <div className={styles.detail}>
-        <div>
-          <div className={styles.galleryMain}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={produto.fotos[0]} alt={produto.nome} />
-          </div>
-          {produto.fotos.length > 1 && (
-            <div className={styles.thumbs}>
-              {produto.fotos.map((foto) => (
-                <div className={styles.thumb} key={foto}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={foto} alt="" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <GaleriaFotosProduto fotos={produto.fotos} nome={produto.nome} />
 
         <div className={styles.detailInfo}>
           <h1>{produto.nome}</h1>

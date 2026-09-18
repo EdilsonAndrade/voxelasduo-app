@@ -271,6 +271,11 @@
   cursor: pointer;
 }
 
+.thumbAtivo {
+  composes: thumb;
+  border-color: var(--roxo);
+}
+
 .thumb img {
   width: 100%;
   height: 100%;
