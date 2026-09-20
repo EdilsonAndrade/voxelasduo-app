@@ -1,4 +1,5 @@
 import Link from "next/link";
+import FaixaEncomendas from "@/components/encomendas/FaixaEncomendas";
 import ProdutoCard from "@/components/produtos/ProdutoCard";
 import RainbowTitle from "@/components/produtos/RainbowTitle";
 import { listarCategorias, listarProdutos } from "@/lib/produtos/repository";
@@ -53,6 +54,8 @@ export default async function ProdutosPage({
           produtos.map((produto) => <ProdutoCard key={produto._id?.toString()} produto={produto} />)
         )}
       </div>
+
+      <FaixaEncomendas />
     </div>
   );
 }

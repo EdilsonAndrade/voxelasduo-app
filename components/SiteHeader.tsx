@@ -18,6 +18,7 @@ export default async function SiteHeader() {
         </Link>
         <nav className={styles.nav}>
           <Link href="/produtos">Produtos</Link>
+          <Link href="/encomendas">Encomendas</Link>
           {session?.user ? (
             <>
               <Link href="/minha-conta">Minha conta</Link>

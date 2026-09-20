@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import type { Encomenda } from "@/lib/models/encomenda";
 import type { Pedido } from "@/lib/models/pedido";
 import { buscarProdutosPorIds } from "@/lib/pedidos/repository";
 import { renderEmailLayout } from "@/lib/email/templates";
@@ -20,6 +21,22 @@ function obterClienteResend(): Resend {
 
 function formatarValorEmReais(centavos: number): string {
   return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/** Texto digitado pelo visitante entra em HTML de e-mail — sempre escapar. */
+function escaparHtml(texto: string): string {
+  return texto
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatarTelefone(digitos: string): string {
+  return digitos.length === 11
+    ? `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`
+    : `(${digitos.slice(0, 2)}) ${digitos.slice(2, 6)}-${digitos.slice(6)}`;
 }
 
 /**
@@ -168,5 +185,75 @@ export async function enviarConfirmacaoPedido(pedido: Pedido): Promise<void> {
     });
   } catch (erro) {
     console.error("Falha ao enviar e-mail de confirmação de pedido:", erro);
+  }
+}
+
+/**
+ * Avisa o admin de uma nova encomenda sob medida (formulário de /encomendas).
+ * `replyTo` aponta para o cliente, para responder direto do e-mail. Best-effort:
+ * a encomenda já foi gravada no banco antes desta chamada, então falha de
+ * envio é logada e nunca lança.
+ */
+export async function notificarAdminNovaEncomenda(encomenda: Encomenda): Promise<void> {
+  const destinatario = process.env.ADMIN_NOTIFICACAO_EMAIL;
+  if (!destinatario) {
+    console.error("ADMIN_NOTIFICACAO_EMAIL não está definida — notificação de encomenda não enviada.");
+    return;
+  }
+
+  const telefone = formatarTelefone(encomenda.telefone);
+  const text = `Nova encomenda de ${encomenda.nome}.\nE-mail: ${encomenda.email}\nTelefone: ${telefone}\n\n${encomenda.descricao}`;
+  const html = renderEmailLayout({
+    titulo: "Nova encomenda sob medida",
+    corpoHtml: `
+      <p><strong>${escaparHtml(encomenda.nome)}</strong> quer fazer uma encomenda.</p>
+      <p style="margin:0;">E-mail: ${escaparHtml(encomenda.email)}</p>
+      <p style="margin:0 0 16px;">Telefone: ${telefone}</p>
+      <p style="margin:20px 0 8px;font-weight:700;">O que o cliente pediu</p>
+      <p style="margin:0;padding:14px;background-color:#FFF6ED;border-radius:8px;white-space:pre-wrap;">${escaparHtml(encomenda.descricao)}</p>
+    `,
+  });
+
+  try {
+    await obterClienteResend().emails.send({
+      from: process.env.EMAIL_FROM ?? "",
+      to: destinatario,
+      replyTo: encomenda.email,
+      subject: `Nova encomenda — ${encomenda.nome}`,
+      text,
+      html,
+    });
+  } catch (erro) {
+    console.error("Falha ao enviar e-mail de notificação de encomenda:", erro);
+  }
+}
+
+/**
+ * Confirma ao cliente que o pedido de encomenda foi recebido. Best-effort,
+ * mesmo tratamento das demais funções deste módulo.
+ */
+export async function enviarConfirmacaoEncomenda(encomenda: Encomenda): Promise<void> {
+  const primeiroNome = encomenda.nome.split(" ")[0];
+  const text = `Oi, ${primeiroNome}! Recebemos o seu pedido de encomenda e vamos entrar em contato por e-mail ou WhatsApp com o valor e o prazo.\n\nO que você nos contou:\n${encomenda.descricao}\n\nObrigado por pensar na Voxelas Duo.`;
+  const html = renderEmailLayout({
+    titulo: "Recebemos a sua encomenda!",
+    corpoHtml: `
+      <p>Oi, ${escaparHtml(primeiroNome)}! Recebemos o seu pedido de encomenda e vamos entrar em contato por e-mail ou WhatsApp com o valor e o prazo.</p>
+      <p style="margin:20px 0 8px;font-weight:700;">O que você nos contou</p>
+      <p style="margin:0 0 20px;padding:14px;background-color:#FFF6ED;border-radius:8px;white-space:pre-wrap;">${escaparHtml(encomenda.descricao)}</p>
+      <p>Obrigado por pensar na Voxelas Duo.</p>
+    `,
+  });
+
+  try {
+    await obterClienteResend().emails.send({
+      from: process.env.EMAIL_FROM ?? "",
+      to: encomenda.email,
+      subject: "Recebemos a sua encomenda — Voxelas Duo",
+      text,
+      html,
+    });
+  } catch (erro) {
+    console.error("Falha ao enviar e-mail de confirmação de encomenda:", erro);
   }
 }

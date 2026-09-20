@@ -37,6 +37,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&family=Caveat:wght@500;700&display=swap"
         />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script src="https://interasisai.com.br/widget/VoxelasDuo" async></script>
       </head>
       <body>
         <CarrinhoProvider>
