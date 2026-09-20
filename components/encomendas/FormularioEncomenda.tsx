@@ -62,8 +62,8 @@ export default function FormularioEncomenda() {
         <span className={styles.sucessoBadge}>encomenda recebida</span>
         <h2 className={styles.sucessoTitulo}>Recebemos a sua ideia!</h2>
         <p className={styles.sucessoTexto}>
-          Enviamos uma confirmação para <strong>{emailEnviado}</strong>. Em breve entramos em contato
-          por e-mail ou WhatsApp com o valor e o prazo.
+          Enviamos uma confirmação para <strong>{emailEnviado}</strong>. Vamos analisar a sua ideia e
+          retornaremos em breve, por e-mail ou WhatsApp.
         </p>
         <AvisoSpam />
         <Link href="/produtos" className={styles.sucessoLink}>

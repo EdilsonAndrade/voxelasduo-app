@@ -42,15 +42,15 @@ export default function EncomendasPage() {
             <li className={styles.passo}>
               <span className={styles.passoIcone} aria-hidden="true">2</span>
               <span>
-                <strong>A gente responde</strong>
-                Entramos em contato por e-mail ou WhatsApp com valor e prazo.
+                <strong>A gente analisa</strong>
+                Avaliamos se a peça é viável e retornamos em breve, por e-mail ou WhatsApp.
               </span>
             </li>
             <li className={styles.passo}>
               <span className={styles.passoIcone} aria-hidden="true">3</span>
               <span>
-                <strong>Imprimimos e enviamos</strong>
-                Combinado o pedido, sua ideia ganha forma e chega até você.
+                <strong>Combinamos e imprimimos</strong>
+                Se der certo, alinhamos os detalhes e sua ideia ganha forma.
               </span>
             </li>
           </ol>

@@ -12,7 +12,7 @@ export default function FaixaEncomendas() {
           Também fazemos <span>encomendas de impressão 3D</span>
         </h2>
         <p className={styles.faixaDescricao}>
-          Não encontrou o que procurava? Conte sua ideia e a gente dá forma a ela: decoração,
+          Não encontrou o que procurava? Conte sua ideia e a gente analisa: decoração,
           colecionáveis, presentes e peças personalizadas.
         </p>
         <Link href="/encomendas" className={styles.faixaBotao}>

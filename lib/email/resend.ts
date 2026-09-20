@@ -242,11 +242,11 @@ export async function notificarAdminNovaEncomenda(encomenda: Encomenda): Promise
  */
 export async function enviarConfirmacaoEncomenda(encomenda: Encomenda): Promise<void> {
   const primeiroNome = encomenda.nome.split(" ")[0];
-  const text = `Oi, ${primeiroNome}! Recebemos o seu pedido de encomenda e vamos entrar em contato por e-mail ou WhatsApp com o valor e o prazo.\n\nO que você nos contou:\n${encomenda.descricao}\n\nObrigado por pensar na Voxelas Duo.`;
+  const text = `Oi, ${primeiroNome}! Recebemos o seu pedido de encomenda. Vamos analisar a sua ideia e retornaremos em breve, por e-mail ou WhatsApp.\n\nO que você nos contou:\n${encomenda.descricao}\n\nObrigado por pensar na Voxelas Duo.`;
   const html = renderEmailLayout({
     titulo: "Recebemos a sua encomenda!",
     corpoHtml: `
-      <p>Oi, ${escaparHtml(primeiroNome)}! Recebemos o seu pedido de encomenda e vamos entrar em contato por e-mail ou WhatsApp com o valor e o prazo.</p>
+      <p>Oi, ${escaparHtml(primeiroNome)}! Recebemos o seu pedido de encomenda. Vamos analisar a sua ideia e retornaremos em breve, por e-mail ou WhatsApp.</p>
       <p style="margin:20px 0 8px;font-weight:700;">O que você nos contou</p>
       <p style="margin:0 0 20px;padding:14px;background-color:#FFF6ED;border-radius:8px;white-space:pre-wrap;">${escaparHtml(encomenda.descricao)}</p>
       <p>Obrigado por pensar na Voxelas Duo.</p>
