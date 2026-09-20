@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AvisoSpam from "@/components/AvisoSpam";
 import checkoutStyles from "@/components/checkout/checkout.module.css";
 import styles from "./cliente.module.css";
 
@@ -61,6 +62,7 @@ export default function FormularioVerificarEmail({ emailInicial }: { emailInicia
 
   return (
     <form className={checkoutStyles.formulario} onSubmit={enviar} noValidate>
+      <AvisoSpam />
       {erroGeral && (
         <div className={checkoutStyles.erroGeral} role="alert">
           {erroGeral}

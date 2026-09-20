@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import AvisoSpam from "@/components/AvisoSpam";
 import checkoutStyles from "@/components/checkout/checkout.module.css";
 import styles from "./cliente.module.css";
 
@@ -32,6 +33,7 @@ export default function FormularioRecuperarSenha() {
           Se esse e-mail tiver uma conta, enviamos um código de recuperação para ele. Confira sua
           caixa de entrada e informe o código na próxima tela.
         </p>
+        <AvisoSpam />
         <p className={styles.rodape}>
           <Link href="/redefinir-senha">Já tenho o código</Link>
         </p>

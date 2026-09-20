@@ -23,6 +23,15 @@ function formatarValorEmReais(centavos: number): string {
   return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+/** E-mail da loja: recebe os avisos de encomenda e é o endereço de resposta ao cliente. */
+const EMAIL_LOJA = "voxelasduo@gmail.com";
+
+/** Remetente com nome de exibição ("Voxelas Duo <...>") — e-mail com só o endereço puro pesa mais na triagem de spam. */
+function remetente(): string {
+  const from = process.env.EMAIL_FROM ?? "";
+  return !from || from.includes("<") ? from : `Voxelas Duo <${from}>`;
+}
+
 /** Texto digitado pelo visitante entra em HTML de e-mail — sempre escapar. */
 function escaparHtml(texto: string): string {
   return texto
@@ -58,7 +67,7 @@ export async function enviarCodigoRecuperacao(email: string, codigo: string): Pr
 
   try {
     await obterClienteResend().emails.send({
-      from: process.env.EMAIL_FROM ?? "",
+      from: remetente(),
       to: email,
       subject: "Código para redefinir sua senha",
       text,
@@ -86,7 +95,7 @@ export async function enviarCodigoVerificacao(email: string, codigo: string): Pr
 
   try {
     await obterClienteResend().emails.send({
-      from: process.env.EMAIL_FROM ?? "",
+      from: remetente(),
       to: email,
       subject: "Confirme seu e-mail",
       text,
@@ -124,7 +133,7 @@ export async function notificarAdminVendaExterna(pedido: Pedido): Promise<void> 
 
   try {
     await obterClienteResend().emails.send({
-      from: process.env.EMAIL_FROM ?? "",
+      from: remetente(),
       to: destinatario,
       subject: "Nova venda sincronizada — Mercado Livre",
       text,
@@ -177,7 +186,7 @@ export async function enviarConfirmacaoPedido(pedido: Pedido): Promise<void> {
 
   try {
     await obterClienteResend().emails.send({
-      from: process.env.EMAIL_FROM ?? "",
+      from: remetente(),
       to: pedido.cliente.email,
       subject,
       text,
@@ -195,11 +204,10 @@ export async function enviarConfirmacaoPedido(pedido: Pedido): Promise<void> {
  * envio é logada e nunca lança.
  */
 export async function notificarAdminNovaEncomenda(encomenda: Encomenda): Promise<void> {
-  const destinatario = process.env.ADMIN_NOTIFICACAO_EMAIL;
-  if (!destinatario) {
-    console.error("ADMIN_NOTIFICACAO_EMAIL não está definida — notificação de encomenda não enviada.");
-    return;
-  }
+  // Sempre vai para o e-mail da loja, mesmo sem ADMIN_NOTIFICACAO_EMAIL configurada.
+  const destinatarios = [...new Set([process.env.ADMIN_NOTIFICACAO_EMAIL?.trim(), EMAIL_LOJA])].filter(
+    (email): email is string => Boolean(email)
+  );
 
   const telefone = formatarTelefone(encomenda.telefone);
   const text = `Nova encomenda de ${encomenda.nome}.\nE-mail: ${encomenda.email}\nTelefone: ${telefone}\n\n${encomenda.descricao}`;
@@ -216,8 +224,8 @@ export async function notificarAdminNovaEncomenda(encomenda: Encomenda): Promise
 
   try {
     await obterClienteResend().emails.send({
-      from: process.env.EMAIL_FROM ?? "",
-      to: destinatario,
+      from: remetente(),
+      to: destinatarios,
       replyTo: encomenda.email,
       subject: `Nova encomenda — ${encomenda.nome}`,
       text,
@@ -243,12 +251,14 @@ export async function enviarConfirmacaoEncomenda(encomenda: Encomenda): Promise<
       <p style="margin:0 0 20px;padding:14px;background-color:#FFF6ED;border-radius:8px;white-space:pre-wrap;">${escaparHtml(encomenda.descricao)}</p>
       <p>Obrigado por pensar na Voxelas Duo.</p>
     `,
+    permiteResposta: true,
   });
 
   try {
     await obterClienteResend().emails.send({
-      from: process.env.EMAIL_FROM ?? "",
+      from: remetente(),
       to: encomenda.email,
+      replyTo: EMAIL_LOJA,
       subject: "Recebemos a sua encomenda — Voxelas Duo",
       text,
       html,

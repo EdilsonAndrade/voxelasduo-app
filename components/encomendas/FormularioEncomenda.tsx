@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import AvisoSpam from "@/components/AvisoSpam";
 import checkoutStyles from "@/components/checkout/checkout.module.css";
 import { DESCRICAO_TAMANHO_MAXIMO, validarEncomenda, type ErrosValidacao } from "@/lib/encomendas/validacao";
 import styles from "./encomendas.module.css";
@@ -64,6 +65,7 @@ export default function FormularioEncomenda() {
           Enviamos uma confirmação para <strong>{emailEnviado}</strong>. Em breve entramos em contato
           por e-mail ou WhatsApp com o valor e o prazo.
         </p>
+        <AvisoSpam />
         <Link href="/produtos" className={styles.sucessoLink}>
           Voltar para a vitrine
         </Link>

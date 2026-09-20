@@ -18,6 +18,8 @@ const {
   enviarCodigoVerificacao,
   notificarAdminVendaExterna,
   enviarConfirmacaoPedido,
+  notificarAdminNovaEncomenda,
+  enviarConfirmacaoEncomenda,
 } = await import("./resend");
 
 const pedidoBase: Pedido = {
@@ -182,5 +184,102 @@ describe("enviarConfirmacaoPedido", () => {
     buscarProdutosPorIds.mockResolvedValue(new Map());
     send.mockRejectedValue(new Error("falha de rede"));
     await expect(enviarConfirmacaoPedido(pedidoBase)).resolves.toBeUndefined();
+  });
+});
+
+const encomendaBase = {
+  _id: new ObjectId(),
+  nome: "Maria <b>Silva</b>",
+  email: "maria@exemplo.com",
+  telefone: "19981575723",
+  descricao: "Um chaveiro <script>alert(1)</script> do meu gato",
+  criadoEm: new Date("2026-09-20T12:00:00.000Z"),
+};
+
+describe("notificarAdminNovaEncomenda", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.RESEND_API_KEY = "re_teste";
+    process.env.EMAIL_FROM = "naoresponda@voxelasduo.com.br";
+    process.env.ADMIN_NOTIFICACAO_EMAIL = "admin@voxelasduo.com";
+  });
+
+  afterEach(() => {
+    delete process.env.ADMIN_NOTIFICACAO_EMAIL;
+  });
+
+  it("envia para o admin e para o e-mail da loja, com replyTo no cliente e remetente com nome", async () => {
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await notificarAdminNovaEncomenda(encomendaBase);
+
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: "Voxelas Duo <naoresponda@voxelasduo.com.br>",
+        to: ["admin@voxelasduo.com", "voxelasduo@gmail.com"],
+        replyTo: "maria@exemplo.com",
+        text: expect.stringContaining("(19) 98157-5723"),
+      })
+    );
+  });
+
+  it("envia para o e-mail da loja mesmo sem ADMIN_NOTIFICACAO_EMAIL", async () => {
+    delete process.env.ADMIN_NOTIFICACAO_EMAIL;
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await notificarAdminNovaEncomenda(encomendaBase);
+
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: ["voxelasduo@gmail.com"] }));
+  });
+
+  it("não duplica o destinatário quando o admin já é o e-mail da loja", async () => {
+    process.env.ADMIN_NOTIFICACAO_EMAIL = "voxelasduo@gmail.com";
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await notificarAdminNovaEncomenda(encomendaBase);
+
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: ["voxelasduo@gmail.com"] }));
+  });
+
+  it("escapa HTML digitado pelo cliente", async () => {
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await notificarAdminNovaEncomenda(encomendaBase);
+
+    const { html } = send.mock.calls[0][0] as { html: string };
+    expect(html).not.toContain("<script>alert(1)</script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("não lança quando o envio falha", async () => {
+    send.mockRejectedValue(new Error("falha de rede"));
+    await expect(notificarAdminNovaEncomenda(encomendaBase)).resolves.toBeUndefined();
+  });
+});
+
+describe("enviarConfirmacaoEncomenda", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.RESEND_API_KEY = "re_teste";
+    process.env.EMAIL_FROM = "naoresponda@voxelasduo.com.br";
+  });
+
+  it("confirma ao cliente, com replyTo na loja e aviso de spam", async () => {
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await enviarConfirmacaoEncomenda(encomendaBase);
+
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "maria@exemplo.com",
+        replyTo: "voxelasduo@gmail.com",
+        html: expect.stringContaining("Spam ou no Lixo eletrônico"),
+      })
+    );
+  });
+
+  it("não lança quando o envio falha", async () => {
+    send.mockRejectedValue(new Error("falha de rede"));
+    await expect(enviarConfirmacaoEncomenda(encomendaBase)).resolves.toBeUndefined();
   });
 });
