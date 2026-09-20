@@ -440,6 +440,132 @@
   align-items: center;
 }
 
+.catSelect {
+  position: relative;
+}
+
+.catControles {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.catGatilho {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--preto);
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 12px;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+}
+
+.catGatilho:hover,
+.catGatilho[aria-expanded="true"] {
+  border-color: var(--roxo);
+}
+
+.catEscolhida {
+  font-weight: 700;
+}
+
+.catAutomatica {
+  color: var(--texto-soft);
+}
+
+.catPainel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.7rem;
+  background: var(--surface);
+  border: 2px solid var(--roxo);
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.catBusca {
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.92rem;
+  color: var(--preto);
+}
+
+.catBusca:focus {
+  border-color: var(--roxo);
+  outline: none;
+}
+
+.catTrilha {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--texto-soft);
+}
+
+.catTrilhaBotao {
+  font: inherit;
+  font-weight: 700;
+  color: var(--roxo);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.catLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.catItem {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--preto);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+}
+
+.catItem:hover,
+.catItem:focus-visible,
+.catItem[aria-selected="true"] {
+  background: var(--surface-line);
+  outline: none;
+}
+
+.catVazio {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--texto-soft);
+  padding: 0.3rem 0.6rem;
+}
+
 .formSuccess {
   font-family: var(--font-body);
   font-weight: 700;

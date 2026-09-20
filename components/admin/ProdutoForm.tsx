@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 import SimuladorPrecificacao from "./SimuladorPrecificacao";
+import CategoriaMercadoLivreSelect from "./CategoriaMercadoLivreSelect";
 import styles from "./admin.module.css";
 import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import {
@@ -64,6 +65,10 @@ export interface ProdutoFormValores {
   mercadoLivrePermalink?: string;
   /** `true` quando o anúncio foi pausado (não despublicado) — precisa ser preservado ao salvar o produto, senão some no próximo `PATCH`. */
   mercadoLivrePausado?: boolean;
+  /** Categoria (folha) do Mercado Livre escolhida no seletor — vazio = o previsor do Mercado Livre decide pelo título. */
+  mercadoLivreCategoriaId?: string;
+  /** Caminho legível da categoria escolhida (só exibição). */
+  mercadoLivreCategoriaCaminho?: string;
   /** ID do anúncio correspondente na Shopee — vazio = sem anúncio nesse canal (Tarefa 5). */
   shopeeItemId?: string;
   /** Custo de produção (COGS) — opcional, ausência não bloqueia o cadastro (EDI-92). */
@@ -84,6 +89,8 @@ const VAZIO: ProdutoFormValores = {
   mercadoLivreId: "",
   mercadoLivrePermalink: "",
   mercadoLivrePausado: false,
+  mercadoLivreCategoriaId: "",
+  mercadoLivreCategoriaCaminho: "",
   shopeeItemId: "",
   custoProducao: VAZIO_CUSTO_PRODUCAO,
   embalagemEnvio: VAZIO_EMBALAGEM_ENVIO,
@@ -257,6 +264,8 @@ export default function ProdutoForm({
         mercadoLivreId: valores.mercadoLivreId?.trim() || undefined,
         mercadoLivrePermalink: valores.mercadoLivrePermalink?.trim() || undefined,
         mercadoLivrePausado: valores.mercadoLivrePausado || undefined,
+        mercadoLivreCategoriaId: valores.mercadoLivreCategoriaId?.trim() || undefined,
+        mercadoLivreCategoriaCaminho: valores.mercadoLivreCategoriaCaminho?.trim() || undefined,
         shopeeItemId: valores.shopeeItemId?.trim() || undefined,
       },
       custoProducao: custoProducaoCalculado ?? undefined,
@@ -293,8 +302,14 @@ export default function ProdutoForm({
     setPublicandoMercadoLivre(true);
     setErroPublicacao(null);
     try {
+      // Envia a categoria escolhida no seletor (ainda não salva no produto) para a publicação já usá-la.
       const resposta = await fetch(`/api/produtos/${valoresIniciais.id}/mercado-livre/publicar`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mercadoLivreCategoriaId: valores.mercadoLivreCategoriaId?.trim() || undefined,
+          mercadoLivreCategoriaCaminho: valores.mercadoLivreCategoriaCaminho?.trim() || undefined,
+        }),
       });
       const dados = await resposta.json();
 
@@ -829,6 +844,22 @@ export default function ProdutoForm({
             {editando && valores.mercadoLivreId?.trim() && !valores.mercadoLivrePausado && (
               <span className={styles.badgeStatusPago}>Publicado</span>
             )}
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="mercadoLivreCategoria">Categoria no Mercado Livre</label>
+            <CategoriaMercadoLivreSelect
+              categoriaId={valores.mercadoLivreCategoriaId ?? ""}
+              caminho={valores.mercadoLivreCategoriaCaminho ?? ""}
+              onChange={(id, caminho) => {
+                atualizarCampo("mercadoLivreCategoriaId", id);
+                atualizarCampo("mercadoLivreCategoriaCaminho", caminho);
+              }}
+            />
+            <span className={styles.mlLinkAviso}>
+              Só categorias finais (sem subcategorias) aceitam anúncio. Sem escolher, o Mercado Livre
+              decide pelo título do produto.
+            </span>
           </div>
 
           <div className={styles.field}>

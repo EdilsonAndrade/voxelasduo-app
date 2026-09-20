@@ -35,6 +35,8 @@ export default async function EditarProdutoPage({
           mercadoLivreId: produto.integracoes?.mercadoLivreId ?? "",
           mercadoLivrePermalink: produto.integracoes?.mercadoLivrePermalink ?? "",
           mercadoLivrePausado: produto.integracoes?.mercadoLivrePausado ?? false,
+          mercadoLivreCategoriaId: produto.integracoes?.mercadoLivreCategoriaId ?? "",
+          mercadoLivreCategoriaCaminho: produto.integracoes?.mercadoLivreCategoriaCaminho ?? "",
           shopeeItemId: produto.integracoes?.shopeeItemId ?? "",
           custoProducao: custoProducaoParaFormulario(produto.custoProducao),
           embalagemEnvio: embalagemEnvioParaFormulario(produto.embalagemEnvio),

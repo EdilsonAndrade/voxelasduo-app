@@ -55,13 +55,14 @@ export function aplicarFichaTecnicaNaDescricao(
 const LISTING_TYPE_ID = "gold_special";
 
 /**
- * Resolve a categoria do Mercado Livre para um produto (override manual ou
- * previsor automático, research.md #5) — reaproveitada tanto na criação do
+ * Resolve a categoria do Mercado Livre para um produto (escolhida no admin,
+ * override manual ou previsor automático, research.md #5, nessa ordem) — reaproveitada tanto na criação do
  * anúncio quanto na correção de atributos de um anúncio já publicado
  * (EDI-95/EDI-96), para nunca divergir da categoria realmente usada.
  */
 async function resolverCategoriaOuFalhar(produto: Produto): Promise<string> {
   const categoryId =
+    (produto.integracoes?.mercadoLivreCategoriaId?.trim() || undefined) ??
     resolverCategoriaMercadoLivre(produto.categoria) ??
     (await preverCategoriaMercadoLivre(montarConsultaPrevisor(produto.categoria, produto.nome)));
 

@@ -126,6 +126,27 @@ describe("criarAnuncio", () => {
     expect(corpoItem.category_id).toBe("MLB-OVERRIDE");
   });
 
+  it("categoria escolhida no admin tem prioridade sobre o override e o previsor", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB-OVERRIDE");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await criarAnuncio({
+      ...produtoBase,
+      integracoes: { mercadoLivreCategoriaId: " MLB-ESCOLHIDA " },
+    });
+
+    expect(preverCategoriaMercadoLivre).not.toHaveBeenCalled();
+    const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpoItem.category_id).toBe("MLB-ESCOLHIDA");
+  });
+
   it("sem override: usa a categoria descoberta pelo previsor a partir do título", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue(undefined);
     vi.mocked(preverCategoriaMercadoLivre).mockResolvedValue("MLB12345");

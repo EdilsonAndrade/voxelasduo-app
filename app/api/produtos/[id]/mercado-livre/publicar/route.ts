@@ -13,7 +13,7 @@ function mensagemErro(erro: unknown): string {
  * Cria o anúncio no Mercado Livre a partir do produto (US1, FR-001 a FR-004).
  * Requer que o produto ainda não tenha `integracoes.mercadoLivreId`.
  */
-export async function POST(_request: Request, { params }: Params) {
+export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
   const produto = await buscarProdutoPorId(id);
 
@@ -26,6 +26,26 @@ export async function POST(_request: Request, { params }: Params) {
       { erro: "Produto já publicado no Mercado Livre." },
       { status: 409 }
     );
+  }
+
+  // O corpo é opcional: o admin envia a categoria escolhida no seletor, que
+  // pode ainda não ter sido salva no produto (botão "Salvar" não clicado).
+  const corpo = (await request.json().catch(() => ({}))) as {
+    mercadoLivreCategoriaId?: unknown;
+    mercadoLivreCategoriaCaminho?: unknown;
+  };
+  const categoriaId =
+    typeof corpo.mercadoLivreCategoriaId === "string" ? corpo.mercadoLivreCategoriaId.trim() : "";
+  const categoriaCaminho =
+    typeof corpo.mercadoLivreCategoriaCaminho === "string"
+      ? corpo.mercadoLivreCategoriaCaminho.trim()
+      : "";
+  if (categoriaId) {
+    produto.integracoes = {
+      ...produto.integracoes,
+      mercadoLivreCategoriaId: categoriaId,
+      mercadoLivreCategoriaCaminho: categoriaCaminho || undefined,
+    };
   }
 
   try {

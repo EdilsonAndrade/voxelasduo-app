@@ -9,6 +9,10 @@ export interface IntegracoesCanal {
   mercadoLivrePermalink?: string;
   /** `true` quando o anúncio foi pausado (não despublicado) — distinto de ausência de `mercadoLivreId` (nunca publicado) ou despublicação (fechado, `mercadoLivreId` removido). */
   mercadoLivrePausado?: boolean;
+  /** Categoria (folha) escolhida manualmente para o anúncio — ausente = o previsor do Mercado Livre decide pelo título (ver anuncios.ts). */
+  mercadoLivreCategoriaId?: string;
+  /** Caminho legível da categoria escolhida (ex: "Casa > Decoração > Estatuetas") — só para exibir no admin sem consultar a API. */
+  mercadoLivreCategoriaCaminho?: string;
   shopeeItemId?: string;
 }
 
