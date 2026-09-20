@@ -7,7 +7,7 @@ import Toast from "./Toast";
 import SimuladorPrecificacao from "./SimuladorPrecificacao";
 import CategoriaMercadoLivreSelect from "./CategoriaMercadoLivreSelect";
 import styles from "./admin.module.css";
-import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
+import { calcularCustoCaixa, calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import {
   camposCustoProducaoFaltando,
   montarCustoProducao,
@@ -826,6 +826,9 @@ export default function ProdutoForm({
         categoria={valores.categoria}
         precoVendaReais={valores.precoReais}
         cogsCentavos={resultadoCogs?.totalCentavos ?? null}
+        custoCaixaCentavos={resultadoCogs ? calcularCustoCaixa(resultadoCogs) : null}
+        depreciacaoCentavos={resultadoCogs?.custoDepreciacaoCentavos ?? null}
+        tempoImpressaoHoras={custoProducaoCalculado?.tempoImpressaoHoras ?? null}
         onAplicarPrecoSugerido={(preco) => atualizarCampo("precoReais", preco)}
       />
 

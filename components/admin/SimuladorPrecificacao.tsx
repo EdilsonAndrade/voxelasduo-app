@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./admin.module.css";
 import type { ComissaoMercadoLivre } from "@/lib/produtos/precificacao";
-import { calcularPrecoSugerido, calcularSimulacaoPrecificacao } from "@/lib/produtos/precificacao";
+import { calcularPrecoEscala, calcularPrecoSugerido, calcularSimulacaoPrecificacao } from "@/lib/produtos/precificacao";
 
 /** Espera após a última tecla digitada no preço antes de consultar a comissão real (FR-005, research.md #5). */
 const DEBOUNCE_MS = 500;
@@ -13,6 +13,9 @@ const MARGEM_MINIMA_PADRAO = "20";
 
 /** Margem de lucro desejada padrão, usada só para calcular o preço sugerido (mesmo valor de exemplo da planilha do solicitante). */
 const MARGEM_DESEJADA_PADRAO = "100";
+
+/** "completo" cobre depreciação e mão de obra; "escala" cobre só o custo de caixa (vender sem perda usando a impressora ociosa). */
+type ModoPreco = "completo" | "escala";
 
 function paraCentavos(valorReais: number): number {
   return Math.round(valorReais * 100);
@@ -30,6 +33,12 @@ export interface SimuladorPrecificacaoProps {
   precoVendaReais: string;
   /** Custo de produção total (COGS), em centavos — `null` quando o custo de produção (US1) ainda está incompleto. */
   cogsCentavos: number | null;
+  /** Custo de caixa (COGS sem depreciação e mão de obra), em centavos — base do "preço de escala". */
+  custoCaixaCentavos: number | null;
+  /** Depreciação da impressora embutida nesta peça, em centavos — referência de quanto o preço de escala deixa de recuperar. */
+  depreciacaoCentavos: number | null;
+  /** Tempo de impressão da peça, em horas — usado para mostrar o lucro de caixa por hora de impressora. */
+  tempoImpressaoHoras: number | null;
   /** Chamado quando o vendedor clica em "Usar esse preço" no preço sugerido, com o valor pronto para o campo "Preço (R$)". */
   onAplicarPrecoSugerido?: (precoReais: string) => void;
 }
@@ -39,6 +48,9 @@ export default function SimuladorPrecificacao({
   categoria,
   precoVendaReais,
   cogsCentavos,
+  custoCaixaCentavos,
+  depreciacaoCentavos,
+  tempoImpressaoHoras,
   onAplicarPrecoSugerido,
 }: SimuladorPrecificacaoProps) {
   const [comissao, setComissao] = useState<ComissaoMercadoLivre | null>(null);
@@ -48,6 +60,8 @@ export default function SimuladorPrecificacao({
   const [margemMinimaPercentual, setMargemMinimaPercentual] = useState(MARGEM_MINIMA_PADRAO);
   const [margemDesejadaPercentual, setMargemDesejadaPercentual] = useState(MARGEM_DESEJADA_PADRAO);
   const [taxaEstimadaPercentual, setTaxaEstimadaPercentual] = useState("");
+  const [lucroEscalaReais, setLucroEscalaReais] = useState("");
+  const [modoPreco, setModoPreco] = useState<ModoPreco>("completo");
   const requisicaoAtual = useRef(0);
 
   // Pré-preenche a taxa estimada com a comissão real assim que ela for obtida
@@ -119,14 +133,29 @@ export default function SimuladorPrecificacao({
 
   const margemDesejadaNumero = Number(margemDesejadaPercentual.replace(",", "."));
   const taxaEstimadaNumero = Number(taxaEstimadaPercentual.replace(",", "."));
-  const precoSugeridoCentavos =
-    cogsCentavos !== null &&
-    Number.isFinite(margemDesejadaNumero) &&
-    margemDesejadaNumero >= 0 &&
-    Number.isFinite(taxaEstimadaNumero) &&
-    taxaEstimadaNumero >= 0
-      ? calcularPrecoSugerido(cogsCentavos, margemDesejadaNumero, taxaEstimadaNumero)
-      : null;
+  const custoBaseCentavos = modoPreco === "escala" ? custoCaixaCentavos : cogsCentavos;
+  const taxaValida = Number.isFinite(taxaEstimadaNumero) && taxaEstimadaNumero >= 0;
+  const lucroEscalaNumero = Number(lucroEscalaReais.replace(",", "."));
+  const lucroEscalaValido =
+    lucroEscalaReais.trim() !== "" && Number.isFinite(lucroEscalaNumero) && lucroEscalaNumero >= 0;
+  let precoSugeridoCentavos: number | null = null;
+  if (custoBaseCentavos !== null && taxaValida) {
+    if (modoPreco === "escala") {
+      if (lucroEscalaValido) {
+        precoSugeridoCentavos = calcularPrecoEscala(
+          custoBaseCentavos,
+          paraCentavos(lucroEscalaNumero),
+          taxaEstimadaNumero
+        );
+      }
+    } else if (Number.isFinite(margemDesejadaNumero) && margemDesejadaNumero >= 0) {
+      precoSugeridoCentavos = calcularPrecoSugerido(
+        custoBaseCentavos,
+        margemDesejadaNumero,
+        taxaEstimadaNumero
+      );
+    }
+  }
 
   const simulacao =
     cogsCentavos !== null && comissaoEfetivaCentavos !== null && precoVendaCentavosOuNull !== null
@@ -138,6 +167,17 @@ export default function SimuladorPrecificacao({
         )
       : null;
 
+  const lucroCaixaCentavos =
+    custoCaixaCentavos !== null && comissaoEfetivaCentavos !== null && precoVendaCentavosOuNull !== null
+      ? paraCentavos(precoVendaCentavosOuNull) - custoCaixaCentavos - comissaoEfetivaCentavos
+      : null;
+  const lucroCaixaPorHoraCentavos =
+    lucroCaixaCentavos !== null && tempoImpressaoHoras !== null && tempoImpressaoHoras > 0
+      ? lucroCaixaCentavos / tempoImpressaoHoras
+      : null;
+  // Prejuízo "real" (não cobre nem o custo de caixa) é diferente de só não cobrir a depreciação.
+  const prejuizoDeCaixa = lucroCaixaCentavos !== null && lucroCaixaCentavos < 0;
+
   return (
     <div className={styles.field}>
       <label>Preço de venda sugerido</label>
@@ -148,15 +188,51 @@ export default function SimuladorPrecificacao({
       ) : (
         <>
           <div className={styles.row}>
-            <div className={styles.field}>
-              <label htmlFor="margemDesejada">Margem de lucro desejada (%)</label>
-              <input
-                id="margemDesejada"
-                inputMode="decimal"
-                value={margemDesejadaPercentual}
-                onChange={(e) => setMargemDesejadaPercentual(e.target.value)}
-              />
-            </div>
+            <button
+              type="button"
+              className={modoPreco === "completo" ? styles.btnPrimary : styles.btnGhost}
+              aria-pressed={modoPreco === "completo"}
+              onClick={() => setModoPreco("completo")}
+            >
+              Preço completo
+            </button>
+            <button
+              type="button"
+              className={modoPreco === "escala" ? styles.btnPrimary : styles.btnGhost}
+              aria-pressed={modoPreco === "escala"}
+              onClick={() => setModoPreco("escala")}
+            >
+              Preço de escala (sem perda)
+            </button>
+          </div>
+          <span className={styles.mlLinkAviso}>
+            {modoPreco === "completo"
+              ? "Cobre todo o custo de produção, incluindo a depreciação da impressora e a mão de obra."
+              : "Cobre só o que sai do bolso (filamento, energia e embalagem), sem depreciação nem mão de obra. Use para ganhar volume sem prejuízo de caixa."}
+          </span>
+          <div className={styles.row}>
+            {modoPreco === "escala" ? (
+              <div className={styles.field}>
+                <label htmlFor="lucroEscala">Lucro desejado por peça (R$)</label>
+                <input
+                  id="lucroEscala"
+                  inputMode="decimal"
+                  placeholder="Ex: 3.00 (0 = sem perda)"
+                  value={lucroEscalaReais}
+                  onChange={(e) => setLucroEscalaReais(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div className={styles.field}>
+                <label htmlFor="margemDesejada">Margem de lucro desejada (%)</label>
+                <input
+                  id="margemDesejada"
+                  inputMode="decimal"
+                  value={margemDesejadaPercentual}
+                  onChange={(e) => setMargemDesejadaPercentual(e.target.value)}
+                />
+              </div>
+            )}
             <div className={styles.field}>
               <label htmlFor="taxaEstimada">Taxa estimada da plataforma (%)</label>
               <input
@@ -172,11 +248,18 @@ export default function SimuladorPrecificacao({
             <div className={styles.mlLinkBox}>
               <strong>Preço sugerido: R$ {(precoSugeridoCentavos / 100).toFixed(2)}</strong>
               <span className={styles.mlLinkAviso}>
-                Calculado a partir do custo de produção (R$ {(cogsCentavos / 100).toFixed(2)}), da
-                margem desejada e da taxa estimada acima — ajuste a taxa conforme a comissão real for
+                Calculado a partir do {modoPreco === "escala" ? "custo de caixa" : "custo de produção"}{" "}
+                (R$ {((custoBaseCentavos ?? 0) / 100).toFixed(2)}), d{modoPreco === "escala" ? "o lucro por peça" : "a margem desejada"} e da taxa estimada acima — ajuste a taxa conforme a comissão real for
                 consultada abaixo para um valor mais preciso.
               </span>
-              {onAplicarPrecoSugerido && (
+              {modoPreco === "escala" && depreciacaoCentavos !== null && (
+            <span className={styles.mlLinkAviso}>
+              Atenção: cada peça consome R$ {(depreciacaoCentavos / 100).toFixed(2)} de vida útil da
+              impressora. Um lucro por peça abaixo disso não paga a reposição dela — use o preço de
+              escala só enquanto a impressora estaria parada.
+            </span>
+          )}
+          {onAplicarPrecoSugerido && (
                 <button
                   type="button"
                   className={styles.btnGhost}
@@ -188,8 +271,9 @@ export default function SimuladorPrecificacao({
             </div>
           ) : (
             <span className={styles.mlLinkAviso}>
-              Informe a margem desejada e a taxa estimada da plataforma (menor que 100%) para calcular
-              o preço sugerido.
+              {modoPreco === "escala"
+                ? "Informe o lucro desejado por peça e a taxa estimada da plataforma (menor que 100%) para calcular o preço de escala."
+                : "Informe a margem desejada e a taxa estimada da plataforma (menor que 100%) para calcular o preço sugerido."}
             </span>
           )}
         </>
@@ -268,7 +352,7 @@ export default function SimuladorPrecificacao({
       {simulacao && (
         <div
           className={
-            simulacao.prejuizo
+            simulacao.prejuizo && prejuizoDeCaixa !== false
               ? styles.fieldError
               : simulacao.margemBaixa
                 ? styles.mlLinkAviso
@@ -279,11 +363,26 @@ export default function SimuladorPrecificacao({
             Lucro líquido estimado: R$ {(simulacao.lucroLiquidoCentavos / 100).toFixed(2)} (
             {simulacao.margemPercentual.toFixed(1)}% de margem)
           </strong>
-          {simulacao.prejuizo && <div>⚠ Esse preço resulta em prejuízo.</div>}
+          {simulacao.prejuizo && prejuizoDeCaixa !== false && (
+            <div>⚠ Esse preço resulta em prejuízo.</div>
+          )}
+          {simulacao.prejuizo && prejuizoDeCaixa === false && (
+            <div>
+              ⚠ Não cobre a depreciação da impressora, mas cobre o custo de caixa (não sai dinheiro
+              do bolso).
+            </div>
+          )}
           {!simulacao.prejuizo && simulacao.margemBaixa && (
             <div>⚠ Margem abaixo do mínimo configurado ({margemMinimaPercentual}%).</div>
           )}
         </div>
+      )}
+      {lucroCaixaCentavos !== null && (
+        <span className={styles.mlLinkAviso}>
+          Lucro de caixa (sem depreciação e mão de obra): R$ {(lucroCaixaCentavos / 100).toFixed(2)}
+          {lucroCaixaPorHoraCentavos !== null &&
+            ` · R$ ${(lucroCaixaPorHoraCentavos / 100).toFixed(2)} por hora de impressora`}
+        </span>
       )}
     </div>
   );

@@ -72,3 +72,19 @@ export function calcularPrecoSugerido(
 
   return Math.round(precoSugeridoCentavos);
 }
+
+/**
+ * Preço de escala: cobre só o custo de caixa (sem depreciação nem mão de obra)
+ * mais um lucro fixo desejado por peça, já descontada a taxa estimada da
+ * plataforma — `(custoCaixa + lucro) / (1 - taxa)`. Com lucro zero é o preço
+ * de "sem perda". Retorna `null` quando a taxa é `>= 100%`.
+ */
+export function calcularPrecoEscala(
+  custoCaixaCentavos: number,
+  lucroDesejadoCentavos: number,
+  taxaPlataformaPercentual: number
+): number | null {
+  if (taxaPlataformaPercentual >= 100) return null;
+
+  return Math.round((custoCaixaCentavos + lucroDesejadoCentavos) / (1 - taxaPlataformaPercentual / 100));
+}

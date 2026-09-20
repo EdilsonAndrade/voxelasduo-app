@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularPrecoSugerido, calcularSimulacaoPrecificacao } from "./precificacao";
+import { calcularPrecoEscala, calcularPrecoSugerido, calcularSimulacaoPrecificacao } from "./precificacao";
 
 describe("calcularSimulacaoPrecificacao", () => {
   it("calcula lucro líquido e margem quando o preço cobre custo + comissão", () => {
@@ -49,5 +49,20 @@ describe("calcularPrecoSugerido", () => {
   it("retorna null quando a taxa da plataforma é 100% ou mais", () => {
     expect(calcularPrecoSugerido(2995, 100, 100)).toBeNull();
     expect(calcularPrecoSugerido(2995, 100, 150)).toBeNull();
+  });
+});
+
+describe("calcularPrecoEscala", () => {
+  it("com lucro zero, cobre apenas o custo de caixa e a taxa (sem perda)", () => {
+    expect(calcularPrecoEscala(849, 0, 12.5)).toBe(Math.round(849 / 0.875));
+  });
+
+  it("soma o lucro fixo desejado antes de aplicar a taxa da plataforma", () => {
+    // (849 + 300) / 0,875 = 1313,14
+    expect(calcularPrecoEscala(849, 300, 12.5)).toBe(1313);
+  });
+
+  it("retorna null quando a taxa da plataforma é 100% ou mais", () => {
+    expect(calcularPrecoEscala(849, 300, 100)).toBeNull();
   });
 });

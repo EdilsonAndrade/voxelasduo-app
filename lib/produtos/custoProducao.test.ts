@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularCustoProducao } from "./custoProducao";
+import { calcularCustoCaixa, calcularCustoProducao } from "./custoProducao";
 import type { CustoProducao } from "@/lib/models/produto";
 
 // Cenário de referência: mesmos valores usados pelo solicitante para validar a
@@ -58,5 +58,16 @@ describe("calcularCustoProducao", () => {
     expect(resultado.custoMaoDeObraCentavos).toBe(0);
     expect(resultado.custoFilamentoCentavos).toBe(1320);
     expect(resultado.custoEmbalagemCentavos).toBe(350);
+  });
+});
+
+describe("calcularCustoCaixa", () => {
+  it("soma só filamento, energia e embalagem (sem depreciação nem mão de obra)", () => {
+    const cogs = calcularCustoProducao(custoReferencia);
+
+    expect(calcularCustoCaixa(cogs)).toBe(
+      cogs.custoFilamentoCentavos + cogs.custoEnergiaCentavos + cogs.custoEmbalagemCentavos
+    );
+    expect(calcularCustoCaixa(cogs)).toBeLessThan(cogs.totalCentavos);
   });
 });

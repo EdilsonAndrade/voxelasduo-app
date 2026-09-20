@@ -12,6 +12,16 @@ export interface ResultadoCogs {
 }
 
 /**
+ * Custo de caixa de uma peça: só o que sai do bolso a cada venda (filamento,
+ * energia e embalagem). Ignora a depreciação da impressora e a mão de obra —
+ * base do "preço de escala", para vender sem perda enquanto a impressora
+ * estaria ociosa.
+ */
+export function calcularCustoCaixa(cogs: ResultadoCogs): number {
+  return cogs.custoFilamentoCentavos + cogs.custoEnergiaCentavos + cogs.custoEmbalagemCentavos;
+}
+
+/**
  * Calcula o custo de produção (COGS) a partir dos dados de impressão 3D do
  * produto (research.md #4) — função pura, sem I/O, para permitir recálculo
  * instantâneo no cliente a cada alteração de campo (FR-002/FR-003). Cada
