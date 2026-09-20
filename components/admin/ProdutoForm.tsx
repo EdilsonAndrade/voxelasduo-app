@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import ConfirmModal from "./ConfirmModal";
@@ -50,6 +51,38 @@ function obterDimensoesImagem(arquivo: File): Promise<{ largura: number; altura:
     imagem.src = url;
   });
 }
+
+/**
+ * Como cada campo chega ao anúncio já publicado no Mercado Livre:
+ * - `auto`: vai junto ao salvar o produto (PATCH → sincronizarAnuncioProduto);
+ * - `atributos`: só vai depois de salvar E clicar em "Corrigir atributos";
+ * - `republicar`: não atualiza sozinho — precisa despublicar e publicar de novo;
+ * - `interno`: nunca vai para as lojas.
+ */
+type SincronizacaoCampo = "auto" | "atributos" | "republicar" | "interno";
+
+const SELO_SINCRONIZACAO: Record<SincronizacaoCampo, { texto: string; dica: string; classe: string }> = {
+  auto: {
+    texto: "Atualiza ao salvar",
+    dica: "Ao salvar, o anúncio no Mercado Livre é atualizado sozinho.",
+    classe: "seloSyncAuto",
+  },
+  atributos: {
+    texto: "Salvar + Corrigir atributos",
+    dica: "Salve o produto e depois clique em \"Corrigir atributos\" em Canais de venda.",
+    classe: "seloSyncAtributos",
+  },
+  republicar: {
+    texto: "Só despublicando e publicando",
+    dica: "Salvar não altera o anúncio. Para refletir a mudança, despublique e publique de novo.",
+    classe: "seloSyncRepublicar",
+  },
+  interno: {
+    texto: "Só no admin",
+    dica: "Uso interno — não vai para as lojas.",
+    classe: "seloSyncInterno",
+  },
+};
 
 export interface ProdutoFormValores {
   id?: string;
@@ -123,6 +156,18 @@ export default function ProdutoForm({
   const [toastMensagem, setToastMensagem] = useState<string | null>(null);
 
   const editando = Boolean(valoresIniciais.id);
+  const publicadoNoMercadoLivre = editando && Boolean(valores.mercadoLivreId?.trim());
+
+  /** Selo de sincronização ao lado do rótulo — só aparece com o produto publicado no Mercado Livre. */
+  function selo(tipo: SincronizacaoCampo) {
+    if (!publicadoNoMercadoLivre) return null;
+    const { texto, dica, classe } = SELO_SINCRONIZACAO[tipo];
+    return (
+      <span className={styles[classe]} title={dica}>
+        {texto}
+      </span>
+    );
+  }
 
   function atualizarCampo<K extends keyof ProdutoFormValores>(campo: K, valor: ProdutoFormValores[K]) {
     setValores((atual) => ({ ...atual, [campo]: valor }));
@@ -289,8 +334,14 @@ export default function ProdutoForm({
         return;
       }
 
-      router.push("/admin/produtos");
-      router.refresh();
+      if (editando) {
+        // Permanece na página de edição — o botão "Voltar para a lista" leva de volta quando o admin quiser.
+        setToastMensagem("Produto salvo.");
+        router.refresh();
+      } else {
+        // Produto recém-criado: vai para a edição dele (assim os botões de canal de venda já ficam disponíveis).
+        router.replace(`/admin/produtos/${dados.produto._id}/editar`);
+      }
     } finally {
       setSalvando(false);
     }
@@ -449,7 +500,7 @@ export default function ProdutoForm({
     <>
       <form className={styles.form} onSubmit={handleSubmit}>
       <div className={styles.field}>
-        <label htmlFor="nome">Nome</label>
+        <label htmlFor="nome">Nome {selo("republicar")}</label>
         <input
           id="nome"
           value={valores.nome}
@@ -469,7 +520,7 @@ export default function ProdutoForm({
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="descricao">Descrição</label>
+        <label htmlFor="descricao">Descrição {selo("auto")}</label>
         <textarea
           id="descricao"
           value={valores.descricao}
@@ -481,7 +532,7 @@ export default function ProdutoForm({
 
       <div className={styles.row}>
         <div className={styles.field}>
-          <label htmlFor="preco">Preço (R$)</label>
+          <label htmlFor="preco">Preço (R$) {selo("auto")}</label>
           <input
             id="preco"
             inputMode="decimal"
@@ -493,7 +544,7 @@ export default function ProdutoForm({
           {camposErro.preco && <span className={styles.fieldError}>{camposErro.preco}</span>}
         </div>
         <div className={styles.field}>
-          <label htmlFor="estoque">Estoque</label>
+          <label htmlFor="estoque">Estoque {selo("auto")}</label>
           <input
             id="estoque"
             inputMode="numeric"
@@ -506,7 +557,7 @@ export default function ProdutoForm({
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="categoria">Categoria</label>
+        <label htmlFor="categoria">Categoria {selo("republicar")}</label>
         <input
           id="categoria"
           value={valores.categoria}
@@ -517,7 +568,7 @@ export default function ProdutoForm({
       </div>
 
       <fieldset className={styles.field}>
-        <legend>Custo de produção (opcional)</legend>
+        <legend>Custo de produção (opcional) {selo("interno")}</legend>
         <div className={styles.row}>
           <div className={styles.field}>
             <label htmlFor="custoPesoPeca">Peso da peça (g)</label>
@@ -682,7 +733,7 @@ export default function ProdutoForm({
       </fieldset>
 
       <fieldset className={styles.field}>
-        <legend>Dados de embalagem para envio (opcional)</legend>
+        <legend>Dados de embalagem para envio (opcional) {selo("atributos")}</legend>
         <div className={styles.row}>
           <div className={styles.field}>
             <label htmlFor="embalagemPeso">Peso da embalagem (g)</label>
@@ -739,7 +790,7 @@ export default function ProdutoForm({
       </fieldset>
 
       <fieldset className={styles.field}>
-        <legend>Ficha técnica (opcional)</legend>
+        <legend>Ficha técnica (opcional) {selo("atributos")}</legend>
         <div className={styles.row}>
           <div className={styles.field}>
             <label htmlFor="fichaTecnicaAltura">Altura do produto (cm)</label>
@@ -850,7 +901,7 @@ export default function ProdutoForm({
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="mercadoLivreCategoria">Categoria no Mercado Livre</label>
+            <label htmlFor="mercadoLivreCategoria">Categoria no Mercado Livre {selo("republicar")}</label>
             <CategoriaMercadoLivreSelect
               categoriaId={valores.mercadoLivreCategoriaId ?? ""}
               caminho={valores.mercadoLivreCategoriaCaminho ?? ""}
@@ -943,17 +994,19 @@ export default function ProdutoForm({
                   Pode levar de 5 a 10 minutos para aparecer na loja depois da publicação.
                 </span>
                 <span className={styles.mlLinkAviso}>
-                  Preço, estoque e descrição são atualizados automaticamente no anúncio ao salvar o
-                  produto. Nome, categoria e fotos não são atualizados sozinhos — para refletir essas
-                  mudanças, despublique e publique de novo.
+                  Os selos ao lado de cada campo mostram como a mudança chega ao anúncio: preço,
+                  estoque e descrição vão ao salvar; ficha técnica e embalagem precisam de salvar e
+                  &quot;Corrigir atributos&quot;; nome, categoria e fotos só despublicando e
+                  publicando de novo.
                 </span>
                 <span className={styles.mlLinkAviso}>
                   Pausar some da vitrine mas mantém o anúncio (reversível a qualquer momento).
                   Despublicar fecha o anúncio — é praticamente definitivo.
                 </span>
                 <span className={styles.mlLinkAviso}>
-                  &quot;Corrigir atributos&quot; reaplica Marca/Modelo e peso/dimensões de embalagem
-                  no anúncio já publicado, sem precisar despublicar e publicar de novo.
+                  &quot;Corrigir atributos&quot; reaplica Marca/Modelo, ficha técnica e os atributos de
+                  embalagem no anúncio já publicado. O peso/dimensões usados no cálculo do frete só
+                  mudam despublicando e publicando de novo.
                 </span>
                 {erroCorrecaoAtributos && (
                   <span className={styles.fieldError}>{erroCorrecaoAtributos}</span>
@@ -978,7 +1031,7 @@ export default function ProdutoForm({
       {camposErro.integracoes && <p className={styles.formError}>{camposErro.integracoes}</p>}
 
       <div className={styles.field}>
-        <label htmlFor="fotos">Fotos</label>
+        <label htmlFor="fotos">Fotos {selo("republicar")}</label>
         <input id="fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleUpload} disabled={enviandoFoto} />
         {camposErro.fotos && <span className={styles.fieldError}>{camposErro.fotos}</span>}
         {avisoFotos && <span className={styles.fieldWarning}>{avisoFotos}</span>}
@@ -1057,6 +1110,9 @@ export default function ProdutoForm({
         <button type="submit" className={styles.btnPrimary} disabled={salvando || enviandoFoto}>
           {salvando ? "Salvando…" : "Salvar produto"}
         </button>
+        <Link href="/admin/produtos" className={styles.btnGhost}>
+          Voltar para a lista
+        </Link>
         {editando && (
           <button
             type="button"

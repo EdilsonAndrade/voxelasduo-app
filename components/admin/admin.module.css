@@ -94,6 +94,40 @@
   white-space: nowrap;
 }
 
+/* Selos de sincronização com o anúncio do Mercado Livre (ao lado dos rótulos do formulário de produto). */
+.seloSync {
+  composes: badge;
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+  cursor: help;
+}
+
+.seloSyncAuto {
+  composes: seloSync;
+  color: #2f8f52;
+  border-color: #2f8f52;
+}
+
+.seloSyncAtributos {
+  composes: seloSync;
+  color: #b3701f;
+  border-color: #b3701f;
+}
+
+.seloSyncRepublicar {
+  composes: seloSync;
+  color: #c23a3a;
+  border-color: #c23a3a;
+}
+
+.seloSyncInterno {
+  composes: seloSync;
+  color: var(--texto-soft);
+}
+
 .badgeStatusPendente {
   composes: badge;
   color: #b3701f;
