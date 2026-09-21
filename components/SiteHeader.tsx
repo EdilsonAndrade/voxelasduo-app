@@ -30,11 +30,13 @@ export default async function SiteHeader() {
           ) : (
             <Link href="/entrar">Entrar</Link>
           )}
-          {/* Sem sessão de admin, o proxy leva ao login e volta para o painel depois de entrar. */}
-          <Link href="/admin/produtos">Admin</Link>
-          {sessionAdmin?.user && <SairButton className={styles.navBotao} rotulo="Sair do admin" />}
         </nav>
         <div className={styles.actions}>
+          {/* Sem sessão de admin, o proxy leva ao login e volta para o painel depois de entrar. */}
+          <div className={styles.adminLinks}>
+            <Link href="/admin/produtos">Admin</Link>
+            {sessionAdmin?.user && <SairButton className={styles.navBotao} rotulo="Sair do admin" />}
+          </div>
           <CarrinhoIcone />
           <ThemeToggle />
         </div>

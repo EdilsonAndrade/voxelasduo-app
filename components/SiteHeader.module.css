@@ -67,6 +67,33 @@
   margin-left: auto;
 }
 
+/* Área do administrador — separada da navegação do cliente, no lado oposto do cabeçalho. */
+.adminLinks {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding-right: 0.9rem;
+  margin-right: 0.3rem;
+  border-right: 2px solid var(--surface-line);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.adminLinks a {
+  text-decoration: none;
+  color: var(--texto-soft);
+}
+
+.adminLinks a:hover,
+.adminLinks .navBotao:hover {
+  color: var(--roxo);
+}
+
+.adminLinks .navBotao {
+  color: var(--texto-soft);
+}
+
 @media (max-width: 500px) {
   .logo {
     top:-2px;
