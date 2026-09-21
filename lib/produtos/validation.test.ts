@@ -226,4 +226,50 @@ describe("validarProduto", () => {
       "fichaTecnica"
     );
   });
+
+  describe("taxa de falha e taxas dos canais (EDI-106)", () => {
+    const custo = {
+      pesoPecaGramas: 100,
+      tempoImpressaoHoras: 2,
+      tempoMaoDeObraHoras: 1,
+      precoCarreteCentavos: 10000,
+      pesoCarreteGramas: 1000,
+      margemPerdaPercentual: 0,
+      precoImpressoraCentavos: 400000,
+      vidaUtilImpressoraHoras: 4000,
+      consumoEletricoKwh: 0.15,
+      tarifaEnergiaCentavos: 90,
+      valorHoraTrabalhoCentavos: 100,
+      custoEmbalagemCentavos: 500,
+    };
+
+    it("aceita custoProducao sem taxa de falha e com taxa válida", () => {
+      expect(validarProduto({ ...payloadValido, custoProducao: custo })).toEqual({});
+      expect(
+        validarProduto({ ...payloadValido, custoProducao: { ...custo, taxaFalhaPercentual: 10 } })
+      ).toEqual({});
+    });
+
+    it("rejeita taxa de falha negativa ou >= 100", () => {
+      for (const taxaFalhaPercentual of [-1, 100, 150, "10"]) {
+        expect(
+          validarProduto({ ...payloadValido, custoProducao: { ...custo, taxaFalhaPercentual } })
+        ).toHaveProperty("custoProducao");
+      }
+    });
+
+    it("aceita taxasCanais vazio e parcial", () => {
+      expect(validarProduto({ ...payloadValido, taxasCanais: {} })).toEqual({});
+      expect(
+        validarProduto({ ...payloadValido, taxasCanais: { shopeeTaxaPercentual: 20 } })
+      ).toEqual({});
+    });
+
+    it("rejeita taxasCanais com percentual fora do intervalo ou taxa fixa negativa", () => {
+      expect(validarProduto({ ...payloadValido, taxasCanais: { shopeeTaxaPercentual: 100 } })).toHaveProperty("taxasCanais");
+      expect(validarProduto({ ...payloadValido, taxasCanais: { siteTaxaPercentual: -1 } })).toHaveProperty("taxasCanais");
+      expect(validarProduto({ ...payloadValido, taxasCanais: { siteTaxaFixaCentavos: -5 } })).toHaveProperty("taxasCanais");
+      expect(validarProduto({ ...payloadValido, taxasCanais: "x" })).toHaveProperty("taxasCanais");
+    });
+  });
 });

@@ -4,6 +4,28 @@ import { useEffect, useRef, useState } from "react";
 import styles from "./admin.module.css";
 import type { ComissaoMercadoLivre } from "@/lib/produtos/precificacao";
 import { calcularPrecoEscala, calcularPrecoSugerido, calcularSimulacaoPrecificacao } from "@/lib/produtos/precificacao";
+import {
+  calcularComparativoCanais,
+  type CanalVenda,
+  type ResultadoCanal,
+  type TaxasCanaisEfetivas,
+} from "@/lib/produtos/canais";
+
+const NOME_CANAL: Record<CanalVenda, string> = {
+  mercadoLivre: "Mercado Livre",
+  shopee: "Shopee",
+  siteProprio: "Site próprio",
+};
+
+function formatarReais(centavos: number): string {
+  return `R$ ${(centavos / 100).toFixed(2)}`;
+}
+
+function descreverTaxa(taxa: { percentual: number; fixaCentavos: number }): string {
+  return taxa.fixaCentavos > 0
+    ? `${taxa.percentual}% + ${formatarReais(taxa.fixaCentavos)}`
+    : `${taxa.percentual}%`;
+}
 
 /** Espera após a última tecla digitada no preço antes de consultar a comissão real (FR-005, research.md #5). */
 const DEBOUNCE_MS = 500;
@@ -39,6 +61,8 @@ export interface SimuladorPrecificacaoProps {
   depreciacaoCentavos: number | null;
   /** Tempo de impressão da peça, em horas — usado para mostrar o lucro de caixa por hora de impressora. */
   tempoImpressaoHoras: number | null;
+  /** Taxas efetivas de Shopee e site próprio (padrão global com override do produto aplicado) — EDI-106. */
+  taxasCanais: TaxasCanaisEfetivas;
   /** Chamado quando o vendedor clica em "Usar esse preço" no preço sugerido, com o valor pronto para o campo "Preço (R$)". */
   onAplicarPrecoSugerido?: (precoReais: string) => void;
 }
@@ -51,6 +75,7 @@ export default function SimuladorPrecificacao({
   custoCaixaCentavos,
   depreciacaoCentavos,
   tempoImpressaoHoras,
+  taxasCanais,
   onAplicarPrecoSugerido,
 }: SimuladorPrecificacaoProps) {
   const [comissao, setComissao] = useState<ComissaoMercadoLivre | null>(null);
@@ -156,6 +181,26 @@ export default function SimuladorPrecificacao({
       );
     }
   }
+
+  // Comparativo por canal (EDI-106): mesmo custo/margem, cada canal com a própria taxa.
+  const entradasComparativoValidas =
+    custoBaseCentavos !== null &&
+    (modoPreco === "escala"
+      ? lucroEscalaValido
+      : Number.isFinite(margemDesejadaNumero) && margemDesejadaNumero >= 0);
+  const comparativo: ResultadoCanal[] | null =
+    entradasComparativoValidas && custoBaseCentavos !== null
+      ? calcularComparativoCanais({
+          custoBaseCentavos,
+          modo: modoPreco,
+          margemDesejadaPercentual: margemDesejadaNumero,
+          lucroEscalaCentavos: lucroEscalaValido ? paraCentavos(lucroEscalaNumero) : 0,
+          margemMinimaPercentual: margemMinimaNumero,
+          mercadoLivre: { percentual: taxaValida ? taxaEstimadaNumero : 0, fixaCentavos: 0 },
+          shopee: taxasCanais.shopee,
+          siteProprio: taxasCanais.siteProprio,
+        })
+      : null;
 
   const simulacao =
     cogsCentavos !== null && comissaoEfetivaCentavos !== null && precoVendaCentavosOuNull !== null
@@ -275,6 +320,65 @@ export default function SimuladorPrecificacao({
                 ? "Informe o lucro desejado por peça e a taxa estimada da plataforma (menor que 100%) para calcular o preço de escala."
                 : "Informe a margem desejada e a taxa estimada da plataforma (menor que 100%) para calcular o preço sugerido."}
             </span>
+          )}
+
+          {comparativo && (
+            <>
+              <label>Comparativo por canal</label>
+              <div className={styles.comparativoCanais}>
+                {comparativo.map((resultado) => {
+                  const semTaxaMl = resultado.canal === "mercadoLivre" && !taxaValida;
+                  const classe =
+                    resultado.prejuizo
+                      ? styles.comparativoCanalPrejuizo
+                      : resultado.margemBaixa
+                        ? styles.comparativoCanalAviso
+                        : styles.comparativoCanal;
+                  return (
+                    <div key={resultado.canal} className={classe}>
+                      <strong>{NOME_CANAL[resultado.canal]}</strong>
+                      {semTaxaMl ? (
+                        <span className={styles.mlLinkAviso}>
+                          Informe a taxa estimada da plataforma para ver o Mercado Livre.
+                        </span>
+                      ) : resultado.precoSugeridoCentavos === null ? (
+                        <span className={styles.fieldError}>
+                          Taxa inválida ({descreverTaxa(resultado.taxa)}): precisa ser menor que 100%.
+                        </span>
+                      ) : (
+                        <>
+                          <span className={styles.comparativoPreco}>
+                            {formatarReais(resultado.precoSugeridoCentavos)}
+                          </span>
+                          <span className={styles.mlLinkAviso}>
+                            Taxa: {descreverTaxa(resultado.taxa)} ({formatarReais(resultado.comissaoCentavos ?? 0)})
+                          </span>
+                          <span>
+                            Lucro líquido: {formatarReais(resultado.lucroLiquidoCentavos ?? 0)} (
+                            {(resultado.margemPercentual ?? 0).toFixed(1)}% de margem)
+                          </span>
+                          {resultado.prejuizo && <span>⚠ Resulta em prejuízo.</span>}
+                          {!resultado.prejuizo && resultado.margemBaixa && (
+                            <span>⚠ Margem abaixo do mínimo ({margemMinimaPercentual}%).</span>
+                          )}
+                          {onAplicarPrecoSugerido && (
+                            <button
+                              type="button"
+                              className={styles.btnGhost}
+                              onClick={() =>
+                                onAplicarPrecoSugerido((resultado.precoSugeridoCentavos! / 100).toFixed(2))
+                              }
+                            >
+                              Usar esse preço
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </>
       )}

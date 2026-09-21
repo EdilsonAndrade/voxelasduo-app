@@ -11,10 +11,22 @@ import styles from "./admin.module.css";
 import { calcularCustoCaixa, calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import {
   camposCustoProducaoFaltando,
+  custoProducaoParaFormulario,
   montarCustoProducao,
   VAZIO_CUSTO_PRODUCAO,
   type CustoProducaoFormValores,
 } from "@/lib/produtos/custoProducaoFormulario";
+import {
+  camposTaxasCanaisInvalidos,
+  montarTaxasCanaisProduto,
+  taxasCanaisParaFormulario,
+  taxasGlobaisParaPlaceholder,
+  VAZIO_TAXAS_CANAIS,
+  type TaxasCanaisFormValores,
+} from "@/lib/produtos/taxasCanaisFormulario";
+import { resolverTaxasCanais } from "@/lib/produtos/canais";
+import { TAXAS_CANAIS_PADRAO, type TaxasCanaisConfig } from "@/lib/models/configuracao";
+import type { CustoProducao, TaxasCanaisProduto } from "@/lib/models/produto";
 import {
   camposEmbalagemFaltando,
   montarEmbalagemEnvio,
@@ -28,7 +40,12 @@ import {
 } from "@/lib/produtos/fichaTecnicaFormulario";
 import { LIMITE_FOTOS_MERCADO_LIVRE } from "@/lib/estoque/canais/mercadoLivre/fotos";
 
-export type { CustoProducaoFormValores, EmbalagemEnvioFormValores, FichaTecnicaFormValores };
+export type {
+  CustoProducaoFormValores,
+  EmbalagemEnvioFormValores,
+  FichaTecnicaFormValores,
+  TaxasCanaisFormValores,
+};
 
 /** Limite do `family_name` no Mercado Livre (substitui `title` nesta conta, modelo "User Products") — passar disso derruba a publicação com `item.family_name.length_invalid`. */
 const NOME_LIMITE_MERCADO_LIVRE = 60;
@@ -106,6 +123,8 @@ export interface ProdutoFormValores {
   shopeeItemId?: string;
   /** Custo de produção (COGS) — opcional, ausência não bloqueia o cadastro (EDI-92). */
   custoProducao: CustoProducaoFormValores;
+  /** Taxas de Shopee/site próprio sobrescritas neste produto — vazio = herda o padrão global (EDI-106). */
+  taxasCanais: TaxasCanaisFormValores;
   /** Peso/dimensões da embalagem para envio — opcional, ausência não bloqueia a publicação (EDI-96). */
   embalagemEnvio: EmbalagemEnvioFormValores;
   /** Ficha técnica opcional do produto — cada campo é independente, ausência não bloqueia a publicação (EDI-90). */
@@ -126,14 +145,26 @@ const VAZIO: ProdutoFormValores = {
   mercadoLivreCategoriaCaminho: "",
   shopeeItemId: "",
   custoProducao: VAZIO_CUSTO_PRODUCAO,
+  taxasCanais: VAZIO_TAXAS_CANAIS,
   embalagemEnvio: VAZIO_EMBALAGEM_ENVIO,
   fichaTecnica: VAZIO_FICHA_TECNICA,
 };
 
+/** Produto listado na ação "copiar custos de outro produto" — só o necessário para copiar (EDI-106). */
+interface ProdutoParaCopiar {
+  id: string;
+  nome: string;
+  custoProducao: CustoProducao;
+  taxasCanais?: TaxasCanaisProduto;
+}
+
 export default function ProdutoForm({
   valoresIniciais = VAZIO,
+  taxasGlobais = TAXAS_CANAIS_PADRAO,
 }: {
   valoresIniciais?: ProdutoFormValores;
+  /** Padrão global das taxas de Shopee/site próprio, definido em /admin/configuracoes. */
+  taxasGlobais?: TaxasCanaisConfig;
 }) {
   const router = useRouter();
   const [valores, setValores] = useState(valoresIniciais);
@@ -154,6 +185,11 @@ export default function ProdutoForm({
   const [confirmandoDespublicar, setConfirmandoDespublicar] = useState(false);
   const [confirmandoExcluir, setConfirmandoExcluir] = useState(false);
   const [toastMensagem, setToastMensagem] = useState<string | null>(null);
+  const [produtosParaCopiar, setProdutosParaCopiar] = useState<ProdutoParaCopiar[] | null>(null);
+  const [carregandoCopia, setCarregandoCopia] = useState(false);
+  const [origemCopiaId, setOrigemCopiaId] = useState("");
+  const [erroCopia, setErroCopia] = useState<string | null>(null);
+  const [confirmandoCopia, setConfirmandoCopia] = useState(false);
 
   const editando = Boolean(valoresIniciais.id);
   const publicadoNoMercadoLivre = editando && Boolean(valores.mercadoLivreId?.trim());
@@ -171,6 +207,75 @@ export default function ProdutoForm({
 
   function atualizarCampo<K extends keyof ProdutoFormValores>(campo: K, valor: ProdutoFormValores[K]) {
     setValores((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  function atualizarCampoTaxasCanais<K extends keyof TaxasCanaisFormValores>(
+    campo: K,
+    valor: string
+  ) {
+    setValores((atual) => ({
+      ...atual,
+      taxasCanais: { ...atual.taxasCanais, [campo]: valor },
+    }));
+  }
+
+  /** Carrega, sob demanda, os produtos que têm custo de produção para servir de origem da cópia (EDI-106). */
+  async function abrirCopiaDeCustos() {
+    setErroCopia(null);
+    setCarregandoCopia(true);
+    try {
+      const resposta = await fetch("/api/produtos");
+      const dados = await resposta.json();
+      if (!resposta.ok) {
+        setErroCopia(dados.erro ?? "Não foi possível carregar os produtos.");
+        return;
+      }
+      const lista: ProdutoParaCopiar[] = (dados.produtos as Array<Record<string, unknown>>)
+        .filter((p) => p.custoProducao && String(p._id) !== valoresIniciais.id)
+        .map((p) => ({
+          id: String(p._id),
+          nome: String(p.nome),
+          custoProducao: p.custoProducao as CustoProducao,
+          taxasCanais: p.taxasCanais as TaxasCanaisProduto | undefined,
+        }));
+      setProdutosParaCopiar(lista);
+      setOrigemCopiaId("");
+      if (lista.length === 0) {
+        setErroCopia("Nenhum outro produto tem custo de produção preenchido para copiar.");
+      }
+    } catch {
+      setErroCopia("Não foi possível carregar os produtos no momento.");
+    } finally {
+      setCarregandoCopia(false);
+    }
+  }
+
+  const custoJaPreenchido =
+    JSON.stringify(valores.custoProducao) !== JSON.stringify(VAZIO_CUSTO_PRODUCAO) ||
+    JSON.stringify(valores.taxasCanais) !== JSON.stringify(VAZIO_TAXAS_CANAIS);
+
+  function pedirCopiaDeCustos() {
+    if (!origemCopiaId) return;
+    if (custoJaPreenchido) {
+      setConfirmandoCopia(true);
+      return;
+    }
+    aplicarCopiaDeCustos();
+  }
+
+  /** Copia custos, taxa de falha e taxas por produto da origem — só valores, sem vínculo posterior. */
+  function aplicarCopiaDeCustos() {
+    setConfirmandoCopia(false);
+    const origem = produtosParaCopiar?.find((p) => p.id === origemCopiaId);
+    if (!origem) return;
+    setValores((atual) => ({
+      ...atual,
+      custoProducao: custoProducaoParaFormulario(origem.custoProducao),
+      taxasCanais: taxasCanaisParaFormulario(origem.taxasCanais),
+    }));
+    setProdutosParaCopiar(null);
+    setOrigemCopiaId("");
+    setToastMensagem(`Custos copiados de "${origem.nome}". Ajuste o que for diferente e salve.`);
   }
 
   function atualizarCampoCustoProducao<K extends keyof CustoProducaoFormValores>(
@@ -215,6 +320,16 @@ export default function ProdutoForm({
     () => (custoProducaoCalculado ? calcularCustoProducao(custoProducaoCalculado) : null),
     [custoProducaoCalculado]
   );
+
+  const taxasCanaisInvalidas = useMemo(
+    () => camposTaxasCanaisInvalidos(valores.taxasCanais),
+    [valores.taxasCanais]
+  );
+  const taxasCanaisEfetivas = useMemo(
+    () => resolverTaxasCanais(taxasGlobais, montarTaxasCanaisProduto(valores.taxasCanais)),
+    [taxasGlobais, valores.taxasCanais]
+  );
+  const placeholderTaxasGlobais = taxasGlobaisParaPlaceholder(taxasGlobais);
 
   const camposEmbalagemNaoPreenchidos = useMemo(
     () => camposEmbalagemFaltando(valores.embalagemEnvio),
@@ -314,6 +429,7 @@ export default function ProdutoForm({
         shopeeItemId: valores.shopeeItemId?.trim() || undefined,
       },
       custoProducao: custoProducaoCalculado ?? undefined,
+      taxasCanais: montarTaxasCanaisProduto(valores.taxasCanais),
       embalagemEnvio: embalagemEnvioCalculada ?? undefined,
       fichaTecnica: fichaTecnicaCalculada ?? undefined,
     };
@@ -569,6 +685,45 @@ export default function ProdutoForm({
 
       <fieldset className={styles.field}>
         <legend>Custo de produção (opcional) {selo("interno")}</legend>
+
+        <div className={styles.field}>
+          <div className={styles.row}>
+            <button
+              type="button"
+              className={styles.btnGhost}
+              onClick={abrirCopiaDeCustos}
+              disabled={carregandoCopia}
+            >
+              {carregandoCopia ? "Carregando…" : "Copiar custos de outro produto"}
+            </button>
+            {produtosParaCopiar && produtosParaCopiar.length > 0 && (
+              <>
+                <select
+                  aria-label="Produto de origem dos custos"
+                  value={origemCopiaId}
+                  onChange={(e) => setOrigemCopiaId(e.target.value)}
+                >
+                  <option value="">Escolha o produto…</option>
+                  {produtosParaCopiar.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className={styles.btnPrimary}
+                  onClick={pedirCopiaDeCustos}
+                  disabled={!origemCopiaId}
+                >
+                  Copiar
+                </button>
+              </>
+            )}
+          </div>
+          {erroCopia && <span className={styles.mlLinkAviso}>{erroCopia}</span>}
+        </div>
+
         <div className={styles.row}>
           <div className={styles.field}>
             <label htmlFor="custoPesoPeca">Peso da peça (g)</label>
@@ -632,6 +787,19 @@ export default function ProdutoForm({
               value={valores.custoProducao.margemPerdaPercentual}
               onChange={(e) => atualizarCampoCustoProducao("margemPerdaPercentual", e.target.value)}
             />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="custoTaxaFalha">Taxa de falha de impressão (%)</label>
+            <input
+              id="custoTaxaFalha"
+              inputMode="decimal"
+              placeholder="0"
+              value={valores.custoProducao.taxaFalhaPercentual}
+              onChange={(e) => atualizarCampoCustoProducao("taxaFalhaPercentual", e.target.value)}
+            />
+            <span className={styles.mlLinkAviso}>
+              A margem de perda cobre só o filamento; a falha cobre a peça inteira (custo ÷ (1 − falha)).
+            </span>
           </div>
         </div>
 
@@ -721,6 +889,8 @@ export default function ProdutoForm({
               {(resultadoCogs.custoDepreciacaoCentavos / 100).toFixed(2)} · Mão de obra: R${" "}
               {(resultadoCogs.custoMaoDeObraCentavos / 100).toFixed(2)} · Embalagem: R${" "}
               {(resultadoCogs.custoEmbalagemCentavos / 100).toFixed(2)}
+              {resultadoCogs.custoFalhaCentavos > 0 &&
+                ` · Falhas de impressão (${resultadoCogs.taxaFalhaPercentual}%): R$ ${(resultadoCogs.custoFalhaCentavos / 100).toFixed(2)}`}
             </span>
           </div>
         ) : (
@@ -872,6 +1042,49 @@ export default function ProdutoForm({
         )}
       </fieldset>
 
+      <fieldset className={styles.field}>
+        <legend>Taxas dos canais neste produto (opcional)</legend>
+        <span className={styles.mlLinkAviso}>
+          Deixe em branco para usar o padrão global (editável em &quot;Taxas dos canais&quot;).
+        </span>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="taxaShopeeProduto">Taxa da Shopee (%)</label>
+            <input
+              id="taxaShopeeProduto"
+              inputMode="decimal"
+              placeholder={placeholderTaxasGlobais.shopeeTaxaPercentual}
+              value={valores.taxasCanais.shopeeTaxaPercentual}
+              onChange={(e) => atualizarCampoTaxasCanais("shopeeTaxaPercentual", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="taxaSiteProduto">Taxa do gateway do site (%)</label>
+            <input
+              id="taxaSiteProduto"
+              inputMode="decimal"
+              placeholder={placeholderTaxasGlobais.siteTaxaPercentual}
+              value={valores.taxasCanais.siteTaxaPercentual}
+              onChange={(e) => atualizarCampoTaxasCanais("siteTaxaPercentual", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="taxaSiteFixaProduto">Taxa fixa do site por venda (R$)</label>
+            <input
+              id="taxaSiteFixaProduto"
+              inputMode="decimal"
+              placeholder={placeholderTaxasGlobais.siteTaxaFixaReais}
+              value={valores.taxasCanais.siteTaxaFixaReais}
+              onChange={(e) => atualizarCampoTaxasCanais("siteTaxaFixaReais", e.target.value)}
+            />
+          </div>
+        </div>
+        {taxasCanaisInvalidas.length > 0 && (
+          <span className={styles.fieldError}>Corrija: {taxasCanaisInvalidas.join(", ")}.</span>
+        )}
+        {camposErro.taxasCanais && <span className={styles.fieldError}>{camposErro.taxasCanais}</span>}
+      </fieldset>
+
       <SimuladorPrecificacao
         nome={valores.nome}
         categoria={valores.categoria}
@@ -880,6 +1093,7 @@ export default function ProdutoForm({
         custoCaixaCentavos={resultadoCogs ? calcularCustoCaixa(resultadoCogs) : null}
         depreciacaoCentavos={resultadoCogs?.custoDepreciacaoCentavos ?? null}
         tempoImpressaoHoras={custoProducaoCalculado?.tempoImpressaoHoras ?? null}
+        taxasCanais={taxasCanaisEfetivas}
         onAplicarPrecoSugerido={(preco) => atualizarCampo("precoReais", preco)}
       />
 
@@ -1125,6 +1339,14 @@ export default function ProdutoForm({
         )}
       </div>
       </form>
+      <ConfirmModal
+        aberto={confirmandoCopia}
+        titulo="Substituir custos?"
+        mensagem="Os custos de produção e as taxas já preenchidos neste produto serão substituídos pelos do produto escolhido. Nada é salvo até você clicar em salvar."
+        textoConfirmar="Substituir"
+        onConfirmar={aplicarCopiaDeCustos}
+        onCancelar={() => setConfirmandoCopia(false)}
+      />
       <ConfirmModal
         aberto={confirmandoDespublicar}
         titulo="Despublicar anúncio?"

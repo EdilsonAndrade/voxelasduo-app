@@ -13,6 +13,8 @@ export interface ProdutoPayload {
   embalagemEnvio?: unknown;
   /** Ficha técnica opcional do produto (EDI-90) — opcional, produto pode ser salvo sem nenhum campo preenchido. */
   fichaTecnica?: unknown;
+  /** Taxas de canal próprias do produto (EDI-106) — opcional; ausente/vazio = herda o padrão global. */
+  taxasCanais?: unknown;
 }
 
 /** Campos monetários/numéricos obrigatórios de `custoProducao`, todos exigidos > 0 quando o objeto está presente (EDI-92). */
@@ -55,6 +57,42 @@ function validarCustoProducao(valor: unknown): string | undefined {
 
   if (!numeroFinito(custo.margemPerdaPercentual) || (custo.margemPerdaPercentual as number) < 0) {
     return "A margem de perda não pode ser negativa.";
+  }
+
+  if (
+    custo.taxaFalhaPercentual !== undefined &&
+    (!numeroFinito(custo.taxaFalhaPercentual) ||
+      custo.taxaFalhaPercentual < 0 ||
+      custo.taxaFalhaPercentual >= 100)
+  ) {
+    return "A taxa de falha deve estar entre 0 e menos de 100%.";
+  }
+
+  return undefined;
+}
+
+/**
+ * Valida `taxasCanais` quando presente no payload (EDI-106): cada campo é
+ * individualmente opcional; percentuais em 0 ≤ x < 100 e taxa fixa ≥ 0.
+ */
+function validarTaxasCanais(valor: unknown): string | undefined {
+  if (typeof valor !== "object" || valor === null || Array.isArray(valor)) {
+    return "Formato de taxas dos canais inválido.";
+  }
+
+  const taxas = valor as Record<string, unknown>;
+
+  for (const campo of ["shopeeTaxaPercentual", "siteTaxaPercentual"] as const) {
+    if (taxas[campo] === undefined) continue;
+    if (!numeroFinito(taxas[campo]) || (taxas[campo] as number) < 0 || (taxas[campo] as number) >= 100) {
+      return `Informe um percentual entre 0 e menos de 100 para "${campo}".`;
+    }
+  }
+
+  if (taxas.siteTaxaFixaCentavos !== undefined) {
+    if (!numeroFinito(taxas.siteTaxaFixaCentavos) || taxas.siteTaxaFixaCentavos < 0) {
+      return 'A taxa fixa do site próprio não pode ser negativa.';
+    }
   }
 
   return undefined;
@@ -190,6 +228,13 @@ export function validarProduto(
     const erro = validarCustoProducao(payload.custoProducao);
     if (erro) {
       erros.custoProducao = erro;
+    }
+  }
+
+  if (payload.taxasCanais !== undefined) {
+    const erro = validarTaxasCanais(payload.taxasCanais);
+    if (erro) {
+      erros.taxasCanais = erro;
     }
   }
 

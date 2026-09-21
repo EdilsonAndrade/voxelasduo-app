@@ -43,8 +43,28 @@ describe("calcularCustoProducao", () => {
       resultado.custoDepreciacaoCentavos +
       resultado.custoEnergiaCentavos +
       resultado.custoMaoDeObraCentavos +
-      resultado.custoEmbalagemCentavos;
+      resultado.custoEmbalagemCentavos +
+      resultado.custoFalhaCentavos;
     expect(resultado.totalCentavos).toBe(somaComponentes);
+  });
+
+  it("sem taxa de falha (ausente ou 0) o resultado é idêntico ao anterior", () => {
+    expect(calcularCustoProducao(custoReferencia).custoFalhaCentavos).toBe(0);
+    const comZero = calcularCustoProducao({ ...custoReferencia, taxaFalhaPercentual: 0 });
+    expect(comZero.custoFalhaCentavos).toBe(0);
+    expect(comZero.totalCentavos).toBe(2995);
+  });
+
+  it("com falha de 10% o custo por peça boa é o custo ÷ 0,90", () => {
+    const resultado = calcularCustoProducao({ ...custoReferencia, taxaFalhaPercentual: 10 });
+    expect(resultado.totalCentavos).toBe(Math.round(2995 / 0.9)); // 3328
+    expect(resultado.custoFalhaCentavos).toBe(3328 - 2995);
+  });
+
+  it("a margem de perda continua só sobre o filamento, sem dupla contagem com a falha", () => {
+    const resultado = calcularCustoProducao({ ...custoReferencia, taxaFalhaPercentual: 10 });
+    expect(resultado.custoFilamentoCentavos).toBe(1320);
+    expect(resultado.custoEnergiaCentavos).toBe(61);
   });
 
   it("calcula custo zero para tempo de impressão e mão de obra zerados, mantendo filamento e embalagem", () => {
@@ -69,5 +89,10 @@ describe("calcularCustoCaixa", () => {
       cogs.custoFilamentoCentavos + cogs.custoEnergiaCentavos + cogs.custoEmbalagemCentavos
     );
     expect(calcularCustoCaixa(cogs)).toBeLessThan(cogs.totalCentavos);
+  });
+
+  it("divide o custo de caixa por (1 − falha)", () => {
+    const cogs = calcularCustoProducao({ ...custoReferencia, taxaFalhaPercentual: 10 });
+    expect(calcularCustoCaixa(cogs)).toBe(Math.round((1320 + 61 + 350) / 0.9));
   });
 });

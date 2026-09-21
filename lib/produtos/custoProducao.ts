@@ -7,7 +7,11 @@ export interface ResultadoCogs {
   custoDepreciacaoCentavos: number;
   custoMaoDeObraCentavos: number;
   custoEmbalagemCentavos: number;
-  /** Soma de todos os componentes acima. */
+  /** Custo extra das peças perdidas: (soma dos componentes ÷ (1 − falha)) − soma. Zero sem taxa de falha (EDI-106). */
+  custoFalhaCentavos: number;
+  /** Taxa de falha usada no cálculo (0 quando ausente). */
+  taxaFalhaPercentual: number;
+  /** Soma de todos os componentes acima — já é o custo por peça boa. */
   totalCentavos: number;
 }
 
@@ -18,7 +22,18 @@ export interface ResultadoCogs {
  * estaria ociosa.
  */
 export function calcularCustoCaixa(cogs: ResultadoCogs): number {
-  return cogs.custoFilamentoCentavos + cogs.custoEnergiaCentavos + cogs.custoEmbalagemCentavos;
+  const caixa = cogs.custoFilamentoCentavos + cogs.custoEnergiaCentavos + cogs.custoEmbalagemCentavos;
+  return aplicarTaxaFalha(caixa, cogs.taxaFalhaPercentual);
+}
+
+/**
+ * Custo médio por peça boa: `custo ÷ (1 − falha)` (EDI-106). Sem falha (0 ou
+ * inválida) devolve o custo intacto; falha `>= 100%` também, por não haver
+ * peça boa — a validação impede esse valor na entrada.
+ */
+export function aplicarTaxaFalha(custoCentavos: number, taxaFalhaPercentual: number): number {
+  if (!(taxaFalhaPercentual > 0) || taxaFalhaPercentual >= 100) return custoCentavos;
+  return Math.round(custoCentavos / (1 - taxaFalhaPercentual / 100));
 }
 
 /**
@@ -46,12 +61,15 @@ export function calcularCustoProducao(custo: CustoProducao): ResultadoCogs {
 
   const custoEmbalagemCentavos = Math.round(custo.custoEmbalagemCentavos);
 
-  const totalCentavos =
+  const taxaFalhaPercentual = custo.taxaFalhaPercentual ?? 0;
+  const subtotalCentavos =
     custoFilamentoCentavos +
     custoDepreciacaoCentavos +
     custoEnergiaCentavos +
     custoMaoDeObraCentavos +
     custoEmbalagemCentavos;
+  const custoFalhaCentavos = aplicarTaxaFalha(subtotalCentavos, taxaFalhaPercentual) - subtotalCentavos;
+  const totalCentavos = subtotalCentavos + custoFalhaCentavos;
 
   return {
     custoFilamentoCentavos,
@@ -59,6 +77,8 @@ export function calcularCustoProducao(custo: CustoProducao): ResultadoCogs {
     custoDepreciacaoCentavos,
     custoMaoDeObraCentavos,
     custoEmbalagemCentavos,
+    custoFalhaCentavos,
+    taxaFalhaPercentual,
     totalCentavos,
   };
 }

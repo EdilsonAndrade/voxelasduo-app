@@ -7,6 +7,7 @@ import type {
   EmbalagemEnvio,
   FichaTecnicaProduto,
   IntegracoesCanal,
+  TaxasCanaisProduto,
 } from "@/lib/models/produto";
 
 export async function GET(request: Request) {
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
     fotos: payload.fotos as string[],
     integracoes: payload.integracoes as IntegracoesCanal | undefined,
     custoProducao: payload.custoProducao as CustoProducao | undefined,
+    taxasCanais: payload.taxasCanais as TaxasCanaisProduto | undefined,
     embalagemEnvio: payload.embalagemEnvio as EmbalagemEnvio | undefined,
     fichaTecnica: payload.fichaTecnica as FichaTecnicaProduto | undefined,
   });

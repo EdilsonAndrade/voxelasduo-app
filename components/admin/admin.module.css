@@ -251,6 +251,20 @@
   color: var(--preto);
 }
 
+.field select {
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.95rem;
+  color: var(--preto);
+}
+
+.field select:focus {
+  border-color: var(--roxo);
+  outline: none;
+}
+
 .field input:focus,
 .field textarea:focus {
   border-color: var(--roxo);
@@ -787,4 +801,39 @@
   justify-content: flex-end;
   gap: 0.5rem;
   align-items: center;
+}
+
+/* Comparativo de preço por canal (EDI-106) */
+.comparativoCanais {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem;
+}
+
+.comparativoCanal,
+.comparativoCanalAviso,
+.comparativoCanalPrejuizo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.comparativoCanalAviso {
+  border-color: #d9a441;
+}
+
+.comparativoCanalPrejuizo {
+  border-color: #c23a3a;
+}
+
+.comparativoPreco {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--roxo);
 }

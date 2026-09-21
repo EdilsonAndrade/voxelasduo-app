@@ -1,0 +1,29 @@
+export const CONFIGURACOES_COLLECTION = "configuracoes";
+
+/** `_id` fixo do documento único de taxas dos canais de venda (EDI-106). */
+export const TAXAS_CANAIS_ID = "taxasCanais";
+
+/**
+ * Padrão global das taxas dos canais sem consulta automática (EDI-106):
+ * Shopee (estimativa) e site próprio (meio de pagamento). Cada produto pode
+ * sobrescrever qualquer campo via `Produto.taxasCanais`. Percentuais em número
+ * (14 = 14%), taxa fixa em centavos.
+ */
+export interface TaxasCanaisConfig {
+  shopeeTaxaPercentual: number;
+  siteTaxaPercentual: number;
+  siteTaxaFixaCentavos: number;
+}
+
+/** Documento persistido — `_id` fixo, um único por loja. */
+export interface TaxasCanaisDocumento extends TaxasCanaisConfig {
+  _id: typeof TAXAS_CANAIS_ID;
+  atualizadoEm: Date;
+}
+
+/** Valores usados enquanto o vendedor ainda não salvou a própria configuração. */
+export const TAXAS_CANAIS_PADRAO: TaxasCanaisConfig = {
+  shopeeTaxaPercentual: 14,
+  siteTaxaPercentual: 4.99,
+  siteTaxaFixaCentavos: 0,
+};

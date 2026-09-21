@@ -15,6 +15,7 @@ export default async function AdminPainelLayout({ children }: { children: React.
             <Link href="/admin/produtos">Produtos</Link>
             <Link href="/admin/pedidos">Pedidos</Link>
             <Link href="/admin/atendimento">Atendimento</Link>
+            <Link href="/admin/configuracoes">Taxas dos canais</Link>
             <Link href="/">Ver site ↗</Link>
           </nav>
           <div className={styles.topoAdminUsuario}>

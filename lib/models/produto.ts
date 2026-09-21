@@ -35,6 +35,13 @@ export interface CustoProducao {
   pesoCarreteGramas: number;
   /** Margem de perda/purga/testes, em percentual (ex: 10 = 10%). */
   margemPerdaPercentual: number;
+  /**
+   * Taxa de falha de impressão, em percentual (ex: 10 = 10%) — diferente da
+   * margem de perda, que cobre só o filamento: a peça que falha também consome
+   * energia, depreciação e mão de obra. Custo por peça boa = custo ÷ (1 − falha).
+   * Ausente = 0% (EDI-106).
+   */
+  taxaFalhaPercentual?: number;
   /** Preço de compra da impressora, em centavos. */
   precoImpressoraCentavos: number;
   /** Vida útil estimada da impressora, em horas. */
@@ -47,6 +54,16 @@ export interface CustoProducao {
   valorHoraTrabalhoCentavos: number;
   /** Custo de embalagem/envio por unidade, em centavos. */
   custoEmbalagemCentavos: number;
+}
+
+/**
+ * Taxas dos canais sobrescritas para este produto (EDI-106) — cada campo é
+ * opcional; ausente = herda o padrão global (`TaxasCanaisConfig`).
+ */
+export interface TaxasCanaisProduto {
+  shopeeTaxaPercentual?: number;
+  siteTaxaPercentual?: number;
+  siteTaxaFixaCentavos?: number;
 }
 
 /**
@@ -111,6 +128,8 @@ export interface Produto {
   integracoes?: IntegracoesCanal;
   /** Custo de produção específico deste produto — ausente = ainda não configurado (EDI-92). */
   custoProducao?: CustoProducao;
+  /** Taxas de canal próprias deste produto — ausente/vazio = usa o padrão global (EDI-106). */
+  taxasCanais?: TaxasCanaisProduto;
   /** Dados de embalagem para cálculo de frete no Mercado Livre — ausente = ainda não configurado (EDI-96). */
   embalagemEnvio?: EmbalagemEnvio;
   /** Ficha técnica opcional do produto (dimensões, peso, material, itens inclusos) — ausente = não preenchida (EDI-90). */

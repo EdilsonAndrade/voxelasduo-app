@@ -4,6 +4,8 @@ import { buscarProdutoPorId } from "@/lib/produtos/repository";
 import { custoProducaoParaFormulario } from "@/lib/produtos/custoProducaoFormulario";
 import { embalagemEnvioParaFormulario } from "@/lib/produtos/embalagemEnvioFormulario";
 import { fichaTecnicaParaFormulario } from "@/lib/produtos/fichaTecnicaFormulario";
+import { taxasCanaisParaFormulario } from "@/lib/produtos/taxasCanaisFormulario";
+import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
 import styles from "@/components/admin/admin.module.css";
 
 export default async function EditarProdutoPage({
@@ -12,7 +14,7 @@ export default async function EditarProdutoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const produto = await buscarProdutoPorId(id);
+  const [produto, taxasGlobais] = await Promise.all([buscarProdutoPorId(id), buscarTaxasCanais()]);
 
   if (!produto) {
     notFound();
@@ -24,6 +26,7 @@ export default async function EditarProdutoPage({
         <h1>Editar produto</h1>
       </div>
       <ProdutoForm
+        taxasGlobais={taxasGlobais}
         valoresIniciais={{
           id,
           nome: produto.nome,
@@ -39,6 +42,7 @@ export default async function EditarProdutoPage({
           mercadoLivreCategoriaCaminho: produto.integracoes?.mercadoLivreCategoriaCaminho ?? "",
           shopeeItemId: produto.integracoes?.shopeeItemId ?? "",
           custoProducao: custoProducaoParaFormulario(produto.custoProducao),
+          taxasCanais: taxasCanaisParaFormulario(produto.taxasCanais),
           embalagemEnvio: embalagemEnvioParaFormulario(produto.embalagemEnvio),
           fichaTecnica: fichaTecnicaParaFormulario(produto.fichaTecnica),
         }}

@@ -16,6 +16,8 @@ export interface CustoProducaoFormValores {
   precoCarreteReais: string;
   pesoCarreteGramas: string;
   margemPerdaPercentual: string;
+  /** Opcional — vazio = 0% (EDI-106). */
+  taxaFalhaPercentual: string;
   precoImpressoraReais: string;
   vidaUtilImpressoraHoras: string;
   consumoEletricoKwh: string;
@@ -37,6 +39,7 @@ export const VAZIO_CUSTO_PRODUCAO: CustoProducaoFormValores = {
   precoCarreteReais: "100.00",
   pesoCarreteGramas: "1000",
   margemPerdaPercentual: "",
+  taxaFalhaPercentual: "",
   precoImpressoraReais: "4570.00",
   vidaUtilImpressoraHoras: "4000",
   consumoEletricoKwh: "0.15",
@@ -83,6 +86,13 @@ export function camposCustoProducaoFaltando(form: CustoProducaoFormValores): str
       faltando.push(label);
     }
   }
+  const falha = form.taxaFalhaPercentual.trim();
+  if (falha !== "") {
+    const numero = numeroDeTexto(falha);
+    if (!Number.isFinite(numero) || numero < 0 || numero >= 100) {
+      faltando.push("taxa de falha (entre 0 e 99,9%)");
+    }
+  }
   return faltando;
 }
 
@@ -99,6 +109,8 @@ export function montarCustoProducao(form: CustoProducaoFormValores): CustoProduc
     precoCarreteCentavos: centavos(form.precoCarreteReais),
     pesoCarreteGramas: numeroDeTexto(form.pesoCarreteGramas),
     margemPerdaPercentual: numeroDeTexto(form.margemPerdaPercentual),
+    taxaFalhaPercentual:
+      form.taxaFalhaPercentual.trim() === "" ? 0 : numeroDeTexto(form.taxaFalhaPercentual),
     precoImpressoraCentavos: centavos(form.precoImpressoraReais),
     vidaUtilImpressoraHoras: numeroDeTexto(form.vidaUtilImpressoraHoras),
     consumoEletricoKwh: numeroDeTexto(form.consumoEletricoKwh),
@@ -121,6 +133,8 @@ export function custoProducaoParaFormulario(custo?: CustoProducao): CustoProduca
     precoCarreteReais: reais(custo.precoCarreteCentavos),
     pesoCarreteGramas: String(custo.pesoCarreteGramas),
     margemPerdaPercentual: String(custo.margemPerdaPercentual),
+    taxaFalhaPercentual:
+      custo.taxaFalhaPercentual ? String(custo.taxaFalhaPercentual) : "",
     precoImpressoraReais: reais(custo.precoImpressoraCentavos),
     vidaUtilImpressoraHoras: String(custo.vidaUtilImpressoraHoras),
     consumoEletricoKwh: String(custo.consumoEletricoKwh),
