@@ -680,6 +680,27 @@
   color: var(--roxo);
 }
 
+.topoAdminNav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+  margin-right: auto;
+  margin-left: 1.75rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.topoAdminNav a {
+  color: var(--preto);
+  text-decoration: none;
+}
+
+.topoAdminNav a:hover {
+  color: var(--roxo);
+}
+
 .topoAdminUsuario {
   display: flex;
   align-items: center;

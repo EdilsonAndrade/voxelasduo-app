@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@/lib/auth/config";
 import SairButton from "@/components/admin/SairButton";
 import styles from "@/components/admin/admin.module.css";
@@ -10,6 +11,12 @@ export default async function AdminPainelLayout({ children }: { children: React.
       <div className={styles.topoAdmin}>
         <div className={`container ${styles.topoAdminConteudo}`}>
           <span className={styles.topoAdminMarca}>Voxelas Duo · painel</span>
+          <nav className={styles.topoAdminNav}>
+            <Link href="/admin/produtos">Produtos</Link>
+            <Link href="/admin/pedidos">Pedidos</Link>
+            <Link href="/admin/atendimento">Atendimento</Link>
+            <Link href="/">Ver site ↗</Link>
+          </nav>
           <div className={styles.topoAdminUsuario}>
             {session?.user?.name && <span>{session.user.name}</span>}
             <SairButton />

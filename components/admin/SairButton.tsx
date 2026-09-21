@@ -3,14 +3,14 @@
 import { signOut } from "next-auth/react";
 import styles from "./admin.module.css";
 
-export default function SairButton() {
+export default function SairButton({ className, rotulo = "Sair" }: { className?: string; rotulo?: string }) {
   return (
     <button
       type="button"
-      className={styles.btnGhost}
+      className={className ?? styles.btnGhost}
       onClick={() => signOut({ callbackUrl: "/admin/login" })}
     >
-      Sair
+      {rotulo}
     </button>
   );
 }
