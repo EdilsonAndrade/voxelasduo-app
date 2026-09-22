@@ -6,6 +6,8 @@ import type { ComissaoMercadoLivre } from "@/lib/produtos/precificacao";
 import { calcularPrecoEscala, calcularPrecoSugerido, calcularSimulacaoPrecificacao } from "@/lib/produtos/precificacao";
 import {
   calcularComparativoCanais,
+  calcularPrecoMinimoCanal,
+  calcularResultadoPisoCanal,
   type CanalVenda,
   type ResultadoCanal,
   type TaxasCanaisEfetivas,
@@ -29,9 +31,6 @@ function descreverTaxa(taxa: { percentual: number; fixaCentavos: number }): stri
 
 /** Espera após a última tecla digitada no preço antes de consultar a comissão real (FR-005, research.md #5). */
 const DEBOUNCE_MS = 500;
-
-/** Margem mínima padrão sugerida quando o vendedor ainda não configurou a própria (FR-010). */
-const MARGEM_MINIMA_PADRAO = "20";
 
 /** Margem de lucro desejada padrão, usada só para calcular o preço sugerido (mesmo valor de exemplo da planilha do solicitante). */
 const MARGEM_DESEJADA_PADRAO = "100";
@@ -63,6 +62,10 @@ export interface SimuladorPrecificacaoProps {
   tempoImpressaoHoras: number | null;
   /** Taxas efetivas de Shopee e site próprio (padrão global com override do produto aplicado) — EDI-106. */
   taxasCanais: TaxasCanaisEfetivas;
+  /** Margem mínima efetiva (padrão global com override do produto já aplicado) — piso de segurança pra promoções (EDI-108). */
+  margemMinimaPercentual: number;
+  /** Preço de venda próprio de ML/Shopee, em centavos — ausente num canal = usa `precoVendaReais` (o preço do site) também nesse canal (EDI-108). */
+  precosCanaisCentavos?: { mercadoLivre?: number; shopee?: number };
   /** Chamado quando o vendedor clica em "Usar esse preço" no preço sugerido, com o valor pronto para o campo "Preço (R$)". */
   onAplicarPrecoSugerido?: (precoReais: string) => void;
 }
@@ -76,13 +79,14 @@ export default function SimuladorPrecificacao({
   depreciacaoCentavos,
   tempoImpressaoHoras,
   taxasCanais,
+  margemMinimaPercentual,
+  precosCanaisCentavos,
   onAplicarPrecoSugerido,
 }: SimuladorPrecificacaoProps) {
   const [comissao, setComissao] = useState<ComissaoMercadoLivre | null>(null);
   const [comissaoManualReais, setComissaoManualReais] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [margemMinimaPercentual, setMargemMinimaPercentual] = useState(MARGEM_MINIMA_PADRAO);
   const [margemDesejadaPercentual, setMargemDesejadaPercentual] = useState(MARGEM_DESEJADA_PADRAO);
   const [taxaEstimadaPercentual, setTaxaEstimadaPercentual] = useState("");
   const [lucroEscalaReais, setLucroEscalaReais] = useState("");
@@ -154,8 +158,6 @@ export default function SimuladorPrecificacao({
       : null;
   const comissaoEfetivaCentavos = comissaoManualCentavos ?? comissao?.saleFeeAmountCentavos ?? null;
 
-  const margemMinimaNumero = Number(margemMinimaPercentual.replace(",", ".")) || 0;
-
   const margemDesejadaNumero = Number(margemDesejadaPercentual.replace(",", "."));
   const taxaEstimadaNumero = Number(taxaEstimadaPercentual.replace(",", "."));
   const custoBaseCentavos = modoPreco === "escala" ? custoCaixaCentavos : cogsCentavos;
@@ -195,12 +197,18 @@ export default function SimuladorPrecificacao({
           modo: modoPreco,
           margemDesejadaPercentual: margemDesejadaNumero,
           lucroEscalaCentavos: lucroEscalaValido ? paraCentavos(lucroEscalaNumero) : 0,
-          margemMinimaPercentual: margemMinimaNumero,
+          margemMinimaPercentual,
           mercadoLivre: { percentual: taxaValida ? taxaEstimadaNumero : 0, fixaCentavos: 0 },
           shopee: taxasCanais.shopee,
           siteProprio: taxasCanais.siteProprio,
         })
       : null;
+
+  // "Preço atual" pro desconto máximo (EDI-108): o preço realmente praticado
+  // hoje (campo "Preço (R$)"), não o preço sugerido hipotético acima — o
+  // mesmo em todos os canais até cada um ter preço próprio (US2/T017).
+  const precoAtualCentavos =
+    precoVendaCentavosOuNull !== null ? paraCentavos(precoVendaCentavosOuNull) : null;
 
   const simulacao =
     cogsCentavos !== null && comissaoEfetivaCentavos !== null && precoVendaCentavosOuNull !== null
@@ -208,7 +216,7 @@ export default function SimuladorPrecificacao({
           cogsCentavos,
           comissaoEfetivaCentavos,
           paraCentavos(precoVendaCentavosOuNull),
-          margemMinimaNumero
+          margemMinimaPercentual
         )
       : null;
 
@@ -361,6 +369,49 @@ export default function SimuladorPrecificacao({
                           {!resultado.prejuizo && resultado.margemBaixa && (
                             <span>⚠ Margem abaixo do mínimo ({margemMinimaPercentual}%).</span>
                           )}
+                          {(() => {
+                            const precoMinimo = calcularPrecoMinimoCanal(
+                              custoBaseCentavos!,
+                              resultado.taxa,
+                              margemMinimaPercentual
+                            );
+                            // Preço próprio do canal (EDI-108, US2), quando definido; senão o preço do site.
+                            const precoAtualDoCanal =
+                              resultado.canal === "mercadoLivre"
+                                ? (precosCanaisCentavos?.mercadoLivre ?? precoAtualCentavos)
+                                : resultado.canal === "shopee"
+                                  ? (precosCanaisCentavos?.shopee ?? precoAtualCentavos)
+                                  : precoAtualCentavos;
+                            if (precoAtualDoCanal === null) return null;
+                            const piso = calcularResultadoPisoCanal(
+                              resultado.canal,
+                              precoAtualDoCanal,
+                              precoMinimo
+                            );
+                            if (piso.precoMinimoCentavos === null) {
+                              return (
+                                <span className={styles.mlLinkAviso}>
+                                  Nenhum preço atende essa margem mínima neste canal (taxa + margem
+                                  mínima ≥ 100%).
+                                </span>
+                              );
+                            }
+                            if ((piso.descontoMaximoCentavos ?? 0) < 0) {
+                              return (
+                                <span className={styles.fieldError}>
+                                  ⚠ O preço atual já está abaixo do mínimo (R${" "}
+                                  {(piso.precoMinimoCentavos / 100).toFixed(2)}) para a margem mínima.
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className={styles.mlLinkAviso}>
+                                Preço mínimo para promoção: {formatarReais(piso.precoMinimoCentavos)} ·
+                                desconto máximo: {formatarReais(piso.descontoMaximoCentavos!)} (
+                                {piso.descontoMaximoPercentual!.toFixed(1)}%)
+                              </span>
+                            );
+                          })()}
                           {onAplicarPrecoSugerido && (
                             <button
                               type="button"
@@ -426,14 +477,6 @@ export default function SimuladorPrecificacao({
         placeholder="Ex: 11.31"
         value={comissaoManualReais}
         onChange={(e) => setComissaoManualReais(e.target.value)}
-      />
-
-      <label htmlFor="margemMinima">Margem de lucro mínima aceitável (%)</label>
-      <input
-        id="margemMinima"
-        inputMode="decimal"
-        value={margemMinimaPercentual}
-        onChange={(e) => setMargemMinimaPercentual(e.target.value)}
       />
 
       {precoVendaCentavosOuNull !== null &&

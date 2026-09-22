@@ -13,6 +13,8 @@ const TIMEOUT_TENTATIVA_IMEDIATA_MS = 8000;
 interface ConfiguracaoCanal {
   canal: Canal;
   anuncioId: (produto: Produto) => string | undefined;
+  /** Preço a sincronizar nesse canal — o preço próprio do canal, quando definido, senão o preço do site (EDI-108). */
+  precoCanal: (produto: Produto) => number;
   credencialConfigurada: () => boolean;
   client: CanalEstoqueClient;
 }
@@ -21,6 +23,7 @@ const CANAIS: ConfiguracaoCanal[] = [
   {
     canal: "mercado_livre",
     anuncioId: (produto) => produto.integracoes?.mercadoLivreId,
+    precoCanal: (produto) => produto.precosCanais?.mercadoLivre ?? produto.preco,
     credencialConfigurada: () =>
       Boolean(process.env.MERCADOLIVRE_CLIENT_ID && process.env.MERCADOLIVRE_CLIENT_SECRET),
     client: mercadoLivreClient,
@@ -28,6 +31,7 @@ const CANAIS: ConfiguracaoCanal[] = [
   {
     canal: "shopee",
     anuncioId: (produto) => produto.integracoes?.shopeeItemId,
+    precoCanal: (produto) => produto.precosCanais?.shopee ?? produto.preco,
     credencialConfigurada: () =>
       Boolean(process.env.SHOPEE_PARTNER_ID && process.env.SHOPEE_PARTNER_KEY),
     client: shopeeClient,
@@ -84,7 +88,7 @@ export async function sincronizarAnuncioProduto(
       await comTimeout(
         config.client.atualizarAnuncio(anuncioId, {
           quantidade: produto.estoque,
-          preco: produto.preco,
+          preco: config.precoCanal(produto),
           descricao: opcoes.sincronizarDescricao ? produto.descricao : undefined,
         }),
         TIMEOUT_TENTATIVA_IMEDIATA_MS
@@ -119,7 +123,7 @@ export async function reprocessarPendencia(registro: RegistroSincronizacaoEstoqu
   try {
     await config.client.atualizarAnuncio(anuncioId, {
       quantidade: registro.quantidade,
-      preco: produto.preco,
+      preco: config.precoCanal(produto),
     });
     await marcarSincronizado(registro._id!);
     return true;

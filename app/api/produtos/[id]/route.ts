@@ -58,7 +58,8 @@ export async function PATCH(request: Request, { params }: Params) {
   // atualização "in place" tão direto na API do Mercado Livre — quem quiser
   // refletir essas mudanças no anúncio precisa despublicar e publicar de novo.
   const mercadoLivreId = produto?.integracoes?.mercadoLivreId;
-  const precoOuEstoqueMudou = "preco" in payload || "estoque" in payload;
+  const precoOuEstoqueMudou =
+    "preco" in payload || "estoque" in payload || "precosCanais" in payload;
   const descricaoMudou =
     typeof payload.descricao === "string" && payload.descricao !== produtoAtual.descricao;
   if (produto && mercadoLivreId && (precoOuEstoqueMudou || descricaoMudou)) {

@@ -16,6 +16,7 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
   const [siteFixaReais, setSiteFixaReais] = useState(
     (valoresIniciais.siteTaxaFixaCentavos / 100).toFixed(2)
   );
+  const [margemMinima, setMargemMinima] = useState(String(valoresIniciais.margemMinimaPercentual));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [camposErro, setCamposErro] = useState<Record<string, string>>({});
@@ -35,6 +36,7 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
           shopeeTaxaPercentual: numeroDeTexto(shopee),
           siteTaxaPercentual: numeroDeTexto(sitePercentual),
           siteTaxaFixaCentavos: Math.round(numeroDeTexto(siteFixaReais) * 100),
+          margemMinimaPercentual: numeroDeTexto(margemMinima),
         }),
       });
       const dados = await resposta.json();
@@ -103,6 +105,25 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
               )}
             </div>
           </div>
+        </fieldset>
+
+        <fieldset className={styles.field}>
+          <legend>Promoções</legend>
+          <label htmlFor="margemMinima">Margem de lucro mínima aceitável (%)</label>
+          <input
+            id="margemMinima"
+            inputMode="decimal"
+            value={margemMinima}
+            onChange={(e) => setMargemMinima(e.target.value)}
+          />
+          <span className={styles.mlLinkAviso}>
+            Usada para calcular o preço mínimo e o desconto máximo de cada canal — o piso de
+            segurança para você rodar promoções sem vender no prejuízo. Pode ser sobrescrita por
+            produto.
+          </span>
+          {camposErro.margemMinimaPercentual && (
+            <span className={styles.fieldError}>{camposErro.margemMinimaPercentual}</span>
+          )}
         </fieldset>
 
         {erro && <span className={styles.fieldError}>{erro}</span>}

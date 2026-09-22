@@ -64,6 +64,18 @@ export interface TaxasCanaisProduto {
   shopeeTaxaPercentual?: number;
   siteTaxaPercentual?: number;
   siteTaxaFixaCentavos?: number;
+  /** Override da margem mínima só deste produto — ausente = usa o padrão global (EDI-108). */
+  margemMinimaPercentual?: number;
+}
+
+/**
+ * Preços de venda por canal quando diferentes do preço do site (`Produto.preco`)
+ * — ausente num canal = esse canal usa o preço do site também (EDI-108).
+ * Em centavos, mesma convenção de `Produto.preco`.
+ */
+export interface PrecosCanaisProduto {
+  mercadoLivre?: number;
+  shopee?: number;
 }
 
 /**
@@ -130,6 +142,8 @@ export interface Produto {
   custoProducao?: CustoProducao;
   /** Taxas de canal próprias deste produto — ausente/vazio = usa o padrão global (EDI-106). */
   taxasCanais?: TaxasCanaisProduto;
+  /** Preço de venda próprio por canal — ausente/vazio = usa `preco` (o preço do site) também nesse canal (EDI-108). */
+  precosCanais?: PrecosCanaisProduto;
   /** Dados de embalagem para cálculo de frete no Mercado Livre — ausente = ainda não configurado (EDI-96). */
   embalagemEnvio?: EmbalagemEnvio;
   /** Ficha técnica opcional do produto (dimensões, peso, material, itens inclusos) — ausente = não preenchida (EDI-90). */

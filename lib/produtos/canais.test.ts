@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   calcularComparativoCanais,
   calcularPrecoEscalaCanal,
+  calcularPrecoMinimoCanal,
   calcularPrecoSugeridoCanal,
   calcularResultadoCanal,
+  calcularResultadoPisoCanal,
   resolverTaxasCanais,
 } from "./canais";
 import { calcularPrecoEscala, calcularPrecoSugerido } from "./precificacao";
@@ -132,5 +134,47 @@ describe("calcularComparativoCanais", () => {
       lucroEscalaCentavos: 300,
     });
     expect(ml.precoSugeridoCentavos).toBe(calcularPrecoEscala(1500, 300, 18));
+  });
+});
+
+describe("calcularPrecoMinimoCanal", () => {
+  it("com margem mínima 0% é o breakeven (sem lucro nem prejuízo)", () => {
+    const taxa = { percentual: 10, fixaCentavos: 0 };
+    const precoMinimo = calcularPrecoMinimoCanal(9000, taxa, 0);
+    // no piso, a comissão sobre o preço mínimo cobre exatamente a diferença até o custo
+    const comissao = Math.round((precoMinimo! * taxa.percentual) / 100);
+    expect(precoMinimo! - comissao).toBe(9000);
+  });
+
+  it("inclui a taxa fixa no piso", () => {
+    // (2000 + 100) / (1 - 0,10 - 0,15) = 2800
+    expect(calcularPrecoMinimoCanal(2000, { percentual: 10, fixaCentavos: 100 }, 15)).toBe(2800);
+  });
+
+  it("retorna null quando taxa% + margemMínima% >= 100", () => {
+    expect(calcularPrecoMinimoCanal(2000, { percentual: 60, fixaCentavos: 0 }, 40)).toBeNull();
+    expect(calcularPrecoMinimoCanal(2000, { percentual: 70, fixaCentavos: 0 }, 40)).toBeNull();
+  });
+});
+
+describe("calcularResultadoPisoCanal", () => {
+  it("calcula desconto máximo em R$ e % a partir do preço atual", () => {
+    const precoMinimo = calcularPrecoMinimoCanal(2000, { percentual: 10, fixaCentavos: 0 }, 15);
+    const resultado = calcularResultadoPisoCanal("mercadoLivre", 5000, precoMinimo);
+
+    expect(resultado.precoMinimoCentavos).toBe(precoMinimo);
+    expect(resultado.descontoMaximoCentavos).toBe(5000 - precoMinimo!);
+    expect(resultado.descontoMaximoPercentual).toBeCloseTo(((5000 - precoMinimo!) / 5000) * 100);
+  });
+
+  it("desconto negativo quando o preço atual já está abaixo do mínimo", () => {
+    const resultado = calcularResultadoPisoCanal("shopee", 1000, 1500);
+    expect(resultado.descontoMaximoCentavos).toBe(-500);
+  });
+
+  it("devolve campos nulos quando o preço mínimo é null", () => {
+    const resultado = calcularResultadoPisoCanal("siteProprio", 5000, null);
+    expect(resultado.descontoMaximoCentavos).toBeNull();
+    expect(resultado.descontoMaximoPercentual).toBeNull();
   });
 });

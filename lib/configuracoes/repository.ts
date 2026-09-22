@@ -22,6 +22,9 @@ export async function buscarTaxasCanais(): Promise<TaxasCanaisConfig> {
     shopeeTaxaPercentual: documento.shopeeTaxaPercentual,
     siteTaxaPercentual: documento.siteTaxaPercentual,
     siteTaxaFixaCentavos: documento.siteTaxaFixaCentavos,
+    // Documentos salvos antes do EDI-108 não têm este campo — cai no padrão.
+    margemMinimaPercentual:
+      documento.margemMinimaPercentual ?? TAXAS_CANAIS_PADRAO.margemMinimaPercentual,
   };
 }
 
@@ -31,6 +34,7 @@ export async function salvarTaxasCanais(taxas: TaxasCanaisConfig): Promise<Taxas
     shopeeTaxaPercentual: taxas.shopeeTaxaPercentual,
     siteTaxaPercentual: taxas.siteTaxaPercentual,
     siteTaxaFixaCentavos: taxas.siteTaxaFixaCentavos,
+    margemMinimaPercentual: taxas.margemMinimaPercentual,
   };
   await colecao.updateOne(
     { _id: TAXAS_CANAIS_ID },

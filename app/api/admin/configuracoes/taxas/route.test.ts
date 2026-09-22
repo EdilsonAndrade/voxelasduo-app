@@ -9,7 +9,12 @@ vi.mock("@/lib/configuracoes/repository", () => ({ buscarTaxasCanais, salvarTaxa
 
 const { GET, PUT } = await import("./route");
 
-const valido = { shopeeTaxaPercentual: 14, siteTaxaPercentual: 4.99, siteTaxaFixaCentavos: 0 };
+const valido = {
+  shopeeTaxaPercentual: 14,
+  siteTaxaPercentual: 4.99,
+  siteTaxaFixaCentavos: 0,
+  margemMinimaPercentual: 15,
+};
 
 function put(body: unknown) {
   return PUT(
@@ -45,6 +50,14 @@ describe("/api/admin/configuracoes/taxas", () => {
 
     expect(resposta.status).toBe(400);
     expect((await resposta.json()).campos).toHaveProperty("shopeeTaxaPercentual");
+    expect(salvarTaxasCanais).not.toHaveBeenCalled();
+  });
+
+  it("PUT 400 com margemMinimaPercentual fora de 0-100, sem salvar", async () => {
+    const resposta = await put({ ...valido, margemMinimaPercentual: 100 });
+
+    expect(resposta.status).toBe(400);
+    expect((await resposta.json()).campos).toHaveProperty("margemMinimaPercentual");
     expect(salvarTaxasCanais).not.toHaveBeenCalled();
   });
 

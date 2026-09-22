@@ -271,5 +271,31 @@ describe("validarProduto", () => {
       expect(validarProduto({ ...payloadValido, taxasCanais: { siteTaxaFixaCentavos: -5 } })).toHaveProperty("taxasCanais");
       expect(validarProduto({ ...payloadValido, taxasCanais: "x" })).toHaveProperty("taxasCanais");
     });
+
+    it("aceita override de margemMinimaPercentual em taxasCanais e rejeita fora do intervalo", () => {
+      expect(
+        validarProduto({ ...payloadValido, taxasCanais: { margemMinimaPercentual: 25 } })
+      ).toEqual({});
+      expect(
+        validarProduto({ ...payloadValido, taxasCanais: { margemMinimaPercentual: 100 } })
+      ).toHaveProperty("taxasCanais");
+      expect(
+        validarProduto({ ...payloadValido, taxasCanais: { margemMinimaPercentual: -1 } })
+      ).toHaveProperty("taxasCanais");
+    });
+
+    it("aceita precosCanais vazio e parcial", () => {
+      expect(validarProduto({ ...payloadValido, precosCanais: {} })).toEqual({});
+      expect(
+        validarProduto({ ...payloadValido, precosCanais: { mercadoLivre: 5490 } })
+      ).toEqual({});
+    });
+
+    it("rejeita precosCanais com valor zero, negativo, não inteiro ou formato inválido", () => {
+      expect(validarProduto({ ...payloadValido, precosCanais: { mercadoLivre: 0 } })).toHaveProperty("precosCanais");
+      expect(validarProduto({ ...payloadValido, precosCanais: { shopee: -100 } })).toHaveProperty("precosCanais");
+      expect(validarProduto({ ...payloadValido, precosCanais: { mercadoLivre: 10.5 } })).toHaveProperty("precosCanais");
+      expect(validarProduto({ ...payloadValido, precosCanais: "x" })).toHaveProperty("precosCanais");
+    });
   });
 });

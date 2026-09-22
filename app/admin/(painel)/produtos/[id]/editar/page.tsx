@@ -5,6 +5,7 @@ import { custoProducaoParaFormulario } from "@/lib/produtos/custoProducaoFormula
 import { embalagemEnvioParaFormulario } from "@/lib/produtos/embalagemEnvioFormulario";
 import { fichaTecnicaParaFormulario } from "@/lib/produtos/fichaTecnicaFormulario";
 import { taxasCanaisParaFormulario } from "@/lib/produtos/taxasCanaisFormulario";
+import { precosCanaisParaFormulario } from "@/lib/produtos/precosCanaisFormulario";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
 import styles from "@/components/admin/admin.module.css";
 
@@ -43,6 +44,7 @@ export default async function EditarProdutoPage({
           shopeeItemId: produto.integracoes?.shopeeItemId ?? "",
           custoProducao: custoProducaoParaFormulario(produto.custoProducao),
           taxasCanais: taxasCanaisParaFormulario(produto.taxasCanais),
+          precosCanais: precosCanaisParaFormulario(produto.precosCanais),
           embalagemEnvio: embalagemEnvioParaFormulario(produto.embalagemEnvio),
           fichaTecnica: fichaTecnicaParaFormulario(produto.fichaTecnica),
         }}

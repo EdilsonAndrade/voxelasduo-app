@@ -19,7 +19,8 @@ interface MessagesPackResponse {
   messages: MessageMercadoLivreResponse[];
 }
 
-async function obterVendedorId(token: string): Promise<string> {
+/** Reaproveitado por `promocoes.ts` (EDI-108) para resolver o `seller_id` do app. */
+export async function obterVendedorId(token: string): Promise<string> {
   const resposta = await fetch("https://api.mercadolibre.com/users/me", {
     headers: { Authorization: `Bearer ${token}` },
   });

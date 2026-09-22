@@ -10,12 +10,15 @@ export interface TaxasCanaisFormValores {
   shopeeTaxaPercentual: string;
   siteTaxaPercentual: string;
   siteTaxaFixaReais: string;
+  /** Override da margem mínima só deste produto (EDI-108) — vazio = herda o padrão global. */
+  margemMinimaPercentual: string;
 }
 
 export const VAZIO_TAXAS_CANAIS: TaxasCanaisFormValores = {
   shopeeTaxaPercentual: "",
   siteTaxaPercentual: "",
   siteTaxaFixaReais: "",
+  margemMinimaPercentual: "",
 };
 
 function numeroDeTexto(valor: string): number {
@@ -40,6 +43,12 @@ export function camposTaxasCanaisInvalidos(form: TaxasCanaisFormValores): string
     const fixa = numeroDeTexto(form.siteTaxaFixaReais);
     if (!Number.isFinite(fixa) || fixa < 0) invalidos.push("taxa fixa do site próprio");
   }
+  if (
+    form.margemMinimaPercentual.trim() !== "" &&
+    !percentualValido(form.margemMinimaPercentual)
+  ) {
+    invalidos.push("margem mínima (entre 0 e 99,9%)");
+  }
   return invalidos;
 }
 
@@ -60,6 +69,12 @@ export function montarTaxasCanaisProduto(form: TaxasCanaisFormValores): TaxasCan
     const fixa = numeroDeTexto(form.siteTaxaFixaReais);
     if (Number.isFinite(fixa) && fixa >= 0) taxas.siteTaxaFixaCentavos = Math.round(fixa * 100);
   }
+  if (
+    form.margemMinimaPercentual.trim() !== "" &&
+    percentualValido(form.margemMinimaPercentual)
+  ) {
+    taxas.margemMinimaPercentual = numeroDeTexto(form.margemMinimaPercentual);
+  }
   return taxas;
 }
 
@@ -73,6 +88,8 @@ export function taxasCanaisParaFormulario(taxas?: TaxasCanaisProduto): TaxasCana
       taxas.siteTaxaPercentual !== undefined ? String(taxas.siteTaxaPercentual) : "",
     siteTaxaFixaReais:
       taxas.siteTaxaFixaCentavos !== undefined ? (taxas.siteTaxaFixaCentavos / 100).toFixed(2) : "",
+    margemMinimaPercentual:
+      taxas.margemMinimaPercentual !== undefined ? String(taxas.margemMinimaPercentual) : "",
   };
 }
 
@@ -82,5 +99,6 @@ export function taxasGlobaisParaPlaceholder(global: TaxasCanaisConfig): TaxasCan
     shopeeTaxaPercentual: String(global.shopeeTaxaPercentual),
     siteTaxaPercentual: String(global.siteTaxaPercentual),
     siteTaxaFixaReais: (global.siteTaxaFixaCentavos / 100).toFixed(2),
+    margemMinimaPercentual: String(global.margemMinimaPercentual),
   };
 }

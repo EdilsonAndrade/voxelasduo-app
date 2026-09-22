@@ -3,6 +3,7 @@ import {
   camposTaxasCanaisInvalidos,
   montarTaxasCanaisProduto,
   taxasCanaisParaFormulario,
+  taxasGlobaisParaPlaceholder,
   VAZIO_TAXAS_CANAIS,
 } from "./taxasCanaisFormulario";
 
@@ -17,17 +18,25 @@ describe("taxasCanaisFormulario", () => {
         shopeeTaxaPercentual: "12,5",
         siteTaxaPercentual: "",
         siteTaxaFixaReais: "0,39",
+        margemMinimaPercentual: "",
       })
     ).toEqual({ shopeeTaxaPercentual: 12.5, siteTaxaFixaCentavos: 39 });
   });
 
+  it("converte o override de margemMinimaPercentual, aceitando vírgula", () => {
+    expect(
+      montarTaxasCanaisProduto({ ...VAZIO_TAXAS_CANAIS, margemMinimaPercentual: "22,5" })
+    ).toEqual({ margemMinimaPercentual: 22.5 });
+  });
+
   it("volta do produto salvo para o formulário e reabre igual", () => {
-    const salvo = { shopeeTaxaPercentual: 20, siteTaxaFixaCentavos: 50 };
+    const salvo = { shopeeTaxaPercentual: 20, siteTaxaFixaCentavos: 50, margemMinimaPercentual: 25 };
     const form = taxasCanaisParaFormulario(salvo);
     expect(form).toEqual({
       shopeeTaxaPercentual: "20",
       siteTaxaPercentual: "",
       siteTaxaFixaReais: "0.50",
+      margemMinimaPercentual: "25",
     });
     expect(montarTaxasCanaisProduto(form)).toEqual(salvo);
   });
@@ -36,14 +45,31 @@ describe("taxasCanaisFormulario", () => {
     expect(taxasCanaisParaFormulario(undefined)).toEqual(VAZIO_TAXAS_CANAIS);
   });
 
-  it("aponta campos inválidos", () => {
+  it("aponta campos inválidos, incluindo a margem mínima", () => {
     expect(camposTaxasCanaisInvalidos(VAZIO_TAXAS_CANAIS)).toEqual([]);
     expect(
       camposTaxasCanaisInvalidos({
         shopeeTaxaPercentual: "100",
         siteTaxaPercentual: "-1",
         siteTaxaFixaReais: "abc",
+        margemMinimaPercentual: "100",
       })
-    ).toHaveLength(3);
+    ).toHaveLength(4);
+  });
+
+  it("formata o padrão global (com margem mínima) como placeholder", () => {
+    expect(
+      taxasGlobaisParaPlaceholder({
+        shopeeTaxaPercentual: 14,
+        siteTaxaPercentual: 4.99,
+        siteTaxaFixaCentavos: 0,
+        margemMinimaPercentual: 15,
+      })
+    ).toEqual({
+      shopeeTaxaPercentual: "14",
+      siteTaxaPercentual: "4.99",
+      siteTaxaFixaReais: "0.00",
+      margemMinimaPercentual: "15",
+    });
   });
 });

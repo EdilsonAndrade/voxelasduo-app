@@ -11,7 +11,7 @@ export function validarTaxasCanais(payload: unknown): ErrosTaxasCanais {
   const erros: ErrosTaxasCanais = {};
   const dados = (typeof payload === "object" && payload !== null ? payload : {}) as Record<string, unknown>;
 
-  for (const campo of ["shopeeTaxaPercentual", "siteTaxaPercentual"] as const) {
+  for (const campo of ["shopeeTaxaPercentual", "siteTaxaPercentual", "margemMinimaPercentual"] as const) {
     const valor = dados[campo];
     if (!numeroFinito(valor) || valor < 0 || valor >= 100) {
       erros[campo] = "Informe um percentual entre 0 e menos de 100.";

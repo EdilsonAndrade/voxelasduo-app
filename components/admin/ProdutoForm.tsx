@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 import SimuladorPrecificacao from "./SimuladorPrecificacao";
@@ -24,6 +24,13 @@ import {
   VAZIO_TAXAS_CANAIS,
   type TaxasCanaisFormValores,
 } from "@/lib/produtos/taxasCanaisFormulario";
+import {
+  camposPrecosCanaisInvalidos,
+  montarPrecosCanaisProduto,
+  precosCanaisParaFormulario,
+  VAZIO_PRECOS_CANAIS,
+  type PrecosCanaisFormValores,
+} from "@/lib/produtos/precosCanaisFormulario";
 import { resolverTaxasCanais } from "@/lib/produtos/canais";
 import { TAXAS_CANAIS_PADRAO, type TaxasCanaisConfig } from "@/lib/models/configuracao";
 import type { CustoProducao, TaxasCanaisProduto } from "@/lib/models/produto";
@@ -39,11 +46,23 @@ import {
   type FichaTecnicaFormValores,
 } from "@/lib/produtos/fichaTecnicaFormulario";
 import { LIMITE_FOTOS_MERCADO_LIVRE } from "@/lib/estoque/canais/mercadoLivre/fotos";
+import { formatarPreco } from "@/lib/produtos/formato";
+
+/** Promoção elegível do Mercado Livre já com o veredito de margem calculado no servidor (EDI-108). */
+interface PromocaoElegivelML {
+  promotionId: string;
+  tipo: string;
+  nome?: string;
+  precoPromocionalCentavos: number;
+  valeAPena: boolean;
+  lucroEstimadoCentavos: number | null;
+}
 
 export type {
   CustoProducaoFormValores,
   EmbalagemEnvioFormValores,
   FichaTecnicaFormValores,
+  PrecosCanaisFormValores,
   TaxasCanaisFormValores,
 };
 
@@ -125,6 +144,8 @@ export interface ProdutoFormValores {
   custoProducao: CustoProducaoFormValores;
   /** Taxas de Shopee/site próprio sobrescritas neste produto — vazio = herda o padrão global (EDI-106). */
   taxasCanais: TaxasCanaisFormValores;
+  /** Preço de venda próprio por canal — vazio num canal = usa o preço do site (`precoReais`) também nesse canal (EDI-108). */
+  precosCanais: PrecosCanaisFormValores;
   /** Peso/dimensões da embalagem para envio — opcional, ausência não bloqueia a publicação (EDI-96). */
   embalagemEnvio: EmbalagemEnvioFormValores;
   /** Ficha técnica opcional do produto — cada campo é independente, ausência não bloqueia a publicação (EDI-90). */
@@ -146,6 +167,7 @@ const VAZIO: ProdutoFormValores = {
   shopeeItemId: "",
   custoProducao: VAZIO_CUSTO_PRODUCAO,
   taxasCanais: VAZIO_TAXAS_CANAIS,
+  precosCanais: VAZIO_PRECOS_CANAIS,
   embalagemEnvio: VAZIO_EMBALAGEM_ENVIO,
   fichaTecnica: VAZIO_FICHA_TECNICA,
 };
@@ -194,6 +216,48 @@ export default function ProdutoForm({
   const editando = Boolean(valoresIniciais.id);
   const publicadoNoMercadoLivre = editando && Boolean(valores.mercadoLivreId?.trim());
 
+  const [promocoesML, setPromocoesML] = useState<PromocaoElegivelML[] | null>(null);
+  const [carregandoPromocoesML, setCarregandoPromocoesML] = useState(false);
+  const [erroPromocoesML, setErroPromocoesML] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!publicadoNoMercadoLivre || !valoresIniciais.id) {
+      setPromocoesML(null);
+      return;
+    }
+
+    let cancelado = false;
+    setCarregandoPromocoesML(true);
+    setErroPromocoesML(null);
+
+    fetch(`/api/produtos/${valoresIniciais.id}/mercado-livre/promocoes`)
+      .then(async (resposta) => {
+        const dados = await resposta.json();
+        if (cancelado) return;
+        if (!resposta.ok) {
+          setErroPromocoesML(
+            dados.mensagem ?? "Não foi possível consultar as promoções do Mercado Livre."
+          );
+          setPromocoesML(null);
+          return;
+        }
+        setPromocoesML((dados.promocoes as PromocaoElegivelML[]) ?? []);
+      })
+      .catch(() => {
+        if (!cancelado) {
+          setErroPromocoesML("Erro de conexão ao consultar as promoções do Mercado Livre.");
+        }
+      })
+      .finally(() => {
+        if (!cancelado) setCarregandoPromocoesML(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicadoNoMercadoLivre, valoresIniciais.id]);
+
   /** Selo de sincronização ao lado do rótulo — só aparece com o produto publicado no Mercado Livre. */
   function selo(tipo: SincronizacaoCampo) {
     if (!publicadoNoMercadoLivre) return null;
@@ -216,6 +280,16 @@ export default function ProdutoForm({
     setValores((atual) => ({
       ...atual,
       taxasCanais: { ...atual.taxasCanais, [campo]: valor },
+    }));
+  }
+
+  function atualizarCampoPrecosCanais<K extends keyof PrecosCanaisFormValores>(
+    campo: K,
+    valor: string
+  ) {
+    setValores((atual) => ({
+      ...atual,
+      precosCanais: { ...atual.precosCanais, [campo]: valor },
     }));
   }
 
@@ -325,11 +399,23 @@ export default function ProdutoForm({
     () => camposTaxasCanaisInvalidos(valores.taxasCanais),
     [valores.taxasCanais]
   );
+  const precosCanaisInvalidos = useMemo(
+    () => camposPrecosCanaisInvalidos(valores.precosCanais),
+    [valores.precosCanais]
+  );
   const taxasCanaisEfetivas = useMemo(
     () => resolverTaxasCanais(taxasGlobais, montarTaxasCanaisProduto(valores.taxasCanais)),
     [taxasGlobais, valores.taxasCanais]
   );
+  const margemMinimaEfetiva = useMemo(
+    () => montarTaxasCanaisProduto(valores.taxasCanais).margemMinimaPercentual ?? taxasGlobais.margemMinimaPercentual,
+    [taxasGlobais, valores.taxasCanais]
+  );
   const placeholderTaxasGlobais = taxasGlobaisParaPlaceholder(taxasGlobais);
+  const precosCanaisCentavos = useMemo(
+    () => montarPrecosCanaisProduto(valores.precosCanais),
+    [valores.precosCanais]
+  );
 
   const camposEmbalagemNaoPreenchidos = useMemo(
     () => camposEmbalagemFaltando(valores.embalagemEnvio),
@@ -430,6 +516,7 @@ export default function ProdutoForm({
       },
       custoProducao: custoProducaoCalculado ?? undefined,
       taxasCanais: montarTaxasCanaisProduto(valores.taxasCanais),
+      precosCanais: montarPrecosCanaisProduto(valores.precosCanais),
       embalagemEnvio: embalagemEnvioCalculada ?? undefined,
       fichaTecnica: fichaTecnicaCalculada ?? undefined,
     };
@@ -1078,11 +1165,56 @@ export default function ProdutoForm({
               onChange={(e) => atualizarCampoTaxasCanais("siteTaxaFixaReais", e.target.value)}
             />
           </div>
+          <div className={styles.field}>
+            <label htmlFor="margemMinimaProduto">Margem mínima deste produto (%)</label>
+            <input
+              id="margemMinimaProduto"
+              inputMode="decimal"
+              placeholder={placeholderTaxasGlobais.margemMinimaPercentual}
+              value={valores.taxasCanais.margemMinimaPercentual}
+              onChange={(e) => atualizarCampoTaxasCanais("margemMinimaPercentual", e.target.value)}
+            />
+          </div>
         </div>
         {taxasCanaisInvalidas.length > 0 && (
           <span className={styles.fieldError}>Corrija: {taxasCanaisInvalidas.join(", ")}.</span>
         )}
         {camposErro.taxasCanais && <span className={styles.fieldError}>{camposErro.taxasCanais}</span>}
+      </fieldset>
+
+      <fieldset className={styles.field}>
+        <legend>Preço por canal (opcional)</legend>
+        <span className={styles.mlLinkAviso}>
+          Deixe em branco para vender pelo mesmo preço do site em todos os canais.
+        </span>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="precoMercadoLivre">Preço no Mercado Livre (R$)</label>
+            <input
+              id="precoMercadoLivre"
+              inputMode="decimal"
+              placeholder={valores.precoReais || "49.90"}
+              value={valores.precosCanais.mercadoLivre}
+              onChange={(e) => atualizarCampoPrecosCanais("mercadoLivre", e.target.value)}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="precoShopee">Preço na Shopee (R$)</label>
+            <input
+              id="precoShopee"
+              inputMode="decimal"
+              placeholder={valores.precoReais || "49.90"}
+              value={valores.precosCanais.shopee}
+              onChange={(e) => atualizarCampoPrecosCanais("shopee", e.target.value)}
+            />
+          </div>
+        </div>
+        {precosCanaisInvalidos.length > 0 && (
+          <span className={styles.fieldError}>Corrija: {precosCanaisInvalidos.join(", ")}.</span>
+        )}
+        {camposErro.precosCanais && (
+          <span className={styles.fieldError}>{camposErro.precosCanais}</span>
+        )}
       </fieldset>
 
       <SimuladorPrecificacao
@@ -1094,8 +1226,50 @@ export default function ProdutoForm({
         depreciacaoCentavos={resultadoCogs?.custoDepreciacaoCentavos ?? null}
         tempoImpressaoHoras={custoProducaoCalculado?.tempoImpressaoHoras ?? null}
         taxasCanais={taxasCanaisEfetivas}
+        margemMinimaPercentual={margemMinimaEfetiva}
+        precosCanaisCentavos={precosCanaisCentavos}
         onAplicarPrecoSugerido={(preco) => atualizarCampo("precoReais", preco)}
       />
+
+      {publicadoNoMercadoLivre && (
+        <fieldset className={styles.field}>
+          <legend>Promoções elegíveis (Mercado Livre)</legend>
+          {carregandoPromocoesML && (
+            <span className={styles.mlLinkAviso}>Consultando promoções…</span>
+          )}
+          {!carregandoPromocoesML && erroPromocoesML && (
+            <span className={styles.fieldError}>
+              {erroPromocoesML} O preço mínimo/desconto máximo acima continua valendo normalmente.
+            </span>
+          )}
+          {!carregandoPromocoesML && !erroPromocoesML && promocoesML?.length === 0 && (
+            <span className={styles.mlLinkAviso}>Nenhuma promoção elegível para este produto agora.</span>
+          )}
+          {!carregandoPromocoesML && !erroPromocoesML && promocoesML && promocoesML.length > 0 && (
+            <div className={styles.comparativoCanais}>
+              {promocoesML.map((promocao) => (
+                <div
+                  key={promocao.promotionId}
+                  className={promocao.valeAPena ? styles.comparativoCanal : styles.comparativoCanalPrejuizo}
+                >
+                  <strong>{promocao.nome ?? promocao.tipo}</strong>
+                  <span className={styles.comparativoPreco}>
+                    {formatarPreco(promocao.precoPromocionalCentavos)}
+                  </span>
+                  {promocao.valeAPena ? (
+                    <span>
+                      ✓ Vale a pena — lucro estimado de{" "}
+                      {formatarPreco(promocao.lucroEstimadoCentavos ?? 0)}
+                    </span>
+                  ) : (
+                    <span>⚠ Fura a margem mínima — não vale a pena entrar.</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </fieldset>
+      )}
 
       <fieldset className={styles.field}>
         <legend>Canais de venda</legend>

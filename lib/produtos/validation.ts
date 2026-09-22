@@ -15,6 +15,8 @@ export interface ProdutoPayload {
   fichaTecnica?: unknown;
   /** Taxas de canal próprias do produto (EDI-106) — opcional; ausente/vazio = herda o padrão global. */
   taxasCanais?: unknown;
+  /** Preços de venda próprios por canal (EDI-108) — opcional; ausente/vazio = usa `preco` (o preço do site) também nesse canal. */
+  precosCanais?: unknown;
 }
 
 /** Campos monetários/numéricos obrigatórios de `custoProducao`, todos exigidos > 0 quando o objeto está presente (EDI-92). */
@@ -82,7 +84,7 @@ function validarTaxasCanais(valor: unknown): string | undefined {
 
   const taxas = valor as Record<string, unknown>;
 
-  for (const campo of ["shopeeTaxaPercentual", "siteTaxaPercentual"] as const) {
+  for (const campo of ["shopeeTaxaPercentual", "siteTaxaPercentual", "margemMinimaPercentual"] as const) {
     if (taxas[campo] === undefined) continue;
     if (!numeroFinito(taxas[campo]) || (taxas[campo] as number) < 0 || (taxas[campo] as number) >= 100) {
       return `Informe um percentual entre 0 e menos de 100 para "${campo}".`;
@@ -92,6 +94,29 @@ function validarTaxasCanais(valor: unknown): string | undefined {
   if (taxas.siteTaxaFixaCentavos !== undefined) {
     if (!numeroFinito(taxas.siteTaxaFixaCentavos) || taxas.siteTaxaFixaCentavos < 0) {
       return 'A taxa fixa do site próprio não pode ser negativa.';
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Valida `precosCanais` quando presente no payload (EDI-108): cada canal é
+ * individualmente opcional; quando informado, mesma regra de `preco`
+ * (inteiro positivo em centavos).
+ */
+function validarPrecosCanais(valor: unknown): string | undefined {
+  if (typeof valor !== "object" || valor === null || Array.isArray(valor)) {
+    return "Formato de preços dos canais inválido.";
+  }
+
+  const precos = valor as Record<string, unknown>;
+
+  for (const campo of ["mercadoLivre", "shopee"] as const) {
+    if (precos[campo] === undefined) continue;
+    const preco = precos[campo];
+    if (typeof preco !== "number" || !Number.isInteger(preco) || preco <= 0) {
+      return `Informe um preço maior que zero para "${campo}".`;
     }
   }
 
@@ -235,6 +260,13 @@ export function validarProduto(
     const erro = validarTaxasCanais(payload.taxasCanais);
     if (erro) {
       erros.taxasCanais = erro;
+    }
+  }
+
+  if (payload.precosCanais !== undefined) {
+    const erro = validarPrecosCanais(payload.precosCanais);
+    if (erro) {
+      erros.precosCanais = erro;
     }
   }
 

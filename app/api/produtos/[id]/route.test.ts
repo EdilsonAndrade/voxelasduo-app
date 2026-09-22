@@ -84,7 +84,16 @@ describe("PATCH /api/produtos/[id]", () => {
     expect(sincronizarAnuncioProduto).not.toHaveBeenCalled();
   });
 
-  it("não dispara quando o campo alterado não é preço, estoque nem descrição", async () => {
+  it("dispara sincronizarAnuncioProduto quando só precosCanais muda (EDI-108)", async () => {
+    await PATCH(
+      requisicao({ precosCanais: { mercadoLivre: 6490 } }),
+      params(produtoBase._id!.toString())
+    );
+
+    expect(sincronizarAnuncioProduto).toHaveBeenCalled();
+  });
+
+  it("não dispara quando o campo alterado não é preço, estoque, precosCanais nem descrição", async () => {
     await PATCH(requisicao({ nome: "Novo nome" }), params(produtoBase._id!.toString()));
 
     expect(sincronizarAnuncioProduto).not.toHaveBeenCalled();

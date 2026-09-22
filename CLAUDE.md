@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/020-ml-descoberta-tendencias/plan.md
+at specs/021-preco-piso-canal-ml/plan.md
 
 ## RULES
 

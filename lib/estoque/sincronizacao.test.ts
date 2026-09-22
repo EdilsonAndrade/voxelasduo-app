@@ -128,6 +128,43 @@ describe("sincronizarAnuncioProduto", () => {
     expect(marcarSincronizado).not.toHaveBeenCalled();
   });
 
+  it("com precosCanais: usa o preço próprio do canal, não o preço do site (EDI-108)", async () => {
+    process.env.MERCADOLIVRE_CLIENT_ID = "id";
+    process.env.MERCADOLIVRE_CLIENT_SECRET = "secret";
+    buscarProdutoPorId.mockResolvedValue({
+      ...produtoBase,
+      integracoes: { mercadoLivreId: "MLB123" },
+      precosCanais: { mercadoLivre: 6490 },
+    });
+    mercadoLivreClient.atualizarAnuncio.mockResolvedValue(undefined);
+
+    await sincronizarAnuncioProduto(produtoBase._id!.toString(), pedidoId);
+
+    expect(mercadoLivreClient.atualizarAnuncio).toHaveBeenCalledWith("MLB123", {
+      quantidade: 8,
+      preco: 6490,
+      descricao: undefined,
+    });
+  });
+
+  it("sem precosCanais.mercadoLivre: cai no preço do site", async () => {
+    process.env.MERCADOLIVRE_CLIENT_ID = "id";
+    process.env.MERCADOLIVRE_CLIENT_SECRET = "secret";
+    buscarProdutoPorId.mockResolvedValue({
+      ...produtoBase,
+      integracoes: { mercadoLivreId: "MLB123" },
+      precosCanais: { shopee: 7000 },
+    });
+    mercadoLivreClient.atualizarAnuncio.mockResolvedValue(undefined);
+
+    await sincronizarAnuncioProduto(produtoBase._id!.toString(), pedidoId);
+
+    expect(mercadoLivreClient.atualizarAnuncio).toHaveBeenCalledWith(
+      "MLB123",
+      expect.objectContaining({ preco: 5000 })
+    );
+  });
+
   it("canalOrigem informado: pula esse canal e sincroniza os demais (research.md #8)", async () => {
     process.env.MERCADOLIVRE_CLIENT_ID = "id";
     process.env.MERCADOLIVRE_CLIENT_SECRET = "secret";

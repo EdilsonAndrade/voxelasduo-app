@@ -13,6 +13,8 @@ export interface TaxasCanaisConfig {
   shopeeTaxaPercentual: number;
   siteTaxaPercentual: number;
   siteTaxaFixaCentavos: number;
+  /** Margem de lucro mínima aceitável, em percentual — piso de segurança pra promoções (EDI-108). */
+  margemMinimaPercentual: number;
 }
 
 /** Documento persistido — `_id` fixo, um único por loja. */
@@ -26,4 +28,5 @@ export const TAXAS_CANAIS_PADRAO: TaxasCanaisConfig = {
   shopeeTaxaPercentual: 14,
   siteTaxaPercentual: 4.99,
   siteTaxaFixaCentavos: 0,
+  margemMinimaPercentual: 15,
 };

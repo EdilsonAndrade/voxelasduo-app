@@ -123,6 +123,65 @@ export function calcularResultadoCanal(
   };
 }
 
+/** Preço mínimo e desconto máximo de um canal, a partir do preço atual, da taxa e da margem mínima efetiva (EDI-108). */
+export interface ResultadoPisoCanal {
+  canal: CanalVenda;
+  /** `null` quando `taxa% + margemMinima% >= 100` (nenhum preço atende essa margem nesse canal). */
+  precoMinimoCentavos: number | null;
+  /**
+   * `null` nas mesmas condições de `precoMinimoCentavos`; pode ser negativo
+   * quando o preço atual já está abaixo do mínimo — a UI decide como exibir
+   * isso (aviso, não um desconto negativo real).
+   */
+  descontoMaximoCentavos: number | null;
+  descontoMaximoPercentual: number | null;
+}
+
+/**
+ * Preço mínimo (piso) de um canal para uma margem mínima aceitável — inverte
+ * a fórmula do preço sugerido (`calcularPrecoSugeridoCanal`) para achar o
+ * piso em vez do sugerido: `(custo + taxaFixa) / (1 − taxa% − margemMínima%)`
+ * (research.md #3). Retorna `null` quando o denominador é `<= 0` (taxa e
+ * margem mínima somadas alcançam ou ultrapassam 100% do preço — não existe
+ * preço que atenda essa margem nesse canal).
+ */
+export function calcularPrecoMinimoCanal(
+  custoCentavos: number,
+  taxa: TaxaCanal,
+  margemMinimaPercentual: number
+): number | null {
+  const fracaoRestante = 1 - taxa.percentual / 100 - margemMinimaPercentual / 100;
+  if (fracaoRestante <= 0) return null;
+
+  return Math.round((custoCentavos + taxa.fixaCentavos) / fracaoRestante);
+}
+
+/**
+ * Preço mínimo + desconto máximo (R$ e %) de um canal, a partir do preço
+ * atual daquele canal (EDI-108). `precoMinimoCentavos` já calculado por
+ * `calcularPrecoMinimoCanal` (evita recalcular o custo/taxa aqui).
+ */
+export function calcularResultadoPisoCanal(
+  canal: CanalVenda,
+  precoAtualCentavos: number,
+  precoMinimoCentavos: number | null
+): ResultadoPisoCanal {
+  if (precoMinimoCentavos === null) {
+    return {
+      canal,
+      precoMinimoCentavos: null,
+      descontoMaximoCentavos: null,
+      descontoMaximoPercentual: null,
+    };
+  }
+
+  const descontoMaximoCentavos = precoAtualCentavos - precoMinimoCentavos;
+  const descontoMaximoPercentual =
+    precoAtualCentavos > 0 ? (descontoMaximoCentavos / precoAtualCentavos) * 100 : 0;
+
+  return { canal, precoMinimoCentavos, descontoMaximoCentavos, descontoMaximoPercentual };
+}
+
 export interface EntradaComparativo {
   /** Custo-base do modo escolhido: COGS (completo) ou custo de caixa (escala). */
   custoBaseCentavos: number;
