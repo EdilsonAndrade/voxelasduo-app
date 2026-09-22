@@ -173,15 +173,31 @@ export function atributosFixos(
  * com a unidade junto (`"20 cm"`, não `"20"`): testado via
  * `POST /items/validate`, sem unidade o Mercado Livre descarta o atributo
  * com o aviso `item.attributes.omitted` (research.md #2).
+ *
+ * Cada campo tem mais de um ID candidato, em ordem de prioridade — categorias
+ * diferentes usam nomes diferentes pro mesmo conceito (ex: "Luminárias de
+ * Mesa" usa `TOTAL_HEIGHT`/`TOTAL_WIDTH`, não `HEIGHT`/`WIDTH` — descoberto em
+ * produção: o valor preenchido na ficha técnica caía só na descrição, nunca
+ * virava atributo de verdade, correção EDI-108). `larguraCm` também tenta
+ * `DIAMETER`/`TOTAL_DIAMETER` — sem um campo próprio de diâmetro na ficha
+ * técnica, é a aproximação mais sensata pra objetos redondos.
  */
 const CAMPOS_NUMERICOS_FICHA_TECNICA: Record<
   "alturaCm" | "larguraCm" | "comprimentoCm" | "pesoGramas",
-  { atributoId: string; unidade: string; rotulo: string }
+  { atributosCandidatos: string[]; unidade: string; rotulo: string }
 > = {
-  alturaCm: { atributoId: "HEIGHT", unidade: "cm", rotulo: "Altura" },
-  larguraCm: { atributoId: "WIDTH", unidade: "cm", rotulo: "Largura" },
-  comprimentoCm: { atributoId: "LENGTH", unidade: "cm", rotulo: "Comprimento" },
-  pesoGramas: { atributoId: "WEIGHT", unidade: "g", rotulo: "Peso" },
+  alturaCm: { atributosCandidatos: ["HEIGHT", "TOTAL_HEIGHT"], unidade: "cm", rotulo: "Altura" },
+  larguraCm: {
+    atributosCandidatos: ["WIDTH", "TOTAL_WIDTH", "DIAMETER", "TOTAL_DIAMETER"],
+    unidade: "cm",
+    rotulo: "Largura",
+  },
+  comprimentoCm: {
+    atributosCandidatos: ["LENGTH", "TOTAL_LENGTH"],
+    unidade: "cm",
+    rotulo: "Comprimento",
+  },
+  pesoGramas: { atributosCandidatos: ["WEIGHT", "TOTAL_WEIGHT"], unidade: "g", rotulo: "Peso" },
 };
 
 /**
@@ -213,9 +229,10 @@ export function atributosFichaTecnica(
     const numero = fichaTecnica[chave];
     if (numero === undefined) continue;
 
-    const { atributoId, unidade, rotulo } = CAMPOS_NUMERICOS_FICHA_TECNICA[chave];
+    const { atributosCandidatos, unidade, rotulo } = CAMPOS_NUMERICOS_FICHA_TECNICA[chave];
     const valor = `${numero} ${unidade}`;
-    if (idsCategoria.has(atributoId)) {
+    const atributoId = atributosCandidatos.find((id) => idsCategoria.has(id));
+    if (atributoId) {
       attributes.push({ id: atributoId, value_name: valor });
     } else {
       paraDescricao.push({ rotulo, valor });

@@ -158,6 +158,21 @@ export interface AnuncioCriado {
   permalink: string;
 }
 
+/**
+ * Garantia legal mínima pra bem durável (Art. 26, II do CDC — 90 dias, aqui
+ * "3 meses"), fixa em todo produto — não é um atributo de categoria comum,
+ * é o campo `sale_terms` do item (confirmado em produção: um anúncio
+ * publicado manualmente com "Garantia do vendedor: 3 meses" grava
+ * exatamente esses dois `sale_terms`). Mesmo padrão de `atributosFixos`
+ * (fabricante) — a garantia é uma política da loja, não do produto.
+ */
+function saleTermsFixos(): Array<{ id: string; value_name: string }> {
+  return [
+    { id: "WARRANTY_TYPE", value_name: "Garantia do vendedor" },
+    { id: "WARRANTY_TIME", value_name: "3 meses" },
+  ];
+}
+
 export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
   const categoryId = await resolverCategoriaOuFalhar(produto);
   const token = await obterAccessTokenValido();
@@ -194,6 +209,7 @@ export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
       listing_type_id: tipoAnuncioEfetivo(produto),
       pictures: fotosParaAnuncio(produto.fotos).map((source) => ({ source })),
       attributes,
+      sale_terms: saleTermsFixos(),
     }),
   });
 
@@ -330,7 +346,8 @@ export async function atualizarAtributosAnuncio(itemId: string, produto: Produto
   const resposta = await fetch(`https://api.mercadolibre.com/items/${itemId}`, {
     method: "PUT",
     headers: cabecalhos,
-    body: JSON.stringify({ attributes }),
+    // sale_terms (garantia) também vai aqui — cobre anúncios publicados antes desta correção (EDI-108).
+    body: JSON.stringify({ attributes, sale_terms: saleTermsFixos() }),
   });
 
   if (!resposta.ok) {
