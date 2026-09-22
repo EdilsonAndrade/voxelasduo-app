@@ -7,6 +7,8 @@ interface SimularPrecoPayload {
   precoReais?: unknown;
   /** Categoria do Mercado Livre já escolhida manualmente no admin, quando houver — evita reconsultar o previsor (correção: EDI-108). */
   mercadoLivreCategoriaId?: unknown;
+  /** Tipo de anúncio escolhido ("gold_special" Clássico ou "gold_pro" Premium) — padrão Clássico quando ausente (correção: EDI-108). */
+  mercadoLivreTipoAnuncio?: unknown;
 }
 
 /**
@@ -42,6 +44,8 @@ export async function POST(request: Request) {
 
   const categoriaManualId =
     typeof payload.mercadoLivreCategoriaId === "string" ? payload.mercadoLivreCategoriaId : undefined;
+  const tipoAnuncio =
+    payload.mercadoLivreTipoAnuncio === "gold_pro" ? "gold_pro" : undefined;
 
   try {
     const categoryId = await resolverCategoriaParaSimulacao(
@@ -61,7 +65,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const comissao = await consultarCustoVenda({ categoryId, precoReais: precoReais as number });
+    const comissao = await consultarCustoVenda({
+      categoryId,
+      precoReais: precoReais as number,
+      listingTypeId: tipoAnuncio,
+    });
     return NextResponse.json(comissao);
   } catch {
     return NextResponse.json(

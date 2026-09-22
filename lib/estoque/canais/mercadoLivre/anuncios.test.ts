@@ -193,6 +193,43 @@ describe("criarAnuncio", () => {
     expect(chamadaDescricao[0]).toBe("https://api.mercadolibre.com/items/MLB999/description");
   });
 
+  it("sem tipo de anúncio escolhido: usa gold_special (Clássico) por padrão", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await criarAnuncio(produtoBase);
+
+    const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpoItem.listing_type_id).toBe("gold_special");
+  });
+
+  it("com Premium escolhido no admin (EDI-108): publica com gold_pro", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await criarAnuncio({
+      ...produtoBase,
+      integracoes: { mercadoLivreTipoAnuncio: "gold_pro" },
+    });
+
+    const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpoItem.listing_type_id).toBe("gold_pro");
+  });
+
   it("produto com mais de 6 fotos: envia só as 6 primeiras, na ordem do produto (EDI-99)", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
     const fetchMock = vi

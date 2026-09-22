@@ -87,6 +87,23 @@ describe("POST /api/produtos/[id]/mercado-livre/publicar", () => {
     expect(registrarFalhaPublicacao).not.toHaveBeenCalled();
   });
 
+  it("com mercadoLivreTipoAnuncio no corpo: passa pra criarAnuncio antes de salvar (EDI-108)", async () => {
+    buscarProdutoPorId.mockResolvedValue(produtoBase);
+    criarAnuncio.mockResolvedValue({ id: "MLB999", permalink: "https://x" });
+
+    await POST(
+      new Request("http://localhost", {
+        method: "POST",
+        body: JSON.stringify({ mercadoLivreTipoAnuncio: "gold_pro" }),
+      }),
+      params(produtoBase._id!.toString())
+    );
+
+    expect(criarAnuncio).toHaveBeenCalledWith(
+      expect.objectContaining({ integracoes: expect.objectContaining({ mercadoLivreTipoAnuncio: "gold_pro" }) })
+    );
+  });
+
   it("422 e registra falha quando a criação do anúncio lança erro", async () => {
     buscarProdutoPorId.mockResolvedValue(produtoBase);
     criarAnuncio.mockRejectedValue(new Error("categoria sem mapeamento"));

@@ -41,6 +41,7 @@ export default async function EditarProdutoPage({
           mercadoLivrePausado: produto.integracoes?.mercadoLivrePausado ?? false,
           mercadoLivreCategoriaId: produto.integracoes?.mercadoLivreCategoriaId ?? "",
           mercadoLivreCategoriaCaminho: produto.integracoes?.mercadoLivreCategoriaCaminho ?? "",
+          mercadoLivreTipoAnuncio: produto.integracoes?.mercadoLivreTipoAnuncio ?? "gold_special",
           shopeeItemId: produto.integracoes?.shopeeItemId ?? "",
           custoProducao: custoProducaoParaFormulario(produto.custoProducao),
           taxasCanais: taxasCanaisParaFormulario(produto.taxasCanais),

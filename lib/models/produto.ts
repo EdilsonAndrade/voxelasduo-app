@@ -13,6 +13,8 @@ export interface IntegracoesCanal {
   mercadoLivreCategoriaId?: string;
   /** Caminho legível da categoria escolhida (ex: "Casa > Decoração > Estatuetas") — só para exibir no admin sem consultar a API. */
   mercadoLivreCategoriaCaminho?: string;
+  /** Tipo de anúncio no Mercado Livre — usado tanto pra publicar de verdade quanto pra simular a comissão real (EDI-108, correção: simulador só considerava Clássico). Ausente = "gold_special" (Clássico), mesmo comportamento de sempre. */
+  mercadoLivreTipoAnuncio?: "gold_special" | "gold_pro";
   shopeeItemId?: string;
 }
 

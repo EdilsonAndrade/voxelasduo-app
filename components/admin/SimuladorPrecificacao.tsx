@@ -51,6 +51,8 @@ export interface SimuladorPrecificacaoProps {
   precoVendaReais: string;
   /** Categoria do Mercado Livre já escolhida manualmente no admin, quando houver — evita depender só do previsor por nome (correção: EDI-108). */
   mercadoLivreCategoriaId?: string;
+  /** Tipo de anúncio escolhido no admin ("gold_special" Clássico ou "gold_pro" Premium) — a consulta de comissão real usa esse tipo (correção: EDI-108, antes só considerava Clássico). */
+  mercadoLivreTipoAnuncio?: "gold_special" | "gold_pro";
   /** Custo de produção total (COGS), em centavos — `null` quando o custo de produção (US1) ainda está incompleto. */
   cogsCentavos: number | null;
   /** Custo de caixa (COGS sem depreciação e mão de obra), em centavos — base do "preço de escala". */
@@ -84,6 +86,7 @@ export default function SimuladorPrecificacao({
   categoria,
   precoVendaReais,
   mercadoLivreCategoriaId,
+  mercadoLivreTipoAnuncio,
   cogsCentavos,
   custoCaixaCentavos,
   depreciacaoCentavos,
@@ -148,6 +151,7 @@ export default function SimuladorPrecificacao({
             categoria,
             precoReais: precoVendaCentavosOuNull,
             mercadoLivreCategoriaId,
+            mercadoLivreTipoAnuncio,
           }),
         });
         const dados = await resposta.json();
@@ -172,7 +176,7 @@ export default function SimuladorPrecificacao({
 
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nome, categoria, precoVendaCentavosOuNull, mercadoLivreCategoriaId]);
+  }, [nome, categoria, precoVendaCentavosOuNull, mercadoLivreCategoriaId, mercadoLivreTipoAnuncio]);
 
   const comissaoManualCentavos =
     comissaoManualReais.trim() !== ""
@@ -378,6 +382,12 @@ export default function SimuladorPrecificacao({
                           <span className={styles.mlLinkAviso}>
                             Taxa: {descreverTaxa(resultado.taxa)} ({formatarReais(resultado.comissaoCentavos ?? 0)})
                           </span>
+                          <span className={styles.mlLinkAviso}>
+                            Você recebe: {formatarReais(
+                              (resultado.precoSugeridoCentavos ?? 0) - (resultado.comissaoCentavos ?? 0)
+                            )}{" "}
+                            (preço menos a taxa da plataforma — antes de tirar o custo do produto)
+                          </span>
                           <span>
                             Lucro líquido: {formatarReais(resultado.lucroLiquidoCentavos ?? 0)} (
                             {(resultado.margemPercentual ?? 0).toFixed(1)}% de margem)
@@ -424,6 +434,36 @@ export default function SimuladorPrecificacao({
                               precoAtualDoCanal !== null
                                 ? calcularResultadoPisoCanal(resultado.canal, precoAtualDoCanal, precoMinimo)
                                 : null;
+                            // "Você recebe" no preço mínimo: preço menos a taxa da plataforma e o custo
+                            // extra (frete etc., que a plataforma também desconta do repasse) — antes de
+                            // tirar o custo do produto (mesma lógica do "Resumo de custos" do Mercado Livre).
+                            const comissaoNoMinimo =
+                              precoMinimo !== null
+                                ? Math.round((precoMinimo * resultado.taxa.percentual) / 100) +
+                                  resultado.taxa.fixaCentavos
+                                : null;
+                            const recebeNoMinimo =
+                              precoMinimo !== null && comissaoNoMinimo !== null
+                                ? precoMinimo - comissaoNoMinimo - custoExtraCentavos
+                                : null;
+
+                            // Mesma conta, mas no preço ATUAL do canal (não no piso) — responde "quanto
+                            // foi meu líquido de verdade nesse preço, com esse custo extra?" (EDI-108).
+                            const comissaoNoAtual =
+                              precoAtualDoCanal !== null
+                                ? Math.round((precoAtualDoCanal * resultado.taxa.percentual) / 100) +
+                                  resultado.taxa.fixaCentavos
+                                : null;
+                            const recebeNoAtual =
+                              precoAtualDoCanal !== null && comissaoNoAtual !== null
+                                ? precoAtualDoCanal - comissaoNoAtual - custoExtraCentavos
+                                : null;
+                            const lucroNoAtual =
+                              recebeNoAtual !== null ? recebeNoAtual - custoBaseCentavos! : null;
+                            const margemNoAtual =
+                              lucroNoAtual !== null && precoAtualDoCanal
+                                ? (lucroNoAtual / precoAtualDoCanal) * 100
+                                : null;
 
                             return (
                               <>
@@ -445,6 +485,14 @@ export default function SimuladorPrecificacao({
                                     }
                                   />
                                 </div>
+                                {custoExtraCentavos > 0 && lucroNoAtual !== null && (
+                                  <span className={styles.mlLinkAviso}>
+                                    No seu preço atual ({formatarReais(precoAtualDoCanal ?? 0)}), com esse
+                                    custo extra: você recebe {formatarReais(recebeNoAtual ?? 0)}, lucro
+                                    líquido {formatarReais(lucroNoAtual)} ({(margemNoAtual ?? 0).toFixed(1)}
+                                    % de margem)
+                                  </span>
+                                )}
                                 {piso === null ? null : piso.precoMinimoCentavos === null ? (
                                   <span className={styles.mlLinkAviso}>
                                     Nenhum preço atende essa margem mínima neste canal (taxa + margem
@@ -460,12 +508,21 @@ export default function SimuladorPrecificacao({
                                         margem mínima.
                                       </span>
                                     ) : (
-                                      <span className={styles.mlLinkAviso}>
-                                        Preço mínimo para promoção: {formatarReais(piso.precoMinimoCentavos)}{" "}
-                                        · desconto máximo: {formatarReais(piso.descontoMaximoCentavos!)} (
-                                        {piso.descontoMaximoPercentual!.toFixed(1)}%)
-                                        {custoExtraCentavos > 0 && " — já com o custo extra somado"}
-                                      </span>
+                                      <>
+                                        <span className={styles.mlLinkAviso}>
+                                          Preço mínimo para promoção: {formatarReais(piso.precoMinimoCentavos)}{" "}
+                                          · desconto máximo: {formatarReais(piso.descontoMaximoCentavos!)} (
+                                          {piso.descontoMaximoPercentual!.toFixed(1)}%)
+                                          {custoExtraCentavos > 0 && " — já com o custo extra somado"}
+                                        </span>
+                                        {recebeNoMinimo !== null && (
+                                          <span className={styles.mlLinkAviso}>
+                                            Nesse preço mínimo, você recebe: {formatarReais(recebeNoMinimo)}{" "}
+                                            (menos taxa{custoExtraCentavos > 0 ? " e custo extra" : ""} —
+                                            antes de tirar o custo do produto)
+                                          </span>
+                                        )}
+                                      </>
                                     )}
                                     {onAplicarPrecoCanal && (
                                       <button

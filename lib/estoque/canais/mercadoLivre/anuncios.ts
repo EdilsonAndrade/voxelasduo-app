@@ -48,11 +48,18 @@ export function aplicarFichaTecnicaNaDescricao(
 }
 
 /**
- * Tipo de anúncio padrão usado na criação — precisa corresponder a um tipo
- * disponível para a conta vendedora vinculada (`GET /users/{id}` retorna
- * `listing_types_allowed`); ajustar aqui se a conta não tiver "gold_special".
+ * Tipo de anúncio padrão usado na criação, quando o produto não tem um tipo
+ * escolhido (`produto.integracoes.mercadoLivreTipoAnuncio`, EDI-108) —
+ * precisa corresponder a um tipo disponível para a conta vendedora vinculada
+ * (`GET /users/{id}` retorna `listing_types_allowed`); ajustar aqui se a
+ * conta não tiver "gold_special".
  */
-const LISTING_TYPE_ID = "gold_special";
+const LISTING_TYPE_ID_PADRAO = "gold_special";
+
+/** Tipo de anúncio efetivo de um produto — escolhido no admin, ou o padrão (Clássico) quando ausente. */
+export function tipoAnuncioEfetivo(produto: Produto): string {
+  return produto.integracoes?.mercadoLivreTipoAnuncio ?? LISTING_TYPE_ID_PADRAO;
+}
 
 /**
  * Resolve a categoria do Mercado Livre para um produto (escolhida no admin,
@@ -182,7 +189,7 @@ export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
       currency_id: "BRL",
       available_quantity: produto.estoque,
       condition: "new",
-      listing_type_id: LISTING_TYPE_ID,
+      listing_type_id: tipoAnuncioEfetivo(produto),
       pictures: fotosParaAnuncio(produto.fotos).map((source) => ({ source })),
       attributes,
     }),

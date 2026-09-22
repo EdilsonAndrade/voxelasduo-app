@@ -33,6 +33,7 @@ export async function POST(request: Request, { params }: Params) {
   const corpo = (await request.json().catch(() => ({}))) as {
     mercadoLivreCategoriaId?: unknown;
     mercadoLivreCategoriaCaminho?: unknown;
+    mercadoLivreTipoAnuncio?: unknown;
   };
   const categoriaId =
     typeof corpo.mercadoLivreCategoriaId === "string" ? corpo.mercadoLivreCategoriaId.trim() : "";
@@ -45,6 +46,12 @@ export async function POST(request: Request, { params }: Params) {
       ...produto.integracoes,
       mercadoLivreCategoriaId: categoriaId,
       mercadoLivreCategoriaCaminho: categoriaCaminho || undefined,
+    };
+  }
+  if (corpo.mercadoLivreTipoAnuncio === "gold_special" || corpo.mercadoLivreTipoAnuncio === "gold_pro") {
+    produto.integracoes = {
+      ...produto.integracoes,
+      mercadoLivreTipoAnuncio: corpo.mercadoLivreTipoAnuncio,
     };
   }
 

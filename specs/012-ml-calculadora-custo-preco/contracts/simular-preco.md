@@ -14,7 +14,8 @@ Content-Type: application/json
   "nome": "Vaso Decorativo Articulado",   // obrigatório — nome do produto, usado pelo previsor de categoria quando não há override
   "categoria": "decoracao",                // obrigatório — categoria do site (mesma usada em Produto.categoria)
   "precoReais": 73.05,                      // obrigatório — preço de venda digitado, em reais (número > 0)
-  "mercadoLivreCategoriaId": "MLB43132"     // opcional — categoria do Mercado Livre já escolhida no admin (produto.integracoes.mercadoLivreCategoriaId); quando presente, tem prioridade sobre qualquer resolução automática (correção: EDI-108)
+  "mercadoLivreCategoriaId": "MLB43132",    // opcional — categoria do Mercado Livre já escolhida no admin (produto.integracoes.mercadoLivreCategoriaId); quando presente, tem prioridade sobre qualquer resolução automática (correção: EDI-108)
+  "mercadoLivreTipoAnuncio": "gold_pro"     // opcional — "gold_special" (Clássico) ou "gold_pro" (Premium); ausente/qualquer outro valor = Clássico (correção: EDI-108, antes a simulação só considerava o Clássico)
 }
 ```
 

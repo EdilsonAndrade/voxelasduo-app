@@ -5,11 +5,12 @@ import { preverCategoriaMercadoLivre } from "./previsorCategoria";
 import type { ComissaoMercadoLivre } from "@/lib/produtos/precificacao";
 
 /**
- * Mesmo tipo de anúncio fixo usado na publicação real (`anuncios.ts`,
- * `LISTING_TYPE_ID`) — a simulação de comissão precisa refletir o que
- * realmente seria publicado (research.md #3).
+ * Tipo de anúncio padrão da simulação quando nenhum é informado — mesmo
+ * padrão da publicação real (`anuncios.ts`, `LISTING_TYPE_ID_PADRAO`).
+ * Parametrizável desde o EDI-108 (correção: antes a simulação só considerava
+ * o Clássico, mesmo quando o produto seria publicado como Premium).
  */
-const LISTING_TYPE_ID = "gold_special";
+const LISTING_TYPE_ID_PADRAO = "gold_special";
 
 interface ListingPriceResposta {
   listing_type_id: string;
@@ -36,15 +37,18 @@ function paraCentavos(valorReais: number): number {
 export async function consultarCustoVenda({
   categoryId,
   precoReais,
+  listingTypeId = LISTING_TYPE_ID_PADRAO,
 }: {
   categoryId: string;
   precoReais: number;
+  /** "gold_special" (Clássico) ou "gold_pro" (Premium) — padrão Clássico quando não informado (EDI-108). */
+  listingTypeId?: string;
 }): Promise<ComissaoMercadoLivre> {
   const token = await obterAccessTokenValido();
 
   const url =
     `https://api.mercadolibre.com/sites/MLB/listing_prices` +
-    `?category_id=${encodeURIComponent(categoryId)}&price=${precoReais}&listing_type_id=${LISTING_TYPE_ID}`;
+    `?category_id=${encodeURIComponent(categoryId)}&price=${precoReais}&listing_type_id=${listingTypeId}`;
 
   const resposta = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
@@ -57,7 +61,7 @@ export async function consultarCustoVenda({
   // são enviados juntos, mas um array em algumas combinações de parâmetros —
   // tratamos os dois formatos por segurança (documentação "Custos por vender").
   const dados = Array.isArray(corpo)
-    ? corpo.find((item) => item.listing_type_id === LISTING_TYPE_ID) ?? corpo[0]
+    ? corpo.find((item) => item.listing_type_id === listingTypeId) ?? corpo[0]
     : corpo;
 
   if (!dados) {

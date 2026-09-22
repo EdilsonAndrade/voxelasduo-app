@@ -52,6 +52,29 @@ describe("consultarCustoVenda", () => {
     expect(opcoes.headers.Authorization).toBe("Bearer token-valido");
   });
 
+  it("com listingTypeId=gold_pro (Premium), consulta e mapeia esse tipo (EDI-108)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        listing_type_id: "gold_pro",
+        listing_fee_amount: 0,
+        sale_fee_amount: 16.5,
+        sale_fee_details: { fixed_fee: 0, percentage_fee: 16.5 },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const resultado = await consultarCustoVenda({
+      categoryId: "MLB43132",
+      precoReais: 100,
+      listingTypeId: "gold_pro",
+    });
+
+    expect(resultado.listingTypeId).toBe("gold_pro");
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("listing_type_id=gold_pro");
+  });
+
   it("quando a resposta vem em array, usa o item do listing_type_id consultado", async () => {
     vi.stubGlobal(
       "fetch",

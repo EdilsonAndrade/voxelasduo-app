@@ -138,6 +138,8 @@ export interface ProdutoFormValores {
   mercadoLivreCategoriaId?: string;
   /** Caminho legível da categoria escolhida (só exibição). */
   mercadoLivreCategoriaCaminho?: string;
+  /** Tipo de anúncio no Mercado Livre — usado pra publicar e pro simulador buscar a comissão certa (EDI-108). */
+  mercadoLivreTipoAnuncio?: "gold_special" | "gold_pro";
   /** ID do anúncio correspondente na Shopee — vazio = sem anúncio nesse canal (Tarefa 5). */
   shopeeItemId?: string;
   /** Custo de produção (COGS) — opcional, ausência não bloqueia o cadastro (EDI-92). */
@@ -164,6 +166,7 @@ const VAZIO: ProdutoFormValores = {
   mercadoLivrePausado: false,
   mercadoLivreCategoriaId: "",
   mercadoLivreCategoriaCaminho: "",
+  mercadoLivreTipoAnuncio: "gold_special",
   shopeeItemId: "",
   custoProducao: VAZIO_CUSTO_PRODUCAO,
   taxasCanais: VAZIO_TAXAS_CANAIS,
@@ -529,6 +532,7 @@ export default function ProdutoForm({
         mercadoLivrePausado: valores.mercadoLivrePausado || undefined,
         mercadoLivreCategoriaId: valores.mercadoLivreCategoriaId?.trim() || undefined,
         mercadoLivreCategoriaCaminho: valores.mercadoLivreCategoriaCaminho?.trim() || undefined,
+        mercadoLivreTipoAnuncio: valores.mercadoLivreTipoAnuncio ?? undefined,
         shopeeItemId: valores.shopeeItemId?.trim() || undefined,
       },
       custoProducao: custoProducaoCalculado ?? undefined,
@@ -580,6 +584,7 @@ export default function ProdutoForm({
         body: JSON.stringify({
           mercadoLivreCategoriaId: valores.mercadoLivreCategoriaId?.trim() || undefined,
           mercadoLivreCategoriaCaminho: valores.mercadoLivreCategoriaCaminho?.trim() || undefined,
+          mercadoLivreTipoAnuncio: valores.mercadoLivreTipoAnuncio ?? undefined,
         }),
       });
       const dados = await resposta.json();
@@ -1261,6 +1266,7 @@ export default function ProdutoForm({
         categoria={valores.categoria}
         precoVendaReais={valores.precoReais}
         mercadoLivreCategoriaId={valores.mercadoLivreCategoriaId}
+        mercadoLivreTipoAnuncio={valores.mercadoLivreTipoAnuncio}
         cogsCentavos={resultadoCogs?.totalCentavos ?? null}
         custoCaixaCentavos={resultadoCogs ? calcularCustoCaixa(resultadoCogs) : null}
         depreciacaoCentavos={resultadoCogs?.custoDepreciacaoCentavos ?? null}
@@ -1343,6 +1349,30 @@ export default function ProdutoForm({
             <span className={styles.mlLinkAviso}>
               Só categorias finais (sem subcategorias) aceitam anúncio. Sem escolher, o Mercado Livre
               decide pelo título do produto.
+            </span>
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="mercadoLivreTipoAnuncio">
+              Tipo de anúncio {selo("republicar")}
+            </label>
+            <select
+              id="mercadoLivreTipoAnuncio"
+              value={valores.mercadoLivreTipoAnuncio ?? "gold_special"}
+              onChange={(e) =>
+                atualizarCampo(
+                  "mercadoLivreTipoAnuncio",
+                  e.target.value as "gold_special" | "gold_pro"
+                )
+              }
+            >
+              <option value="gold_special">Clássico</option>
+              <option value="gold_pro">Premium</option>
+            </select>
+            <span className={styles.mlLinkAviso}>
+              Usado tanto pra publicar (ou reconfigurar, publicando de novo) quanto pro simulador de
+              preço buscar a comissão real do tipo certo — Premium custa mais, mas dá exposição
+              máxima e parcelamento sem juros.
             </span>
           </div>
 
