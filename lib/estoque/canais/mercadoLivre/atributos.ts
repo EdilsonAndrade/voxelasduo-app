@@ -61,18 +61,31 @@ export async function buscarAtributosObrigatorios(
 
 const PADRAO_GENERICO = /gen[eé]ric|n[aã]o especificad|outr[oa]|sem marca/i;
 
+/** Reconhece "Não"/"Nao"/"No" entre as opções de um atributo booleano (ex: "Com USB" → Sim/Não). */
+const PADRAO_NAO = /^n(a|ã)o$/i;
+
 /**
  * Melhor esforço para preencher um atributo obrigatório sem intervenção
  * manual: para listas fechadas (ex: marca), procura uma opção genérica
  * ("Genérica", "Não especificado"); sem opção assim, usa a primeira da
- * lista. Para atributos de texto livre, reaproveita o nome do produto —
- * **exceto** `BRAND`, que usa um valor genérico fixo (EDI-95): produtos sem
- * marca real não devem ter "Marca" preenchida com o próprio nome do
- * produto, o que fazia "Marca" e "Modelo" saírem idênticos quando ambos são
- * atributos obrigatórios de texto livre na mesma categoria (bug observado em
- * produção).
+ * lista. Para atributos booleanos (`value_type: "boolean"`, ex: "Com USB" —
+ * têm `values` com Sim/Não, mas não são `"list"`; descoberto em produção: a
+ * categoria "Luminárias de Mesa" tem `WITH_USB` obrigatório e caía no
+ * fallback de texto livre, mandando o nome do produto como valor e sendo
+ * rejeitado pelo Mercado Livre), assume "Não" — mais seguro que afirmar um
+ * recurso ("Sim") que a peça pode não ter de verdade. Para atributos de
+ * texto livre, reaproveita o nome do produto — **exceto** `BRAND`, que usa
+ * um valor genérico fixo (EDI-95): produtos sem marca real não devem ter
+ * "Marca" preenchida com o próprio nome do produto, o que fazia "Marca" e
+ * "Modelo" saírem idênticos quando ambos são atributos obrigatórios de
+ * texto livre na mesma categoria (bug observado em produção).
  */
 export function valorPadraoAtributo(atributo: AtributoCategoria, produto: Produto): AtributoItem {
+  if (atributo.value_type === "boolean" && atributo.values && atributo.values.length > 0) {
+    const nao = atributo.values.find((valor) => PADRAO_NAO.test(valor.name.trim()));
+    return { id: atributo.id, value_id: (nao ?? atributo.values[0]).id };
+  }
+
   if (atributo.value_type === "list" && atributo.values && atributo.values.length > 0) {
     const generico = atributo.values.find((valor) => PADRAO_GENERICO.test(valor.name));
     return { id: atributo.id, value_id: (generico ?? atributo.values[0]).id };

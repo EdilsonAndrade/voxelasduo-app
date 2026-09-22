@@ -106,6 +106,31 @@ describe("valorPadraoAtributo", () => {
     expect(valor).toEqual({ id: "BRAND", value_id: "123" });
   });
 
+  it("atributo booleano (ex: WITH_USB): usa a opção 'Não', não o nome do produto (correção: EDI-108)", () => {
+    const valor = valorPadraoAtributo(
+      {
+        id: "WITH_USB",
+        value_type: "boolean",
+        values: [
+          { id: "242084", name: "Não" },
+          { id: "242085", name: "Sim" },
+        ],
+      },
+      produtoBase
+    );
+
+    expect(valor).toEqual({ id: "WITH_USB", value_id: "242084" });
+  });
+
+  it("atributo booleano sem opção 'Não' reconhecível: usa a primeira opção", () => {
+    const valor = valorPadraoAtributo(
+      { id: "X", value_type: "boolean", values: [{ id: "1", name: "Talvez" }] },
+      produtoBase
+    );
+
+    expect(valor).toEqual({ id: "X", value_id: "1" });
+  });
+
   it("atributo de texto livre: usa o nome do produto", () => {
     const valor = valorPadraoAtributo({ id: "MODEL", value_type: "string" }, produtoBase);
 
