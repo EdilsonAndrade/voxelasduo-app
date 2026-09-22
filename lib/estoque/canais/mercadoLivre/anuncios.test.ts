@@ -193,6 +193,23 @@ describe("criarAnuncio", () => {
     expect(chamadaDescricao[0]).toBe("https://api.mercadolibre.com/items/MLB999/description");
   });
 
+  it("com precosCanais.mercadoLivre definido: publica com o preço do canal, não o do site (EDI-108, correção)", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: "MLB999", permalink: "https://produto.mercadolivre.com.br/MLB-999" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await criarAnuncio({ ...produtoBase, precosCanais: { mercadoLivre: 5250 } });
+
+    const corpoItem = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpoItem.price).toBe(52.5);
+  });
+
   it("sem tipo de anúncio escolhido: usa gold_special (Clássico) por padrão", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB12345");
     const fetchMock = vi

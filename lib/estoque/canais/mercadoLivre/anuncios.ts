@@ -185,7 +185,9 @@ export async function criarAnuncio(produto: Produto): Promise<AnuncioCriado> {
       // rejeitado ("body.required_fields") — ambos verificados em produção.
       family_name: produto.nome,
       category_id: categoryId,
-      price: centavosParaReais(produto.preco),
+      // Preço próprio do Mercado Livre, quando definido; senão o preço do site (EDI-108) — mesma
+      // resolução usada em `sincronizarAnuncioProduto` (`lib/estoque/sincronizacao.ts`).
+      price: centavosParaReais(produto.precosCanais?.mercadoLivre ?? produto.preco),
       currency_id: "BRL",
       available_quantity: produto.estoque,
       condition: "new",
