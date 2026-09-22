@@ -24,6 +24,8 @@ export interface CustoProducaoFormValores {
   tarifaEnergiaReais: string;
   valorHoraTrabalhoReais: string;
   custoEmbalagemReais: string;
+  /** Opcional — vazio = R$ 0,00, sem acessório (EDI-108). */
+  custoAcessoriosReais: string;
 }
 
 /**
@@ -46,6 +48,7 @@ export const VAZIO_CUSTO_PRODUCAO: CustoProducaoFormValores = {
   tarifaEnergiaReais: "0.90",
   valorHoraTrabalhoReais: "1.00",
   custoEmbalagemReais: "5.00",
+  custoAcessoriosReais: "",
 };
 
 /** Campos de custo de produção, na ordem exibida no formulário — `permiteZero` só vale para margem de perda. */
@@ -93,6 +96,13 @@ export function camposCustoProducaoFaltando(form: CustoProducaoFormValores): str
       faltando.push("taxa de falha (entre 0 e 99,9%)");
     }
   }
+  const acessorios = form.custoAcessoriosReais.trim();
+  if (acessorios !== "") {
+    const numero = numeroDeTexto(acessorios);
+    if (!Number.isFinite(numero) || numero < 0) {
+      faltando.push("custo de acessórios");
+    }
+  }
   return faltando;
 }
 
@@ -117,6 +127,8 @@ export function montarCustoProducao(form: CustoProducaoFormValores): CustoProduc
     tarifaEnergiaCentavos: centavos(form.tarifaEnergiaReais),
     valorHoraTrabalhoCentavos: centavos(form.valorHoraTrabalhoReais),
     custoEmbalagemCentavos: centavos(form.custoEmbalagemReais),
+    custoAcessoriosCentavos:
+      form.custoAcessoriosReais.trim() === "" ? 0 : centavos(form.custoAcessoriosReais),
   };
 }
 
@@ -141,5 +153,6 @@ export function custoProducaoParaFormulario(custo?: CustoProducao): CustoProduca
     tarifaEnergiaReais: reais(custo.tarifaEnergiaCentavos),
     valorHoraTrabalhoReais: reais(custo.valorHoraTrabalhoCentavos),
     custoEmbalagemReais: reais(custo.custoEmbalagemCentavos),
+    custoAcessoriosReais: custo.custoAcessoriosCentavos ? reais(custo.custoAcessoriosCentavos) : "",
   };
 }

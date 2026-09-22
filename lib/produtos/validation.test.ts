@@ -258,6 +258,23 @@ describe("validarProduto", () => {
       }
     });
 
+    it("aceita custoProducao com custo de acessórios válido (EDI-108)", () => {
+      expect(
+        validarProduto({ ...payloadValido, custoProducao: { ...custo, custoAcessoriosCentavos: 163 } })
+      ).toEqual({});
+      expect(
+        validarProduto({ ...payloadValido, custoProducao: { ...custo, custoAcessoriosCentavos: 0 } })
+      ).toEqual({});
+    });
+
+    it("rejeita custo de acessórios negativo ou não numérico", () => {
+      for (const custoAcessoriosCentavos of [-1, "163"]) {
+        expect(
+          validarProduto({ ...payloadValido, custoProducao: { ...custo, custoAcessoriosCentavos } })
+        ).toHaveProperty("custoProducao");
+      }
+    });
+
     it("aceita taxasCanais vazio e parcial", () => {
       expect(validarProduto({ ...payloadValido, taxasCanais: {} })).toEqual({});
       expect(

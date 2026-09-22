@@ -19,6 +19,9 @@ const custoReferencia: CustoProducao = {
   custoEmbalagemCentavos: 350, // R$ 3,50
 };
 
+// Mesmo cenário de referência, com um acessório comprado (ex: luz de LED) a mais (EDI-108).
+const custoComAcessorio: CustoProducao = { ...custoReferencia, custoAcessoriosCentavos: 163 }; // R$ 1,63
+
 describe("calcularCustoProducao", () => {
   it("calcula o COGS e o detalhamento por componente para o cenário de referência", () => {
     const resultado = calcularCustoProducao(custoReferencia);
@@ -28,7 +31,14 @@ describe("calcularCustoProducao", () => {
     expect(resultado.custoEnergiaCentavos).toBe(61); // 4,5h * 0,15kWh * 90 centavos
     expect(resultado.custoMaoDeObraCentavos).toBe(750); // 0,25h * 3000 centavos
     expect(resultado.custoEmbalagemCentavos).toBe(350);
+    expect(resultado.custoAcessoriosCentavos).toBe(0); // ausente = 0
     expect(resultado.totalCentavos).toBe(2995); // R$ 29,95
+  });
+
+  it("soma o custo de acessórios (ex: luz de LED) ao total, quando presente", () => {
+    const resultado = calcularCustoProducao(custoComAcessorio);
+    expect(resultado.custoAcessoriosCentavos).toBe(163);
+    expect(resultado.totalCentavos).toBe(2995 + 163);
   });
 
   it("ignora a margem de perda quando ela é zero", () => {
@@ -44,6 +54,7 @@ describe("calcularCustoProducao", () => {
       resultado.custoEnergiaCentavos +
       resultado.custoMaoDeObraCentavos +
       resultado.custoEmbalagemCentavos +
+      resultado.custoAcessoriosCentavos +
       resultado.custoFalhaCentavos;
     expect(resultado.totalCentavos).toBe(somaComponentes);
   });
@@ -82,13 +93,23 @@ describe("calcularCustoProducao", () => {
 });
 
 describe("calcularCustoCaixa", () => {
-  it("soma só filamento, energia e embalagem (sem depreciação nem mão de obra)", () => {
+  it("soma só filamento, energia, embalagem e acessórios (sem depreciação nem mão de obra)", () => {
     const cogs = calcularCustoProducao(custoReferencia);
 
     expect(calcularCustoCaixa(cogs)).toBe(
       cogs.custoFilamentoCentavos + cogs.custoEnergiaCentavos + cogs.custoEmbalagemCentavos
     );
     expect(calcularCustoCaixa(cogs)).toBeLessThan(cogs.totalCentavos);
+  });
+
+  it("inclui o custo de acessórios no custo de caixa, quando presente", () => {
+    const cogs = calcularCustoProducao(custoComAcessorio);
+    expect(calcularCustoCaixa(cogs)).toBe(
+      cogs.custoFilamentoCentavos +
+        cogs.custoEnergiaCentavos +
+        cogs.custoEmbalagemCentavos +
+        cogs.custoAcessoriosCentavos
+    );
   });
 
   it("divide o custo de caixa por (1 − falha)", () => {

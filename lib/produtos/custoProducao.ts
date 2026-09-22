@@ -7,6 +7,8 @@ export interface ResultadoCogs {
   custoDepreciacaoCentavos: number;
   custoMaoDeObraCentavos: number;
   custoEmbalagemCentavos: number;
+  /** Custo de acessórios/componentes comprados (ex: luz de LED) — 0 quando ausente (EDI-108). */
+  custoAcessoriosCentavos: number;
   /** Custo extra das peças perdidas: (soma dos componentes ÷ (1 − falha)) − soma. Zero sem taxa de falha (EDI-106). */
   custoFalhaCentavos: number;
   /** Taxa de falha usada no cálculo (0 quando ausente). */
@@ -22,7 +24,11 @@ export interface ResultadoCogs {
  * estaria ociosa.
  */
 export function calcularCustoCaixa(cogs: ResultadoCogs): number {
-  const caixa = cogs.custoFilamentoCentavos + cogs.custoEnergiaCentavos + cogs.custoEmbalagemCentavos;
+  const caixa =
+    cogs.custoFilamentoCentavos +
+    cogs.custoEnergiaCentavos +
+    cogs.custoEmbalagemCentavos +
+    cogs.custoAcessoriosCentavos;
   return aplicarTaxaFalha(caixa, cogs.taxaFalhaPercentual);
 }
 
@@ -60,6 +66,7 @@ export function calcularCustoProducao(custo: CustoProducao): ResultadoCogs {
   const custoMaoDeObraCentavos = Math.round(custo.tempoMaoDeObraHoras * custo.valorHoraTrabalhoCentavos);
 
   const custoEmbalagemCentavos = Math.round(custo.custoEmbalagemCentavos);
+  const custoAcessoriosCentavos = Math.round(custo.custoAcessoriosCentavos ?? 0);
 
   const taxaFalhaPercentual = custo.taxaFalhaPercentual ?? 0;
   const subtotalCentavos =
@@ -67,7 +74,8 @@ export function calcularCustoProducao(custo: CustoProducao): ResultadoCogs {
     custoDepreciacaoCentavos +
     custoEnergiaCentavos +
     custoMaoDeObraCentavos +
-    custoEmbalagemCentavos;
+    custoEmbalagemCentavos +
+    custoAcessoriosCentavos;
   const custoFalhaCentavos = aplicarTaxaFalha(subtotalCentavos, taxaFalhaPercentual) - subtotalCentavos;
   const totalCentavos = subtotalCentavos + custoFalhaCentavos;
 
@@ -77,6 +85,7 @@ export function calcularCustoProducao(custo: CustoProducao): ResultadoCogs {
     custoDepreciacaoCentavos,
     custoMaoDeObraCentavos,
     custoEmbalagemCentavos,
+    custoAcessoriosCentavos,
     custoFalhaCentavos,
     taxaFalhaPercentual,
     totalCentavos,

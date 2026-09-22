@@ -31,7 +31,7 @@ import {
   VAZIO_PRECOS_CANAIS,
   type PrecosCanaisFormValores,
 } from "@/lib/produtos/precosCanaisFormulario";
-import { resolverTaxasCanais } from "@/lib/produtos/canais";
+import { resolverTaxasCanais, type CanalVenda } from "@/lib/produtos/canais";
 import { TAXAS_CANAIS_PADRAO, type TaxasCanaisConfig } from "@/lib/models/configuracao";
 import type { CustoProducao, TaxasCanaisProduto } from "@/lib/models/produto";
 import {
@@ -291,6 +291,17 @@ export default function ProdutoForm({
       ...atual,
       precosCanais: { ...atual.precosCanais, [campo]: valor },
     }));
+  }
+
+  /** "Usar esse preço" de um card do comparativo (EDI-108) — vai pro campo daquele canal específico, não sempre pro preço do site. */
+  function aplicarPrecoNoCanal(canal: CanalVenda, precoReais: string) {
+    if (canal === "mercadoLivre") {
+      atualizarCampoPrecosCanais("mercadoLivre", precoReais);
+    } else if (canal === "shopee") {
+      atualizarCampoPrecosCanais("shopee", precoReais);
+    } else {
+      atualizarCampo("precoReais", precoReais);
+    }
   }
 
   /** Carrega, sob demanda, os produtos que têm custo de produção para servir de origem da cópia (EDI-106). */
@@ -961,6 +972,16 @@ export default function ProdutoForm({
               onChange={(e) => atualizarCampoCustoProducao("custoEmbalagemReais", e.target.value)}
             />
           </div>
+          <div className={styles.field}>
+            <label htmlFor="custoAcessorios">Custo de acessórios (R$, opcional)</label>
+            <input
+              id="custoAcessorios"
+              inputMode="decimal"
+              placeholder="0.00 (ex: luz de LED, ímã)"
+              value={valores.custoProducao.custoAcessoriosReais}
+              onChange={(e) => atualizarCampoCustoProducao("custoAcessoriosReais", e.target.value)}
+            />
+          </div>
         </div>
 
         {camposErro.custoProducao && (
@@ -976,6 +997,8 @@ export default function ProdutoForm({
               {(resultadoCogs.custoDepreciacaoCentavos / 100).toFixed(2)} · Mão de obra: R${" "}
               {(resultadoCogs.custoMaoDeObraCentavos / 100).toFixed(2)} · Embalagem: R${" "}
               {(resultadoCogs.custoEmbalagemCentavos / 100).toFixed(2)}
+              {resultadoCogs.custoAcessoriosCentavos > 0 &&
+                ` · Acessórios: R$ ${(resultadoCogs.custoAcessoriosCentavos / 100).toFixed(2)}`}
               {resultadoCogs.custoFalhaCentavos > 0 &&
                 ` · Falhas de impressão (${resultadoCogs.taxaFalhaPercentual}%): R$ ${(resultadoCogs.custoFalhaCentavos / 100).toFixed(2)}`}
             </span>
@@ -1230,6 +1253,7 @@ export default function ProdutoForm({
         margemMinimaPercentual={margemMinimaEfetiva}
         precosCanaisCentavos={precosCanaisCentavos}
         onAplicarPrecoSugerido={(preco) => atualizarCampo("precoReais", preco)}
+        onAplicarPrecoCanal={aplicarPrecoNoCanal}
       />
 
       {publicadoNoMercadoLivre && (

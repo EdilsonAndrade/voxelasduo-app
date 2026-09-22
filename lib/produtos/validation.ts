@@ -70,6 +70,13 @@ function validarCustoProducao(valor: unknown): string | undefined {
     return "A taxa de falha deve estar entre 0 e menos de 100%.";
   }
 
+  if (
+    custo.custoAcessoriosCentavos !== undefined &&
+    (!numeroFinito(custo.custoAcessoriosCentavos) || (custo.custoAcessoriosCentavos as number) < 0)
+  ) {
+    return "O custo de acessórios não pode ser negativo.";
+  }
+
   return undefined;
 }
 

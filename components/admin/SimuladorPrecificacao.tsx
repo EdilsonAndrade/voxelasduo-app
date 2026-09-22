@@ -68,9 +68,17 @@ export interface SimuladorPrecificacaoProps {
   margemMinimaPercentual: number;
   /** Preço de venda próprio de ML/Shopee, em centavos — ausente num canal = usa `precoVendaReais` (o preço do site) também nesse canal (EDI-108). */
   precosCanaisCentavos?: { mercadoLivre?: number; shopee?: number };
-  /** Chamado quando o vendedor clica em "Usar esse preço" no preço sugerido, com o valor pronto para o campo "Preço (R$)". */
+  /** Chamado quando o vendedor clica em "Usar esse preço" no preço sugerido (bloco geral, não por canal), com o valor pronto para o campo "Preço (R$)". */
   onAplicarPrecoSugerido?: (precoReais: string) => void;
+  /** Chamado ao clicar em "Usar esse preço" dentro do card de um canal — o preço vai pro campo daquele canal específico (ML/Shopee têm campo próprio; site usa o preço único) (EDI-108). */
+  onAplicarPrecoCanal?: (canal: CanalVenda, precoReais: string) => void;
 }
+
+const PREPOSICAO_CANAL: Record<CanalVenda, string> = {
+  mercadoLivre: "no Mercado Livre",
+  shopee: "na Shopee",
+  siteProprio: "no site",
+};
 
 export default function SimuladorPrecificacao({
   nome,
@@ -85,6 +93,7 @@ export default function SimuladorPrecificacao({
   margemMinimaPercentual,
   precosCanaisCentavos,
   onAplicarPrecoSugerido,
+  onAplicarPrecoCanal,
 }: SimuladorPrecificacaoProps) {
   const [comissao, setComissao] = useState<ComissaoMercadoLivre | null>(null);
   const [comissaoManualReais, setComissaoManualReais] = useState("");
@@ -94,6 +103,12 @@ export default function SimuladorPrecificacao({
   const [taxaEstimadaPercentual, setTaxaEstimadaPercentual] = useState("");
   const [lucroEscalaReais, setLucroEscalaReais] = useState("");
   const [modoPreco, setModoPreco] = useState<ModoPreco>("completo");
+  /** Custo extra de uma promoção específica (frete grátis, parcelamento, destaque etc.), por canal — livre, opcional (EDI-108). */
+  const [custoExtraPorCanal, setCustoExtraPorCanal] = useState<Record<CanalVenda, string>>({
+    mercadoLivre: "",
+    shopee: "",
+    siteProprio: "",
+  });
   const requisicaoAtual = useRef(0);
 
   // Pré-preenche a taxa estimada com a comissão real assim que ela for obtida
@@ -377,9 +392,29 @@ export default function SimuladorPrecificacao({
                           {!resultado.prejuizo && resultado.margemBaixa && (
                             <span>⚠ Margem abaixo do mínimo ({margemMinimaPercentual}%).</span>
                           )}
+                          {(onAplicarPrecoCanal ?? onAplicarPrecoSugerido) && (
+                            <button
+                              type="button"
+                              className={styles.btnGhost}
+                              onClick={() => {
+                                const preco = (resultado.precoSugeridoCentavos! / 100).toFixed(2);
+                                if (onAplicarPrecoCanal) onAplicarPrecoCanal(resultado.canal, preco);
+                                else onAplicarPrecoSugerido!(preco);
+                              }}
+                            >
+                              Usar esse preço {PREPOSICAO_CANAL[resultado.canal]}
+                            </button>
+                          )}
                           {(() => {
+                            // Custo extra opcional de uma promoção específica (frete grátis, parcelamento,
+                            // destaque etc.) — soma ao custo antes de achar o piso, mesma fórmula de sempre.
+                            const custoExtraTexto = custoExtraPorCanal[resultado.canal];
+                            const custoExtraCentavos =
+                              custoExtraTexto.trim() !== ""
+                                ? paraCentavos(Number(custoExtraTexto.replace(",", ".")) || 0)
+                                : 0;
                             const precoMinimo = calcularPrecoMinimoCanal(
-                              custoBaseCentavos!,
+                              custoBaseCentavos! + custoExtraCentavos,
                               resultado.taxa,
                               margemMinimaPercentual
                             );
@@ -390,47 +425,73 @@ export default function SimuladorPrecificacao({
                                 : resultado.canal === "shopee"
                                   ? (precosCanaisCentavos?.shopee ?? precoAtualCentavos)
                                   : precoAtualCentavos;
-                            if (precoAtualDoCanal === null) return null;
-                            const piso = calcularResultadoPisoCanal(
-                              resultado.canal,
-                              precoAtualDoCanal,
-                              precoMinimo
-                            );
-                            if (piso.precoMinimoCentavos === null) {
-                              return (
-                                <span className={styles.mlLinkAviso}>
-                                  Nenhum preço atende essa margem mínima neste canal (taxa + margem
-                                  mínima ≥ 100%).
-                                </span>
-                              );
-                            }
-                            if ((piso.descontoMaximoCentavos ?? 0) < 0) {
-                              return (
-                                <span className={styles.fieldError}>
-                                  ⚠ O preço atual já está abaixo do mínimo (R${" "}
-                                  {(piso.precoMinimoCentavos / 100).toFixed(2)}) para a margem mínima.
-                                </span>
-                              );
-                            }
+
+                            const piso =
+                              precoAtualDoCanal !== null
+                                ? calcularResultadoPisoCanal(resultado.canal, precoAtualDoCanal, precoMinimo)
+                                : null;
+
                             return (
-                              <span className={styles.mlLinkAviso}>
-                                Preço mínimo para promoção: {formatarReais(piso.precoMinimoCentavos)} ·
-                                desconto máximo: {formatarReais(piso.descontoMaximoCentavos!)} (
-                                {piso.descontoMaximoPercentual!.toFixed(1)}%)
-                              </span>
+                              <>
+                                <div className={styles.field}>
+                                  <label htmlFor={`custoExtra-${resultado.canal}`}>
+                                    Custo extra de uma promoção (R$, opcional — frete grátis, parcelamento,
+                                    destaque...)
+                                  </label>
+                                  <input
+                                    id={`custoExtra-${resultado.canal}`}
+                                    inputMode="decimal"
+                                    placeholder="Ex: 12.95"
+                                    value={custoExtraTexto}
+                                    onChange={(e) =>
+                                      setCustoExtraPorCanal((atual) => ({
+                                        ...atual,
+                                        [resultado.canal]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                </div>
+                                {piso === null ? null : piso.precoMinimoCentavos === null ? (
+                                  <span className={styles.mlLinkAviso}>
+                                    Nenhum preço atende essa margem mínima neste canal (taxa + margem
+                                    mínima ≥ 100%).
+                                  </span>
+                                ) : (
+                                  <>
+                                    {(piso.descontoMaximoCentavos ?? 0) < 0 ? (
+                                      <span className={styles.fieldError}>
+                                        ⚠ O preço atual já está abaixo do mínimo (R${" "}
+                                        {(piso.precoMinimoCentavos / 100).toFixed(2)}
+                                        {custoExtraCentavos > 0 ? ", já com o custo extra" : ""}) para a
+                                        margem mínima.
+                                      </span>
+                                    ) : (
+                                      <span className={styles.mlLinkAviso}>
+                                        Preço mínimo para promoção: {formatarReais(piso.precoMinimoCentavos)}{" "}
+                                        · desconto máximo: {formatarReais(piso.descontoMaximoCentavos!)} (
+                                        {piso.descontoMaximoPercentual!.toFixed(1)}%)
+                                        {custoExtraCentavos > 0 && " — já com o custo extra somado"}
+                                      </span>
+                                    )}
+                                    {onAplicarPrecoCanal && (
+                                      <button
+                                        type="button"
+                                        className={styles.btnGhost}
+                                        onClick={() =>
+                                          onAplicarPrecoCanal(
+                                            resultado.canal,
+                                            (piso.precoMinimoCentavos! / 100).toFixed(2)
+                                          )
+                                        }
+                                      >
+                                        Usar o preço mínimo {PREPOSICAO_CANAL[resultado.canal]}
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                              </>
                             );
                           })()}
-                          {onAplicarPrecoSugerido && (
-                            <button
-                              type="button"
-                              className={styles.btnGhost}
-                              onClick={() =>
-                                onAplicarPrecoSugerido((resultado.precoSugeridoCentavos! / 100).toFixed(2))
-                              }
-                            >
-                              Usar esse preço
-                            </button>
-                          )}
                         </>
                       )}
                     </div>

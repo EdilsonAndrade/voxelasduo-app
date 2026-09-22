@@ -54,6 +54,12 @@ export interface CustoProducao {
   valorHoraTrabalhoCentavos: number;
   /** Custo de embalagem/envio por unidade, em centavos. */
   custoEmbalagemCentavos: number;
+  /**
+   * Custo de acessórios/componentes comprados que acompanham a peça (ex:
+   * luz de LED, ímã, corrente) — distinto do filamento e da embalagem.
+   * Ausente = 0, ou seja, sem acessório (EDI-108).
+   */
+  custoAcessoriosCentavos?: number;
 }
 
 /**
