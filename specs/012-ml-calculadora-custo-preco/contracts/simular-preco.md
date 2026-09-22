@@ -13,7 +13,8 @@ Content-Type: application/json
 {
   "nome": "Vaso Decorativo Articulado",   // obrigatório — nome do produto, usado pelo previsor de categoria quando não há override
   "categoria": "decoracao",                // obrigatório — categoria do site (mesma usada em Produto.categoria)
-  "precoReais": 73.05                       // obrigatório — preço de venda digitado, em reais (número > 0)
+  "precoReais": 73.05,                      // obrigatório — preço de venda digitado, em reais (número > 0)
+  "mercadoLivreCategoriaId": "MLB43132"     // opcional — categoria do Mercado Livre já escolhida no admin (produto.integracoes.mercadoLivreCategoriaId); quando presente, tem prioridade sobre qualquer resolução automática (correção: EDI-108)
 }
 ```
 
@@ -68,7 +69,7 @@ Mesma UX esperada do caso 404: aviso não bloqueante, formulário continua utili
 
 ## Notas de implementação
 
-- A rota resolve a categoria com a mesma lógica de `criarAnuncio()` (`resolverCategoriaMercadoLivre` → fallback `preverCategoriaMercadoLivre`), garantindo que a simulação reflita a categoria que seria usada numa publicação real.
+- A rota resolve a categoria com a mesma lógica/ordem de `resolverCategoriaOuFalhar()` (`anuncios.ts`): `mercadoLivreCategoriaId` do payload (categoria já escolhida no admin) → `resolverCategoriaMercadoLivre` (override por categoria do site) → fallback `preverCategoriaMercadoLivre` — garantindo que a simulação reflita a categoria que seria usada numa publicação real, mesmo quando o vendedor já escolheu a categoria manualmente (correção: EDI-108, antes essa escolha era ignorada e a simulação sempre reconsultava o previsor pelo nome).
 - Usa `listing_type_id=gold_special` fixo (mesmo valor usado na publicação — `anuncios.ts`), sem parâmetros de logística nesta primeira versão (ver research.md #3).
 - Autenticação com o Mercado Livre é interna (token do vendedor/aplicação via `obterAccessTokenValido()`), não repassada pelo cliente — a rota não expõe nem exige credenciais do Mercado Livre no payload.
 - Debounce (não disparar a cada tecla) é responsabilidade do cliente (`SimuladorPrecificacao.tsx`), não desta rota.

@@ -90,7 +90,29 @@ describe("consultarCustoVenda", () => {
 describe("resolverCategoriaParaSimulacao", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("usa o override manual quando presente, sem consultar o previsor", async () => {
+  it("usa a categoria do Mercado Livre já escolhida no produto, antes de tudo (correção: EDI-108)", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB-OVERRIDE-SITE");
+
+    const categoria = await resolverCategoriaParaSimulacao(
+      "Vaso Geométrico",
+      "decoracao",
+      "MLB-ESCOLHIDA-NO-PRODUTO"
+    );
+
+    expect(categoria).toBe("MLB-ESCOLHIDA-NO-PRODUTO");
+    expect(resolverCategoriaMercadoLivre).not.toHaveBeenCalled();
+    expect(preverCategoriaMercadoLivre).not.toHaveBeenCalled();
+  });
+
+  it("categoriaManualId vazio/só espaços: ignora e segue a cadeia normal", async () => {
+    vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB-OVERRIDE");
+
+    const categoria = await resolverCategoriaParaSimulacao("Vaso Geométrico", "decoracao", "   ");
+
+    expect(categoria).toBe("MLB-OVERRIDE");
+  });
+
+  it("usa o override manual por categoria do site quando presente, sem consultar o previsor", async () => {
     vi.mocked(resolverCategoriaMercadoLivre).mockReturnValue("MLB-OVERRIDE");
 
     const categoria = await resolverCategoriaParaSimulacao("Vaso Geométrico", "decoracao");

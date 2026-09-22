@@ -1221,6 +1221,7 @@ export default function ProdutoForm({
         nome={valores.nome}
         categoria={valores.categoria}
         precoVendaReais={valores.precoReais}
+        mercadoLivreCategoriaId={valores.mercadoLivreCategoriaId}
         cogsCentavos={resultadoCogs?.totalCentavos ?? null}
         custoCaixaCentavos={resultadoCogs ? calcularCustoCaixa(resultadoCogs) : null}
         depreciacaoCentavos={resultadoCogs?.custoDepreciacaoCentavos ?? null}

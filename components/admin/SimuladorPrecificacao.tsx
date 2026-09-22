@@ -52,6 +52,8 @@ export interface SimuladorPrecificacaoProps {
   categoria: string;
   /** Mesmo valor do campo "Preço (R$)" do produto — a simulação reage a esse preço, não a um campo separado. */
   precoVendaReais: string;
+  /** Categoria do Mercado Livre já escolhida manualmente no admin, quando houver — evita depender só do previsor por nome (correção: EDI-108). */
+  mercadoLivreCategoriaId?: string;
   /** Custo de produção total (COGS), em centavos — `null` quando o custo de produção (US1) ainda está incompleto. */
   cogsCentavos: number | null;
   /** Custo de caixa (COGS sem depreciação e mão de obra), em centavos — base do "preço de escala". */
@@ -74,6 +76,7 @@ export default function SimuladorPrecificacao({
   nome,
   categoria,
   precoVendaReais,
+  mercadoLivreCategoriaId,
   cogsCentavos,
   custoCaixaCentavos,
   depreciacaoCentavos,
@@ -126,7 +129,12 @@ export default function SimuladorPrecificacao({
         const resposta = await fetch("/api/mercado-livre/simular-preco", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nome, categoria, precoReais: precoVendaCentavosOuNull }),
+          body: JSON.stringify({
+            nome,
+            categoria,
+            precoReais: precoVendaCentavosOuNull,
+            mercadoLivreCategoriaId,
+          }),
         });
         const dados = await resposta.json();
 
@@ -150,7 +158,7 @@ export default function SimuladorPrecificacao({
 
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nome, categoria, precoVendaCentavosOuNull]);
+  }, [nome, categoria, precoVendaCentavosOuNull, mercadoLivreCategoriaId]);
 
   const comissaoManualCentavos =
     comissaoManualReais.trim() !== ""

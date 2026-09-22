@@ -5,6 +5,8 @@ interface SimularPrecoPayload {
   nome?: unknown;
   categoria?: unknown;
   precoReais?: unknown;
+  /** Categoria do Mercado Livre já escolhida manualmente no admin, quando houver — evita reconsultar o previsor (correção: EDI-108). */
+  mercadoLivreCategoriaId?: unknown;
 }
 
 /**
@@ -38,8 +40,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const categoriaManualId =
+    typeof payload.mercadoLivreCategoriaId === "string" ? payload.mercadoLivreCategoriaId : undefined;
+
   try {
-    const categoryId = await resolverCategoriaParaSimulacao(nome as string, categoria as string);
+    const categoryId = await resolverCategoriaParaSimulacao(
+      nome as string,
+      categoria as string,
+      categoriaManualId
+    );
 
     if (!categoryId) {
       return NextResponse.json(

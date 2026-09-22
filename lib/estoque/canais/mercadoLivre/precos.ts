@@ -76,17 +76,23 @@ export async function consultarCustoVenda({
 
 /**
  * Resolve a categoria do Mercado Livre a usar na simulação de comissão,
- * antes de o produto ser publicado (research.md #2) — reaproveita
- * exatamente a mesma lógica de `criarAnuncio()` (`anuncios.ts`): override
- * manual (`resolverCategoriaMercadoLivre`) com fallback para o previsor
- * (`preverCategoriaMercadoLivre`), garantindo que a simulação não divirja da
- * categoria que seria usada numa publicação real.
+ * antes ou depois de o produto ser publicado (research.md #2) — reaproveita
+ * exatamente a mesma ordem de `resolverCategoriaOuFalhar()` (`anuncios.ts`):
+ * categoria do Mercado Livre já escolhida manualmente no admin
+ * (`produto.integracoes.mercadoLivreCategoriaId`) primeiro, depois o
+ * override por categoria do site (`resolverCategoriaMercadoLivre`), com
+ * fallback para o previsor (`preverCategoriaMercadoLivre`) — garantindo que
+ * a simulação nunca divirja da categoria que seria usada numa publicação
+ * real, e não precise adivinhar de novo quando o vendedor já escolheu a
+ * categoria (correção: antes só usava o previsor).
  */
 export async function resolverCategoriaParaSimulacao(
   nome: string,
-  categoria: string
+  categoria: string,
+  categoriaManualId?: string
 ): Promise<string | undefined> {
   return (
+    (categoriaManualId?.trim() || undefined) ??
     resolverCategoriaMercadoLivre(categoria) ??
     (await preverCategoriaMercadoLivre(montarConsultaPrevisor(categoria, nome)))
   );
