@@ -197,6 +197,37 @@ describe("atributosFichaTecnica", () => {
     expect(resultado.paraDescricao).toEqual([]);
   });
 
+  it("categoria só com TOTAL_HEIGHT/TOTAL_WIDTH/TOTAL_DIAMETER (ex: Luminárias de Mesa): usa os atributos TOTAL_* como fallback (EDI-108)", () => {
+    const resultado = atributosFichaTecnica(
+      { alturaCm: 12.14, larguraCm: 11.6, comprimentoCm: 11.6, pesoGramas: 35.3 },
+      [
+        { id: "TOTAL_HEIGHT", value_type: "number_unit", tags: {} },
+        { id: "TOTAL_WIDTH", value_type: "number_unit", tags: {} },
+        { id: "TOTAL_DIAMETER", value_type: "number_unit", tags: {} },
+      ]
+    );
+
+    expect(resultado.attributes).toEqual(
+      expect.arrayContaining([
+        { id: "TOTAL_HEIGHT", value_name: "12.14 cm" },
+        { id: "TOTAL_WIDTH", value_name: "11.6 cm" },
+      ])
+    );
+    expect(resultado.paraDescricao).toEqual(
+      expect.arrayContaining([{ rotulo: "Comprimento", valor: "11.6 cm" }])
+    );
+  });
+
+  it("categoria só com DIAMETER (sem WIDTH/TOTAL_WIDTH): usa DIAMETER como fallback de largura (EDI-108)", () => {
+    const resultado = atributosFichaTecnica(
+      { larguraCm: 8 },
+      [{ id: "DIAMETER", value_type: "number_unit", tags: {} }]
+    );
+
+    expect(resultado.attributes).toEqual([{ id: "DIAMETER", value_name: "8 cm" }]);
+    expect(resultado.paraDescricao).toEqual([]);
+  });
+
   it("MATERIAL aceita texto livre mesmo fora da lista de sugestões da categoria", () => {
     const resultado = atributosFichaTecnica(
       { material: "PLA (impressão 3D)" },
