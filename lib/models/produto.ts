@@ -72,6 +72,8 @@ export interface TaxasCanaisProduto {
   siteTaxaFixaCentavos?: number;
   /** Override da margem mínima só deste produto — ausente = usa o padrão global (EDI-108). */
   margemMinimaPercentual?: number;
+  /** Override da margem desejada só deste produto — ausente = usa o padrão global (EDI-108, correção: antes não era salva). */
+  margemDesejadaPercentual?: number;
 }
 
 /**

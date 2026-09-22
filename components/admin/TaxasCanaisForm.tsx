@@ -17,6 +17,7 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
     (valoresIniciais.siteTaxaFixaCentavos / 100).toFixed(2)
   );
   const [margemMinima, setMargemMinima] = useState(String(valoresIniciais.margemMinimaPercentual));
+  const [margemDesejada, setMargemDesejada] = useState(String(valoresIniciais.margemDesejadaPercentual));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [camposErro, setCamposErro] = useState<Record<string, string>>({});
@@ -37,6 +38,7 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
           siteTaxaPercentual: numeroDeTexto(sitePercentual),
           siteTaxaFixaCentavos: Math.round(numeroDeTexto(siteFixaReais) * 100),
           margemMinimaPercentual: numeroDeTexto(margemMinima),
+          margemDesejadaPercentual: numeroDeTexto(margemDesejada),
         }),
       });
       const dados = await resposta.json();
@@ -108,7 +110,22 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
         </fieldset>
 
         <fieldset className={styles.field}>
-          <legend>Promoções</legend>
+          <legend>Margens</legend>
+          <label htmlFor="margemDesejada">Margem de lucro desejada padrão (%)</label>
+          <input
+            id="margemDesejada"
+            inputMode="decimal"
+            value={margemDesejada}
+            onChange={(e) => setMargemDesejada(e.target.value)}
+          />
+          <span className={styles.mlLinkAviso}>
+            Usada para calcular o "preço sugerido" no simulador — é sobre o custo, sem teto (100% =
+            dobrar o custo). Pode ser sobrescrita por produto.
+          </span>
+          {camposErro.margemDesejadaPercentual && (
+            <span className={styles.fieldError}>{camposErro.margemDesejadaPercentual}</span>
+          )}
+
           <label htmlFor="margemMinima">Margem de lucro mínima aceitável (%)</label>
           <input
             id="margemMinima"

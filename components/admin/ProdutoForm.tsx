@@ -422,6 +422,12 @@ export default function ProdutoForm({
     () => montarTaxasCanaisProduto(valores.taxasCanais).margemMinimaPercentual ?? taxasGlobais.margemMinimaPercentual,
     [taxasGlobais, valores.taxasCanais]
   );
+  const margemDesejadaEfetiva = useMemo(
+    () =>
+      montarTaxasCanaisProduto(valores.taxasCanais).margemDesejadaPercentual ??
+      taxasGlobais.margemDesejadaPercentual,
+    [taxasGlobais, valores.taxasCanais]
+  );
   const placeholderTaxasGlobais = taxasGlobaisParaPlaceholder(taxasGlobais);
   const precosCanaisCentavos = useMemo(
     () => montarPrecosCanaisProduto(valores.precosCanais),
@@ -1198,6 +1204,16 @@ export default function ProdutoForm({
               onChange={(e) => atualizarCampoTaxasCanais("margemMinimaPercentual", e.target.value)}
             />
           </div>
+          <div className={styles.field}>
+            <label htmlFor="margemDesejadaProduto">Margem de lucro desejada deste produto (%)</label>
+            <input
+              id="margemDesejadaProduto"
+              inputMode="decimal"
+              placeholder={placeholderTaxasGlobais.margemDesejadaPercentual}
+              value={valores.taxasCanais.margemDesejadaPercentual}
+              onChange={(e) => atualizarCampoTaxasCanais("margemDesejadaPercentual", e.target.value)}
+            />
+          </div>
         </div>
         {taxasCanaisInvalidas.length > 0 && (
           <span className={styles.fieldError}>Corrija: {taxasCanaisInvalidas.join(", ")}.</span>
@@ -1251,6 +1267,7 @@ export default function ProdutoForm({
         tempoImpressaoHoras={custoProducaoCalculado?.tempoImpressaoHoras ?? null}
         taxasCanais={taxasCanaisEfetivas}
         margemMinimaPercentual={margemMinimaEfetiva}
+        margemDesejadaPercentual={margemDesejadaEfetiva}
         precosCanaisCentavos={precosCanaisCentavos}
         onAplicarPrecoSugerido={(preco) => atualizarCampo("precoReais", preco)}
         onAplicarPrecoCanal={aplicarPrecoNoCanal}

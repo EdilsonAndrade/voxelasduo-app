@@ -32,9 +32,6 @@ function descreverTaxa(taxa: { percentual: number; fixaCentavos: number }): stri
 /** Espera após a última tecla digitada no preço antes de consultar a comissão real (FR-005, research.md #5). */
 const DEBOUNCE_MS = 500;
 
-/** Margem de lucro desejada padrão, usada só para calcular o preço sugerido (mesmo valor de exemplo da planilha do solicitante). */
-const MARGEM_DESEJADA_PADRAO = "100";
-
 /** "completo" cobre depreciação e mão de obra; "escala" cobre só o custo de caixa (vender sem perda usando a impressora ociosa). */
 type ModoPreco = "completo" | "escala";
 
@@ -66,6 +63,8 @@ export interface SimuladorPrecificacaoProps {
   taxasCanais: TaxasCanaisEfetivas;
   /** Margem mínima efetiva (padrão global com override do produto já aplicado) — piso de segurança pra promoções (EDI-108). */
   margemMinimaPercentual: number;
+  /** Margem de lucro desejada efetiva (padrão global com override do produto já aplicado) — usada pro "preço sugerido" (EDI-108, correção: antes era um campo solto que não persistia). */
+  margemDesejadaPercentual: number;
   /** Preço de venda próprio de ML/Shopee, em centavos — ausente num canal = usa `precoVendaReais` (o preço do site) também nesse canal (EDI-108). */
   precosCanaisCentavos?: { mercadoLivre?: number; shopee?: number };
   /** Chamado quando o vendedor clica em "Usar esse preço" no preço sugerido (bloco geral, não por canal), com o valor pronto para o campo "Preço (R$)". */
@@ -91,6 +90,7 @@ export default function SimuladorPrecificacao({
   tempoImpressaoHoras,
   taxasCanais,
   margemMinimaPercentual,
+  margemDesejadaPercentual,
   precosCanaisCentavos,
   onAplicarPrecoSugerido,
   onAplicarPrecoCanal,
@@ -99,7 +99,6 @@ export default function SimuladorPrecificacao({
   const [comissaoManualReais, setComissaoManualReais] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [margemDesejadaPercentual, setMargemDesejadaPercentual] = useState(MARGEM_DESEJADA_PADRAO);
   const [taxaEstimadaPercentual, setTaxaEstimadaPercentual] = useState("");
   const [lucroEscalaReais, setLucroEscalaReais] = useState("");
   const [modoPreco, setModoPreco] = useState<ModoPreco>("completo");
@@ -181,7 +180,6 @@ export default function SimuladorPrecificacao({
       : null;
   const comissaoEfetivaCentavos = comissaoManualCentavos ?? comissao?.saleFeeAmountCentavos ?? null;
 
-  const margemDesejadaNumero = Number(margemDesejadaPercentual.replace(",", "."));
   const taxaEstimadaNumero = Number(taxaEstimadaPercentual.replace(",", "."));
   const custoBaseCentavos = modoPreco === "escala" ? custoCaixaCentavos : cogsCentavos;
   const taxaValida = Number.isFinite(taxaEstimadaNumero) && taxaEstimadaNumero >= 0;
@@ -198,10 +196,10 @@ export default function SimuladorPrecificacao({
           taxaEstimadaNumero
         );
       }
-    } else if (Number.isFinite(margemDesejadaNumero) && margemDesejadaNumero >= 0) {
+    } else {
       precoSugeridoCentavos = calcularPrecoSugerido(
         custoBaseCentavos,
-        margemDesejadaNumero,
+        margemDesejadaPercentual,
         taxaEstimadaNumero
       );
     }
@@ -209,16 +207,13 @@ export default function SimuladorPrecificacao({
 
   // Comparativo por canal (EDI-106): mesmo custo/margem, cada canal com a própria taxa.
   const entradasComparativoValidas =
-    custoBaseCentavos !== null &&
-    (modoPreco === "escala"
-      ? lucroEscalaValido
-      : Number.isFinite(margemDesejadaNumero) && margemDesejadaNumero >= 0);
+    custoBaseCentavos !== null && (modoPreco === "escala" ? lucroEscalaValido : true);
   const comparativo: ResultadoCanal[] | null =
     entradasComparativoValidas && custoBaseCentavos !== null
       ? calcularComparativoCanais({
           custoBaseCentavos,
           modo: modoPreco,
-          margemDesejadaPercentual: margemDesejadaNumero,
+          margemDesejadaPercentual,
           lucroEscalaCentavos: lucroEscalaValido ? paraCentavos(lucroEscalaNumero) : 0,
           margemMinimaPercentual,
           mercadoLivre: { percentual: taxaValida ? taxaEstimadaNumero : 0, fixaCentavos: 0 },
@@ -300,13 +295,12 @@ export default function SimuladorPrecificacao({
               </div>
             ) : (
               <div className={styles.field}>
-                <label htmlFor="margemDesejada">Margem de lucro desejada (%)</label>
-                <input
-                  id="margemDesejada"
-                  inputMode="decimal"
-                  value={margemDesejadaPercentual}
-                  onChange={(e) => setMargemDesejadaPercentual(e.target.value)}
-                />
+                <label>Margem de lucro desejada</label>
+                <span className={styles.comparativoPreco}>{margemDesejadaPercentual}%</span>
+                <span className={styles.mlLinkAviso}>
+                  Editável em "Taxas dos canais neste produto" (ou no padrão global, em Taxas dos
+                  canais).
+                </span>
               </div>
             )}
             <div className={styles.field}>

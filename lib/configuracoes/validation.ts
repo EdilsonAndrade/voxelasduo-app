@@ -23,5 +23,11 @@ export function validarTaxasCanais(payload: unknown): ErrosTaxasCanais {
     erros.siteTaxaFixaCentavos = "A taxa fixa não pode ser negativa.";
   }
 
+  // Margem desejada é sobre o custo, não sobre o preço — sem teto de 100% (200%, 300% etc. são válidos).
+  const margemDesejada = dados.margemDesejadaPercentual;
+  if (!numeroFinito(margemDesejada) || margemDesejada < 0) {
+    erros.margemDesejadaPercentual = "Informe um percentual válido, maior ou igual a 0.";
+  }
+
   return erros;
 }

@@ -15,6 +15,8 @@ export interface TaxasCanaisConfig {
   siteTaxaFixaCentavos: number;
   /** Margem de lucro mínima aceitável, em percentual — piso de segurança pra promoções (EDI-108). */
   margemMinimaPercentual: number;
+  /** Margem de lucro desejada, em percentual sobre o custo — usada pro "preço sugerido" do simulador. Sem teto (100 = dobrar o custo, 200 = triplicar, etc.), diferente da margem mínima (EDI-108, correção: antes não era salva). */
+  margemDesejadaPercentual: number;
 }
 
 /** Documento persistido — `_id` fixo, um único por loja. */
@@ -29,4 +31,5 @@ export const TAXAS_CANAIS_PADRAO: TaxasCanaisConfig = {
   siteTaxaPercentual: 4.99,
   siteTaxaFixaCentavos: 0,
   margemMinimaPercentual: 15,
+  margemDesejadaPercentual: 100,
 };

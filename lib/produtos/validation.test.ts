@@ -301,6 +301,18 @@ describe("validarProduto", () => {
       ).toHaveProperty("taxasCanais");
     });
 
+    it("aceita override de margemDesejadaPercentual em taxasCanais, sem teto de 100, e rejeita negativo", () => {
+      expect(
+        validarProduto({ ...payloadValido, taxasCanais: { margemDesejadaPercentual: 40 } })
+      ).toEqual({});
+      expect(
+        validarProduto({ ...payloadValido, taxasCanais: { margemDesejadaPercentual: 300 } })
+      ).toEqual({});
+      expect(
+        validarProduto({ ...payloadValido, taxasCanais: { margemDesejadaPercentual: -1 } })
+      ).toHaveProperty("taxasCanais");
+    });
+
     it("aceita precosCanais vazio e parcial", () => {
       expect(validarProduto({ ...payloadValido, precosCanais: {} })).toEqual({});
       expect(

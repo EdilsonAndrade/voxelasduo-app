@@ -12,6 +12,8 @@ export interface TaxasCanaisFormValores {
   siteTaxaFixaReais: string;
   /** Override da margem mínima só deste produto (EDI-108) — vazio = herda o padrão global. */
   margemMinimaPercentual: string;
+  /** Override da margem desejada só deste produto (EDI-108, correção) — vazio = herda o padrão global. */
+  margemDesejadaPercentual: string;
 }
 
 export const VAZIO_TAXAS_CANAIS: TaxasCanaisFormValores = {
@@ -19,6 +21,7 @@ export const VAZIO_TAXAS_CANAIS: TaxasCanaisFormValores = {
   siteTaxaPercentual: "",
   siteTaxaFixaReais: "",
   margemMinimaPercentual: "",
+  margemDesejadaPercentual: "",
 };
 
 function numeroDeTexto(valor: string): number {
@@ -28,6 +31,12 @@ function numeroDeTexto(valor: string): number {
 function percentualValido(texto: string): boolean {
   const numero = numeroDeTexto(texto);
   return Number.isFinite(numero) && numero >= 0 && numero < 100;
+}
+
+/** Margem desejada é sobre o custo, não sobre o preço — sem teto de 100% (200%, 300% etc. são válidos). */
+function percentualSemTetoValido(texto: string): boolean {
+  const numero = numeroDeTexto(texto);
+  return Number.isFinite(numero) && numero >= 0;
 }
 
 /** Campos de taxa preenchidos com valor inválido — usado para avisar antes de salvar. */
@@ -48,6 +57,12 @@ export function camposTaxasCanaisInvalidos(form: TaxasCanaisFormValores): string
     !percentualValido(form.margemMinimaPercentual)
   ) {
     invalidos.push("margem mínima (entre 0 e 99,9%)");
+  }
+  if (
+    form.margemDesejadaPercentual.trim() !== "" &&
+    !percentualSemTetoValido(form.margemDesejadaPercentual)
+  ) {
+    invalidos.push("margem desejada (maior ou igual a 0)");
   }
   return invalidos;
 }
@@ -75,6 +90,12 @@ export function montarTaxasCanaisProduto(form: TaxasCanaisFormValores): TaxasCan
   ) {
     taxas.margemMinimaPercentual = numeroDeTexto(form.margemMinimaPercentual);
   }
+  if (
+    form.margemDesejadaPercentual.trim() !== "" &&
+    percentualSemTetoValido(form.margemDesejadaPercentual)
+  ) {
+    taxas.margemDesejadaPercentual = numeroDeTexto(form.margemDesejadaPercentual);
+  }
   return taxas;
 }
 
@@ -90,6 +111,8 @@ export function taxasCanaisParaFormulario(taxas?: TaxasCanaisProduto): TaxasCana
       taxas.siteTaxaFixaCentavos !== undefined ? (taxas.siteTaxaFixaCentavos / 100).toFixed(2) : "",
     margemMinimaPercentual:
       taxas.margemMinimaPercentual !== undefined ? String(taxas.margemMinimaPercentual) : "",
+    margemDesejadaPercentual:
+      taxas.margemDesejadaPercentual !== undefined ? String(taxas.margemDesejadaPercentual) : "",
   };
 }
 
@@ -100,5 +123,6 @@ export function taxasGlobaisParaPlaceholder(global: TaxasCanaisConfig): TaxasCan
     siteTaxaPercentual: String(global.siteTaxaPercentual),
     siteTaxaFixaReais: (global.siteTaxaFixaCentavos / 100).toFixed(2),
     margemMinimaPercentual: String(global.margemMinimaPercentual),
+    margemDesejadaPercentual: String(global.margemDesejadaPercentual),
   };
 }

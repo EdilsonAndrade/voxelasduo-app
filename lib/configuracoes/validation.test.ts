@@ -6,6 +6,7 @@ const valido = {
   siteTaxaPercentual: 4.99,
   siteTaxaFixaCentavos: 0,
   margemMinimaPercentual: 15,
+  margemDesejadaPercentual: 100,
 };
 
 describe("validarTaxasCanais", () => {
@@ -17,8 +18,11 @@ describe("validarTaxasCanais", () => {
         siteTaxaPercentual: 0,
         siteTaxaFixaCentavos: 0,
         margemMinimaPercentual: 0,
+        margemDesejadaPercentual: 0,
       })
     ).toEqual({});
+    // margem desejada sem teto — 300% é válido (triplicar o custo)
+    expect(validarTaxasCanais({ ...valido, margemDesejadaPercentual: 300 })).toEqual({});
   });
 
   it("rejeita percentual negativo ou >= 100", () => {
@@ -26,6 +30,7 @@ describe("validarTaxasCanais", () => {
     expect(validarTaxasCanais({ ...valido, siteTaxaPercentual: 100 })).toHaveProperty("siteTaxaPercentual");
     expect(validarTaxasCanais({ ...valido, margemMinimaPercentual: -1 })).toHaveProperty("margemMinimaPercentual");
     expect(validarTaxasCanais({ ...valido, margemMinimaPercentual: 100 })).toHaveProperty("margemMinimaPercentual");
+    expect(validarTaxasCanais({ ...valido, margemDesejadaPercentual: -1 })).toHaveProperty("margemDesejadaPercentual");
   });
 
   it("rejeita taxa fixa negativa", () => {
@@ -33,8 +38,8 @@ describe("validarTaxasCanais", () => {
   });
 
   it("rejeita campos ausentes ou não numéricos", () => {
-    expect(Object.keys(validarTaxasCanais({}))).toHaveLength(4);
+    expect(Object.keys(validarTaxasCanais({}))).toHaveLength(5);
     expect(validarTaxasCanais({ ...valido, shopeeTaxaPercentual: "14" })).toHaveProperty("shopeeTaxaPercentual");
-    expect(Object.keys(validarTaxasCanais(null))).toHaveLength(4);
+    expect(Object.keys(validarTaxasCanais(null))).toHaveLength(5);
   });
 });

@@ -104,6 +104,13 @@ function validarTaxasCanais(valor: unknown): string | undefined {
     }
   }
 
+  // Margem desejada é sobre o custo, não sobre o preço — sem teto de 100%.
+  if (taxas.margemDesejadaPercentual !== undefined) {
+    if (!numeroFinito(taxas.margemDesejadaPercentual) || (taxas.margemDesejadaPercentual as number) < 0) {
+      return "Informe um percentual válido, maior ou igual a 0, para a margem desejada.";
+    }
+  }
+
   return undefined;
 }
 

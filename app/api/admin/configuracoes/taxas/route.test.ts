@@ -14,6 +14,7 @@ const valido = {
   siteTaxaPercentual: 4.99,
   siteTaxaFixaCentavos: 0,
   margemMinimaPercentual: 15,
+  margemDesejadaPercentual: 100,
 };
 
 function put(body: unknown) {
@@ -59,6 +60,21 @@ describe("/api/admin/configuracoes/taxas", () => {
     expect(resposta.status).toBe(400);
     expect((await resposta.json()).campos).toHaveProperty("margemMinimaPercentual");
     expect(salvarTaxasCanais).not.toHaveBeenCalled();
+  });
+
+  it("PUT 400 com margemDesejadaPercentual negativo, sem salvar", async () => {
+    const resposta = await put({ ...valido, margemDesejadaPercentual: -1 });
+
+    expect(resposta.status).toBe(400);
+    expect((await resposta.json()).campos).toHaveProperty("margemDesejadaPercentual");
+    expect(salvarTaxasCanais).not.toHaveBeenCalled();
+  });
+
+  it("PUT aceita margemDesejadaPercentual acima de 100 (sem teto)", async () => {
+    salvarTaxasCanais.mockResolvedValue({ ...valido, margemDesejadaPercentual: 300 });
+    const resposta = await put({ ...valido, margemDesejadaPercentual: 300 });
+
+    expect(resposta.status).toBe(200);
   });
 
   it("PUT 400 com corpo inválido", async () => {
