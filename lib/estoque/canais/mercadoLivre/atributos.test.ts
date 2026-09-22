@@ -137,10 +137,10 @@ describe("valorPadraoAtributo", () => {
     expect(valor).toEqual({ id: "MODEL", value_name: "Chaveiro VoXElas Duo" });
   });
 
-  it("BRAND de texto livre: usa um valor genérico, não o nome do produto (EDI-95)", () => {
+  it("BRAND de texto livre: usa a marca real da loja, não o nome do produto (EDI-95)", () => {
     const valor = valorPadraoAtributo({ id: "BRAND", value_type: "string" }, produtoBase);
 
-    expect(valor).toEqual({ id: "BRAND", value_name: "Genérica" });
+    expect(valor).toEqual({ id: "BRAND", value_name: "Voxelas Duo" });
     expect(valor.value_name).not.toBe(produtoBase.nome);
   });
 

@@ -64,21 +64,27 @@ const PADRAO_GENERICO = /gen[eé]ric|n[aã]o especificad|outr[oa]|sem marca/i;
 /** Reconhece "Não"/"Nao"/"No" entre as opções de um atributo booleano (ex: "Com USB" → Sim/Não). */
 const PADRAO_NAO = /^n(a|ã)o$/i;
 
+/** Marca/fabricante de todo produto vendido — nunca vem do produto, é sempre o mesmo (EDI-95/EDI-XXX). */
+const MARCA_FABRICANTE = "Voxelas Duo";
+
 /**
  * Melhor esforço para preencher um atributo obrigatório sem intervenção
  * manual: para listas fechadas (ex: marca), procura uma opção genérica
  * ("Genérica", "Não especificado"); sem opção assim, usa a primeira da
- * lista. Para atributos booleanos (`value_type: "boolean"`, ex: "Com USB" —
- * têm `values` com Sim/Não, mas não são `"list"`; descoberto em produção: a
- * categoria "Luminárias de Mesa" tem `WITH_USB` obrigatório e caía no
- * fallback de texto livre, mandando o nome do produto como valor e sendo
- * rejeitado pelo Mercado Livre), assume "Não" — mais seguro que afirmar um
- * recurso ("Sim") que a peça pode não ter de verdade. Para atributos de
- * texto livre, reaproveita o nome do produto — **exceto** `BRAND`, que usa
- * um valor genérico fixo (EDI-95): produtos sem marca real não devem ter
- * "Marca" preenchida com o próprio nome do produto, o que fazia "Marca" e
- * "Modelo" saírem idênticos quando ambos são atributos obrigatórios de
- * texto livre na mesma categoria (bug observado em produção).
+ * lista — o Mercado Livre não aceita texto livre num atributo de lista
+ * fechada, então não há como usar a marca real aqui. Para atributos
+ * booleanos (`value_type: "boolean"`, ex: "Com USB" — têm `values` com
+ * Sim/Não, mas não são `"list"`; descoberto em produção: a categoria
+ * "Luminárias de Mesa" tem `WITH_USB` obrigatório e caía no fallback de
+ * texto livre, mandando o nome do produto como valor e sendo rejeitado pelo
+ * Mercado Livre), assume "Não" — mais seguro que afirmar um recurso ("Sim")
+ * que a peça pode não ter de verdade. Para atributos de texto livre,
+ * reaproveita o nome do produto — **exceto** `BRAND`, que usa a marca real
+ * (`MARCA_FABRICANTE`, EDI-95 corrigido): a versão anterior usava um valor
+ * genérico fixo pra evitar "Marca" e "Modelo" saindo idênticos quando ambos
+ * são atributos obrigatórios de texto livre na mesma categoria, mas a loja
+ * tem marca própria de verdade — "Genérica" escondia isso do comprador sem
+ * necessidade.
  */
 export function valorPadraoAtributo(atributo: AtributoCategoria, produto: Produto): AtributoItem {
   if (atributo.value_type === "boolean" && atributo.values && atributo.values.length > 0) {
@@ -92,7 +98,7 @@ export function valorPadraoAtributo(atributo: AtributoCategoria, produto: Produt
   }
 
   if (atributo.id === "BRAND") {
-    return { id: atributo.id, value_name: "Genérica" };
+    return { id: atributo.id, value_name: MARCA_FABRICANTE };
   }
 
   return { id: atributo.id, value_name: produto.nome };
@@ -130,9 +136,6 @@ export interface ResultadoFichaTecnica {
   paraDescricao: Array<{ rotulo: string; valor: string }>;
 }
 
-/** Fabricante de todo produto vendido — nunca vem do produto, é sempre o mesmo. */
-const FABRICANTE = "Voxelas Duo";
-
 /** Valor de "Cor do cabo" quando o vendedor não preenche o campo na ficha técnica. */
 const COR_CABO_PADRAO = "Não possui cabo";
 
@@ -155,7 +158,7 @@ export function atributosFixos(
   const attributes: AtributoItem[] = [];
 
   if (idsCategoria.has("MANUFACTURER")) {
-    attributes.push({ id: "MANUFACTURER", value_name: FABRICANTE });
+    attributes.push({ id: "MANUFACTURER", value_name: MARCA_FABRICANTE });
   }
 
   if (idsCategoria.has("CABLE_COLOR")) {
