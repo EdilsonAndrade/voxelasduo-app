@@ -421,18 +421,11 @@ export default function SimuladorPrecificacao({
                             </button>
                           )}
                           {(() => {
-                            // Custo extra opcional de uma promoção específica (frete grátis, parcelamento,
-                            // destaque etc.) — soma ao custo antes de achar o piso, mesma fórmula de sempre.
                             const custoExtraTexto = custoExtraPorCanal[resultado.canal];
                             const custoExtraCentavos =
                               custoExtraTexto.trim() !== ""
                                 ? paraCentavos(Number(custoExtraTexto.replace(",", ".")) || 0)
                                 : 0;
-                            const precoMinimo = calcularPrecoMinimoCanal(
-                              custoBaseCentavos! + custoExtraCentavos,
-                              resultado.taxa,
-                              margemMinimaPercentual
-                            );
                             // Preço próprio do canal (EDI-108, US2), quando definido; senão o preço do site.
                             const precoAtualDoCanal =
                               resultado.canal === "mercadoLivre"
@@ -440,115 +433,112 @@ export default function SimuladorPrecificacao({
                                 : resultado.canal === "shopee"
                                   ? (precosCanaisCentavos?.shopee ?? precoAtualCentavos)
                                   : precoAtualCentavos;
+                            if (precoAtualDoCanal === null) return null;
 
-                            const piso =
-                              precoAtualDoCanal !== null
-                                ? calcularResultadoPisoCanal(resultado.canal, precoAtualDoCanal, precoMinimo)
-                                : null;
-                            // "Você recebe" no preço mínimo: preço menos a taxa da plataforma e o custo
-                            // extra (frete etc., que a plataforma também desconta do repasse) — antes de
-                            // tirar o custo do produto (mesma lógica do "Resumo de custos" do Mercado Livre).
-                            const comissaoNoMinimo =
-                              precoMinimo !== null
-                                ? Math.round((precoMinimo * resultado.taxa.percentual) / 100) +
-                                  resultado.taxa.fixaCentavos
-                                : null;
-                            const recebeNoMinimo =
-                              precoMinimo !== null && comissaoNoMinimo !== null
-                                ? precoMinimo - comissaoNoMinimo - custoExtraCentavos
-                                : null;
+                            const custo = custoBaseCentavos!;
+                            const lucroMinimo = Math.round((custo * margemMinimaPercentual) / 100);
+                            const comissaoEm = (preco: number) =>
+                              Math.round((preco * resultado.taxa.percentual) / 100) + resultado.taxa.fixaCentavos;
+                            // O custo extra (frete grátis etc.) sai do repasse, então soma ao custo do piso.
+                            const precoMinimoCom = (extra: number) =>
+                              calcularPrecoMinimoCanal(custo + extra, resultado.taxa, margemMinimaPercentual);
 
-                            // Mesma conta, mas no preço ATUAL do canal (não no piso) — responde "quanto
-                            // foi meu líquido de verdade nesse preço, com esse custo extra?" (EDI-108).
-                            const comissaoNoAtual =
-                              precoAtualDoCanal !== null
-                                ? Math.round((precoAtualDoCanal * resultado.taxa.percentual) / 100) +
-                                  resultado.taxa.fixaCentavos
-                                : null;
-                            const recebeNoAtual =
-                              precoAtualDoCanal !== null && comissaoNoAtual !== null
-                                ? precoAtualDoCanal - comissaoNoAtual - custoExtraCentavos
-                                : null;
-                            const lucroNoAtual =
-                              recebeNoAtual !== null ? recebeNoAtual - custoBaseCentavos! : null;
-                            const custoTotalCentavos = custoBaseCentavos! + custoExtraCentavos;
-                            const margemNoAtual =
-                              lucroNoAtual !== null && custoTotalCentavos > 0
-                                ? (lucroNoAtual / custoTotalCentavos) * 100
-                                : null;
-                            const lucroNoMinimo =
-                              recebeNoMinimo !== null ? recebeNoMinimo - custoBaseCentavos! : null;
+                            const recebeSemExtra = precoAtualDoCanal - comissaoEm(precoAtualDoCanal);
+                            const extraMaximo = recebeSemExtra - custo - lucroMinimo;
+
+                            const pisoDesconto = calcularResultadoPisoCanal(
+                              resultado.canal,
+                              precoAtualDoCanal,
+                              precoMinimoCom(custoExtraCentavos)
+                            );
+                            const precoMinimo = pisoDesconto.precoMinimoCentavos;
+                            const descontoOk = (pisoDesconto.descontoMaximoCentavos ?? -1) >= 0;
+
+                            const recebeComExtra = recebeSemExtra - custoExtraCentavos;
+                            const lucroComExtra = recebeComExtra - custo;
+                            const extraCabe = custoExtraCentavos <= extraMaximo;
+                            const textoExtra = custoExtraCentavos > 0 ? " com esse frete/custo extra" : "";
 
                             return (
-                              <>
-                                <div className={styles.field}>
-                                  <label htmlFor={`custoExtra-${resultado.canal}`}>
-                                    Custo extra de uma promoção (R$, opcional — frete grátis, parcelamento,
-                                    destaque...)
-                                  </label>
-                                  <input
-                                    id={`custoExtra-${resultado.canal}`}
-                                    inputMode="decimal"
-                                    placeholder="Ex: 12.95"
-                                    value={custoExtraTexto}
-                                    onChange={(e) =>
-                                      setCustoExtraPorCanal((atual) => ({
-                                        ...atual,
-                                        [resultado.canal]: e.target.value,
-                                      }))
-                                    }
-                                  />
-                                </div>
-                                {custoExtraCentavos > 0 && lucroNoAtual !== null && (
-                                  <span className={styles.mlLinkAviso}>
-                                    No seu preço atual ({formatarReais(precoAtualDoCanal ?? 0)}), com esse
-                                    custo extra: você recebe {formatarReais(recebeNoAtual ?? 0)} · seu lucro{" "}
-                                    {formatarReais(lucroNoAtual)} ({(margemNoAtual ?? 0).toFixed(0)}% sobre o
-                                    custo)
+                              <div className={styles.field}>
+                                <strong>
+                                  Promoções — seu lucro mínimo: {formatarReais(lucroMinimo)} (
+                                  {margemMinimaPercentual}% sobre o custo)
+                                </strong>
+                                <span className={styles.mlLinkAviso}>
+                                  Preço atual {PREPOSICAO_CANAL[resultado.canal]}:{" "}
+                                  {formatarReais(precoAtualDoCanal)} · você recebe {formatarReais(recebeSemExtra)}
+                                </span>
+
+                                {extraMaximo >= 0 ? (
+                                  <span>
+                                    Frete grátis: nesse preço você aguenta pagar até{" "}
+                                    <strong>{formatarReais(extraMaximo)}</strong> de frete (sem desconto no preço).
+                                  </span>
+                                ) : (
+                                  <span className={styles.fieldError}>
+                                    ⚠ O preço atual já não dá o seu lucro mínimo — não entre em promoção nem
+                                    ofereça frete grátis sem subir o preço.
                                   </span>
                                 )}
-                                {piso === null || piso.precoMinimoCentavos === null ? null : (
-                                  <>
-                                    {(piso.descontoMaximoCentavos ?? 0) < 0 ? (
-                                      <span className={styles.fieldError}>
-                                        ⚠ O preço atual está abaixo do mínimo de{" "}
-                                        {formatarReais(piso.precoMinimoCentavos)} (lucro mínimo de{" "}
-                                        {margemMinimaPercentual}% sobre o custo
-                                        {custoExtraCentavos > 0 ? ", já com o custo extra" : ""}).
-                                      </span>
-                                    ) : (
-                                      <span className={styles.mlLinkAviso}>
-                                        Preço mínimo para promoção (lucro mínimo de {margemMinimaPercentual}%
-                                        sobre o custo): {formatarReais(piso.precoMinimoCentavos)} · desconto
-                                        máximo: {formatarReais(piso.descontoMaximoCentavos!)} (
-                                        {piso.descontoMaximoPercentual!.toFixed(1)}%)
-                                        {custoExtraCentavos > 0 && " — já com o custo extra somado"}
-                                      </span>
-                                    )}
-                                    {recebeNoMinimo !== null && lucroNoMinimo !== null && (
-                                      <span className={styles.mlLinkAviso}>
-                                        Nesse preço mínimo: você recebe {formatarReais(recebeNoMinimo)}
-                                        {custoExtraCentavos > 0 ? " (já sem o custo extra)" : ""} · seu lucro{" "}
-                                        {formatarReais(lucroNoMinimo)}
-                                      </span>
-                                    )}
-                                    {onAplicarPrecoCanal && (
-                                      <button
-                                        type="button"
-                                        className={styles.btnGhost}
-                                        onClick={() =>
-                                          onAplicarPrecoCanal(
-                                            resultado.canal,
-                                            (piso.precoMinimoCentavos! / 100).toFixed(2)
-                                          )
-                                        }
-                                      >
-                                        Usar o preço mínimo {PREPOSICAO_CANAL[resultado.canal]}
-                                      </button>
-                                    )}
-                                  </>
+
+                                <label htmlFor={`custoExtra-${resultado.canal}`}>
+                                  Quanto vai custar o frete grátis / custo extra? (R$, opcional)
+                                </label>
+                                <input
+                                  id={`custoExtra-${resultado.canal}`}
+                                  inputMode="decimal"
+                                  placeholder="Ex: 12.95"
+                                  value={custoExtraTexto}
+                                  onChange={(e) =>
+                                    setCustoExtraPorCanal((atual) => ({
+                                      ...atual,
+                                      [resultado.canal]: e.target.value,
+                                    }))
+                                  }
+                                />
+
+                                {custoExtraCentavos > 0 &&
+                                  (extraCabe ? (
+                                    <span className={styles.mlLinkAviso}>
+                                      ✔ Cabe. Com {formatarReais(custoExtraCentavos)} de frete você recebe{" "}
+                                      {formatarReais(recebeComExtra)} e seu lucro fica em{" "}
+                                      {formatarReais(lucroComExtra)}.
+                                    </span>
+                                  ) : (
+                                    <span className={styles.fieldError}>
+                                      ⚠ Passa do limite em {formatarReais(custoExtraCentavos - Math.max(extraMaximo, 0))}.
+                                      Nesse preço seu lucro cairia para {formatarReais(lucroComExtra)}.
+                                      {precoMinimo !== null &&
+                                        ` Para bancar esse frete e manter o lucro mínimo, o preço precisa ser pelo menos ${formatarReais(precoMinimo)}.`}
+                                    </span>
+                                  ))}
+
+                                {descontoOk && precoMinimo !== null && (
+                                  <span>
+                                    Desconto: aceite promoções de até{" "}
+                                    <strong>
+                                      {pisoDesconto.descontoMaximoPercentual!.toFixed(1)}% (
+                                      {formatarReais(pisoDesconto.descontoMaximoCentavos!)})
+                                    </strong>
+                                    {textoExtra}. Nesse limite o preço cai para {formatarReais(precoMinimo)} e seu
+                                    lucro fica em {formatarReais(lucroMinimo)}. Desconto maior: recuse.
+                                  </span>
                                 )}
-                              </>
+
+                                {!descontoOk && precoMinimo !== null && onAplicarPrecoCanal && (
+                                  <button
+                                    type="button"
+                                    className={styles.btnGhost}
+                                    onClick={() =>
+                                      onAplicarPrecoCanal(resultado.canal, (precoMinimo / 100).toFixed(2))
+                                    }
+                                  >
+                                    Subir o preço para {formatarReais(precoMinimo)}{" "}
+                                    {PREPOSICAO_CANAL[resultado.canal]}
+                                  </button>
+                                )}
+                              </div>
                             );
                           })()}
                         </>
