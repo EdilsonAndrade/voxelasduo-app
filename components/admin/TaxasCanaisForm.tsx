@@ -135,7 +135,8 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
           />
           <span className={styles.mlLinkAviso}>
             Usada para calcular o preço mínimo e o desconto máximo de cada canal — o piso de
-            segurança para você rodar promoções sem vender no prejuízo. Pode ser sobrescrita por
+            segurança para você rodar promoções sem vender no prejuízo. Também é sobre o custo (80%
+            = lucro mínimo de 80% do custo, já descontada a taxa do canal). Pode ser sobrescrita por
             produto.
           </span>
           {camposErro.margemMinimaPercentual && (

@@ -380,21 +380,32 @@ export default function SimuladorPrecificacao({
                             {formatarReais(resultado.precoSugeridoCentavos)}
                           </span>
                           <span className={styles.mlLinkAviso}>
-                            Taxa: {descreverTaxa(resultado.taxa)} ({formatarReais(resultado.comissaoCentavos ?? 0)})
-                          </span>
-                          <span className={styles.mlLinkAviso}>
-                            Você recebe: {formatarReais(
-                              (resultado.precoSugeridoCentavos ?? 0) - (resultado.comissaoCentavos ?? 0)
-                            )}{" "}
-                            (preço menos a taxa da plataforma — antes de tirar o custo do produto)
+                            − Taxa {NOME_CANAL[resultado.canal]} ({descreverTaxa(resultado.taxa)}):{" "}
+                            {formatarReais(resultado.comissaoCentavos ?? 0)}
                           </span>
                           <span>
-                            Lucro líquido: {formatarReais(resultado.lucroLiquidoCentavos ?? 0)} (
-                            {(resultado.margemPercentual ?? 0).toFixed(1)}% de margem)
+                            <strong>
+                              = Você recebe: {formatarReais(
+                                resultado.precoSugeridoCentavos - (resultado.comissaoCentavos ?? 0)
+                              )}
+                            </strong>
+                          </span>
+                          <span className={styles.mlLinkAviso}>
+                            − Custo do produto: {formatarReais(
+                              resultado.precoSugeridoCentavos -
+                                (resultado.comissaoCentavos ?? 0) -
+                                (resultado.lucroLiquidoCentavos ?? 0)
+                            )}
+                          </span>
+                          <span>
+                            <strong>
+                              = Seu lucro: {formatarReais(resultado.lucroLiquidoCentavos ?? 0)} (
+                              {(resultado.margemPercentual ?? 0).toFixed(0)}% sobre o custo)
+                            </strong>
                           </span>
                           {resultado.prejuizo && <span>⚠ Resulta em prejuízo.</span>}
                           {!resultado.prejuizo && resultado.margemBaixa && (
-                            <span>⚠ Margem abaixo do mínimo ({margemMinimaPercentual}%).</span>
+                            <span>⚠ Lucro abaixo do mínimo ({margemMinimaPercentual}% sobre o custo).</span>
                           )}
                           {(onAplicarPrecoCanal ?? onAplicarPrecoSugerido) && (
                             <button
@@ -460,10 +471,13 @@ export default function SimuladorPrecificacao({
                                 : null;
                             const lucroNoAtual =
                               recebeNoAtual !== null ? recebeNoAtual - custoBaseCentavos! : null;
+                            const custoTotalCentavos = custoBaseCentavos! + custoExtraCentavos;
                             const margemNoAtual =
-                              lucroNoAtual !== null && precoAtualDoCanal
-                                ? (lucroNoAtual / precoAtualDoCanal) * 100
+                              lucroNoAtual !== null && custoTotalCentavos > 0
+                                ? (lucroNoAtual / custoTotalCentavos) * 100
                                 : null;
+                            const lucroNoMinimo =
+                              recebeNoMinimo !== null ? recebeNoMinimo - custoBaseCentavos! : null;
 
                             return (
                               <>
@@ -488,41 +502,35 @@ export default function SimuladorPrecificacao({
                                 {custoExtraCentavos > 0 && lucroNoAtual !== null && (
                                   <span className={styles.mlLinkAviso}>
                                     No seu preço atual ({formatarReais(precoAtualDoCanal ?? 0)}), com esse
-                                    custo extra: você recebe {formatarReais(recebeNoAtual ?? 0)}, lucro
-                                    líquido {formatarReais(lucroNoAtual)} ({(margemNoAtual ?? 0).toFixed(1)}
-                                    % de margem)
+                                    custo extra: você recebe {formatarReais(recebeNoAtual ?? 0)} · seu lucro{" "}
+                                    {formatarReais(lucroNoAtual)} ({(margemNoAtual ?? 0).toFixed(0)}% sobre o
+                                    custo)
                                   </span>
                                 )}
-                                {piso === null ? null : piso.precoMinimoCentavos === null ? (
-                                  <span className={styles.mlLinkAviso}>
-                                    Nenhum preço atende essa margem mínima neste canal (taxa + margem
-                                    mínima ≥ 100%).
-                                  </span>
-                                ) : (
+                                {piso === null || piso.precoMinimoCentavos === null ? null : (
                                   <>
                                     {(piso.descontoMaximoCentavos ?? 0) < 0 ? (
                                       <span className={styles.fieldError}>
-                                        ⚠ O preço atual já está abaixo do mínimo (R${" "}
-                                        {(piso.precoMinimoCentavos / 100).toFixed(2)}
-                                        {custoExtraCentavos > 0 ? ", já com o custo extra" : ""}) para a
-                                        margem mínima.
+                                        ⚠ O preço atual está abaixo do mínimo de{" "}
+                                        {formatarReais(piso.precoMinimoCentavos)} (lucro mínimo de{" "}
+                                        {margemMinimaPercentual}% sobre o custo
+                                        {custoExtraCentavos > 0 ? ", já com o custo extra" : ""}).
                                       </span>
                                     ) : (
-                                      <>
-                                        <span className={styles.mlLinkAviso}>
-                                          Preço mínimo para promoção: {formatarReais(piso.precoMinimoCentavos)}{" "}
-                                          · desconto máximo: {formatarReais(piso.descontoMaximoCentavos!)} (
-                                          {piso.descontoMaximoPercentual!.toFixed(1)}%)
-                                          {custoExtraCentavos > 0 && " — já com o custo extra somado"}
-                                        </span>
-                                        {recebeNoMinimo !== null && (
-                                          <span className={styles.mlLinkAviso}>
-                                            Nesse preço mínimo, você recebe: {formatarReais(recebeNoMinimo)}{" "}
-                                            (menos taxa{custoExtraCentavos > 0 ? " e custo extra" : ""} —
-                                            antes de tirar o custo do produto)
-                                          </span>
-                                        )}
-                                      </>
+                                      <span className={styles.mlLinkAviso}>
+                                        Preço mínimo para promoção (lucro mínimo de {margemMinimaPercentual}%
+                                        sobre o custo): {formatarReais(piso.precoMinimoCentavos)} · desconto
+                                        máximo: {formatarReais(piso.descontoMaximoCentavos!)} (
+                                        {piso.descontoMaximoPercentual!.toFixed(1)}%)
+                                        {custoExtraCentavos > 0 && " — já com o custo extra somado"}
+                                      </span>
+                                    )}
+                                    {recebeNoMinimo !== null && lucroNoMinimo !== null && (
+                                      <span className={styles.mlLinkAviso}>
+                                        Nesse preço mínimo: você recebe {formatarReais(recebeNoMinimo)}
+                                        {custoExtraCentavos > 0 ? " (já sem o custo extra)" : ""} · seu lucro{" "}
+                                        {formatarReais(lucroNoMinimo)}
+                                      </span>
                                     )}
                                     {onAplicarPrecoCanal && (
                                       <button
@@ -627,8 +635,9 @@ export default function SimuladorPrecificacao({
           }
         >
           <strong>
-            Lucro líquido estimado: R$ {(simulacao.lucroLiquidoCentavos / 100).toFixed(2)} (
-            {simulacao.margemPercentual.toFixed(1)}% de margem)
+            Você recebe: {formatarReais(simulacao.precoVendaCentavos - simulacao.comissaoCentavos)} · Seu
+            lucro: {formatarReais(simulacao.lucroLiquidoCentavos)} ({simulacao.margemPercentual.toFixed(0)}%
+            sobre o custo)
           </strong>
           {simulacao.prejuizo && prejuizoDeCaixa !== false && (
             <div>⚠ Esse preço resulta em prejuízo.</div>
@@ -640,7 +649,7 @@ export default function SimuladorPrecificacao({
             </div>
           )}
           {!simulacao.prejuizo && simulacao.margemBaixa && (
-            <div>⚠ Margem abaixo do mínimo configurado ({margemMinimaPercentual}%).</div>
+            <div>⚠ Lucro abaixo do mínimo configurado ({margemMinimaPercentual}% sobre o custo).</div>
           )}
         </div>
       )}

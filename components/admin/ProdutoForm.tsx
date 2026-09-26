@@ -1200,7 +1200,7 @@ export default function ProdutoForm({
             />
           </div>
           <div className={styles.field}>
-            <label htmlFor="margemMinimaProduto">Margem mínima deste produto (%)</label>
+            <label htmlFor="margemMinimaProduto">Margem mínima deste produto (% sobre o custo)</label>
             <input
               id="margemMinimaProduto"
               inputMode="decimal"
@@ -1210,7 +1210,7 @@ export default function ProdutoForm({
             />
           </div>
           <div className={styles.field}>
-            <label htmlFor="margemDesejadaProduto">Margem de lucro desejada deste produto (%)</label>
+            <label htmlFor="margemDesejadaProduto">Margem de lucro desejada deste produto (% sobre o custo)</label>
             <input
               id="margemDesejadaProduto"
               inputMode="decimal"

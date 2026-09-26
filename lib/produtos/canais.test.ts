@@ -67,10 +67,17 @@ describe("calcularResultadoCanal", () => {
   it("sinaliza prejuízo e margem baixa", () => {
     const taxa = { percentual: 10, fixaCentavos: 0 };
     expect(calcularResultadoCanal("shopee", taxa, 4000, 5000, 20).prejuizo).toBe(true);
-    // lucro 200 sobre 5200 -> ~3,8% (< 20%), sem prejuízo
+    // lucro 200 sobre custo 4500 -> ~4,4% (< 20%), sem prejuízo
     const baixa = calcularResultadoCanal("shopee", taxa, 5200, 4500, 20);
     expect(baixa.prejuizo).toBe(false);
     expect(baixa.margemBaixa).toBe(true);
+  });
+
+  it("a margem é sobre o custo: preço sugerido com 100% não dispara alerta de mínimo 80%", () => {
+    const taxa = { percentual: 16.5, fixaCentavos: 0 };
+    const resultado = calcularResultadoCanal("mercadoLivre", taxa, 6846, 2858, 80);
+    expect(resultado.margemPercentual).toBeCloseTo(100, 0);
+    expect(resultado.margemBaixa).toBe(false);
   });
 
   it("devolve campos nulos quando não há preço válido", () => {
@@ -147,13 +154,20 @@ describe("calcularPrecoMinimoCanal", () => {
   });
 
   it("inclui a taxa fixa no piso", () => {
-    // (2000 + 100) / (1 - 0,10 - 0,15) = 2800
-    expect(calcularPrecoMinimoCanal(2000, { percentual: 10, fixaCentavos: 100 }, 15)).toBe(2800);
+    // (2000 * 1,15 + 100) / (1 - 0,10) = 2666,67 -> 2667
+    expect(calcularPrecoMinimoCanal(2000, { percentual: 10, fixaCentavos: 100 }, 15)).toBe(2667);
   });
 
-  it("retorna null quando taxa% + margemMínima% >= 100", () => {
-    expect(calcularPrecoMinimoCanal(2000, { percentual: 60, fixaCentavos: 0 }, 40)).toBeNull();
-    expect(calcularPrecoMinimoCanal(2000, { percentual: 70, fixaCentavos: 0 }, 40)).toBeNull();
+  it("margem mínima é sobre o custo (custo R$28,58, ML 16,5%, mínimo 80% -> R$61,61)", () => {
+    const precoMinimo = calcularPrecoMinimoCanal(2858, { percentual: 16.5, fixaCentavos: 0 }, 80);
+    expect(precoMinimo).toBe(6161);
+    const lucro = precoMinimo! - Math.round((precoMinimo! * 16.5) / 100) - 2858;
+    expect(Math.abs(lucro - 2286)).toBeLessThanOrEqual(1);
+  });
+
+  it("retorna null só quando a taxa percentual é >= 100", () => {
+    expect(calcularPrecoMinimoCanal(2000, { percentual: 60, fixaCentavos: 0 }, 40)).not.toBeNull();
+    expect(calcularPrecoMinimoCanal(2000, { percentual: 100, fixaCentavos: 0 }, 40)).toBeNull();
   });
 });
 

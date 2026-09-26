@@ -6,7 +6,7 @@ describe("calcularSimulacaoPrecificacao", () => {
     const resultado = calcularSimulacaoPrecificacao(2995, 1131, 7305, 20);
 
     expect(resultado.lucroLiquidoCentavos).toBe(7305 - 2995 - 1131);
-    expect(resultado.margemPercentual).toBeCloseTo(((7305 - 2995 - 1131) / 7305) * 100, 5);
+    expect(resultado.margemPercentual).toBeCloseTo(((7305 - 2995 - 1131) / 2995) * 100, 5);
     expect(resultado.prejuizo).toBe(false);
     expect(resultado.margemBaixa).toBe(false);
   });
@@ -19,7 +19,7 @@ describe("calcularSimulacaoPrecificacao", () => {
   });
 
   it("sinaliza margem baixa quando a margem fica abaixo do mínimo configurado, sem estar em prejuízo", () => {
-    // custo+comissão = 4126; preço 4300 -> lucro 174 -> margem ~4% (< 20% mínimo), sem prejuízo
+    // custo+comissão = 4126; preço 4300 -> lucro 174 -> ~5,8% sobre o custo (< 20% mínimo), sem prejuízo
     const resultado = calcularSimulacaoPrecificacao(2995, 1131, 4300, 20);
 
     expect(resultado.prejuizo).toBe(false);

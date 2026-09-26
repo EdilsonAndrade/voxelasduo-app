@@ -108,8 +108,7 @@ export function calcularResultadoCanal(
 
   const comissaoCentavos = Math.round((precoSugeridoCentavos * taxa.percentual) / 100) + taxa.fixaCentavos;
   const lucroLiquidoCentavos = precoSugeridoCentavos - custoCentavos - comissaoCentavos;
-  const margemPercentual =
-    precoSugeridoCentavos > 0 ? (lucroLiquidoCentavos / precoSugeridoCentavos) * 100 : 0;
+  const margemPercentual = custoCentavos > 0 ? (lucroLiquidoCentavos / custoCentavos) * 100 : 0;
 
   return {
     canal,
@@ -126,7 +125,7 @@ export function calcularResultadoCanal(
 /** Preço mínimo e desconto máximo de um canal, a partir do preço atual, da taxa e da margem mínima efetiva (EDI-108). */
 export interface ResultadoPisoCanal {
   canal: CanalVenda;
-  /** `null` quando `taxa% + margemMinima% >= 100` (nenhum preço atende essa margem nesse canal). */
+  /** `null` quando a taxa percentual do canal é `>= 100%`. */
   precoMinimoCentavos: number | null;
   /**
    * `null` nas mesmas condições de `precoMinimoCentavos`; pode ser negativo
@@ -138,22 +137,16 @@ export interface ResultadoPisoCanal {
 }
 
 /**
- * Preço mínimo (piso) de um canal para uma margem mínima aceitável — inverte
- * a fórmula do preço sugerido (`calcularPrecoSugeridoCanal`) para achar o
- * piso em vez do sugerido: `(custo + taxaFixa) / (1 − taxa% − margemMínima%)`
- * (research.md #3). Retorna `null` quando o denominador é `<= 0` (taxa e
- * margem mínima somadas alcançam ou ultrapassam 100% do preço — não existe
- * preço que atenda essa margem nesse canal).
+ * Preço mínimo (piso) de um canal: a mesma fórmula do preço sugerido, com a
+ * margem mínima (% sobre o custo) no lugar da desejada. Retorna `null` quando
+ * a taxa percentual é `>= 100%`.
  */
 export function calcularPrecoMinimoCanal(
   custoCentavos: number,
   taxa: TaxaCanal,
   margemMinimaPercentual: number
 ): number | null {
-  const fracaoRestante = 1 - taxa.percentual / 100 - margemMinimaPercentual / 100;
-  if (fracaoRestante <= 0) return null;
-
-  return Math.round((custoCentavos + taxa.fixaCentavos) / fracaoRestante);
+  return calcularPrecoSugeridoCanal(custoCentavos, margemMinimaPercentual, taxa);
 }
 
 /**

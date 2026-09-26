@@ -38,8 +38,7 @@ export function calcularSimulacaoPrecificacao(
   margemMinimaPercentual: number
 ): SimulacaoPrecificacao {
   const lucroLiquidoCentavos = precoVendaCentavos - cogsCentavos - comissaoCentavos;
-  const margemPercentual =
-    precoVendaCentavos > 0 ? (lucroLiquidoCentavos / precoVendaCentavos) * 100 : 0;
+  const margemPercentual = cogsCentavos > 0 ? (lucroLiquidoCentavos / cogsCentavos) * 100 : 0;
 
   return {
     precoVendaCentavos,
