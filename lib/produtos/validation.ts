@@ -82,7 +82,7 @@ function validarCustoProducao(valor: unknown): string | undefined {
 
 /**
  * Valida `taxasCanais` quando presente no payload (EDI-106): cada campo é
- * individualmente opcional; percentuais em 0 ≤ x < 100 e taxa fixa ≥ 0.
+ * individualmente opcional; taxas em 0 ≤ x < 100, margens ≥ 0 e taxa fixa ≥ 0.
  */
 function validarTaxasCanais(valor: unknown): string | undefined {
   if (typeof valor !== "object" || valor === null || Array.isArray(valor)) {
@@ -91,7 +91,7 @@ function validarTaxasCanais(valor: unknown): string | undefined {
 
   const taxas = valor as Record<string, unknown>;
 
-  for (const campo of ["shopeeTaxaPercentual", "siteTaxaPercentual", "margemMinimaPercentual"] as const) {
+  for (const campo of ["shopeeTaxaPercentual", "siteTaxaPercentual"] as const) {
     if (taxas[campo] === undefined) continue;
     if (!numeroFinito(taxas[campo]) || (taxas[campo] as number) < 0 || (taxas[campo] as number) >= 100) {
       return `Informe um percentual entre 0 e menos de 100 para "${campo}".`;
@@ -104,7 +104,12 @@ function validarTaxasCanais(valor: unknown): string | undefined {
     }
   }
 
-  // Margem desejada é sobre o custo, não sobre o preço — sem teto de 100%.
+  // Margens são sobre o custo, não sobre o preço — sem teto de 100%.
+  if (taxas.margemMinimaPercentual !== undefined) {
+    if (!numeroFinito(taxas.margemMinimaPercentual) || (taxas.margemMinimaPercentual as number) < 0) {
+      return "Informe um percentual válido, maior ou igual a 0, para a margem mínima.";
+    }
+  }
   if (taxas.margemDesejadaPercentual !== undefined) {
     if (!numeroFinito(taxas.margemDesejadaPercentual) || (taxas.margemDesejadaPercentual as number) < 0) {
       return "Informe um percentual válido, maior ou igual a 0, para a margem desejada.";

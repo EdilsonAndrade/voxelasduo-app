@@ -289,13 +289,13 @@ describe("validarProduto", () => {
       expect(validarProduto({ ...payloadValido, taxasCanais: "x" })).toHaveProperty("taxasCanais");
     });
 
-    it("aceita override de margemMinimaPercentual em taxasCanais e rejeita fora do intervalo", () => {
+    it("aceita override de margemMinimaPercentual em taxasCanais, sem teto de 100, e rejeita negativo", () => {
       expect(
         validarProduto({ ...payloadValido, taxasCanais: { margemMinimaPercentual: 25 } })
       ).toEqual({});
       expect(
         validarProduto({ ...payloadValido, taxasCanais: { margemMinimaPercentual: 100 } })
-      ).toHaveProperty("taxasCanais");
+      ).toEqual({});
       expect(
         validarProduto({ ...payloadValido, taxasCanais: { margemMinimaPercentual: -1 } })
       ).toHaveProperty("taxasCanais");

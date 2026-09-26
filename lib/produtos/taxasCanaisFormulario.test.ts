@@ -66,7 +66,7 @@ describe("taxasCanaisFormulario", () => {
         shopeeTaxaPercentual: "100",
         siteTaxaPercentual: "-1",
         siteTaxaFixaReais: "abc",
-        margemMinimaPercentual: "100",
+        margemMinimaPercentual: "-5",
         margemDesejadaPercentual: "-1",
       })
     ).toHaveLength(5);

@@ -33,7 +33,7 @@ function percentualValido(texto: string): boolean {
   return Number.isFinite(numero) && numero >= 0 && numero < 100;
 }
 
-/** Margem desejada é sobre o custo, não sobre o preço — sem teto de 100% (200%, 300% etc. são válidos). */
+/** Margens (mínima e desejada) são sobre o custo, não sobre o preço — sem teto de 100%. */
 function percentualSemTetoValido(texto: string): boolean {
   const numero = numeroDeTexto(texto);
   return Number.isFinite(numero) && numero >= 0;
@@ -54,9 +54,9 @@ export function camposTaxasCanaisInvalidos(form: TaxasCanaisFormValores): string
   }
   if (
     form.margemMinimaPercentual.trim() !== "" &&
-    !percentualValido(form.margemMinimaPercentual)
+    !percentualSemTetoValido(form.margemMinimaPercentual)
   ) {
-    invalidos.push("margem mínima (entre 0 e 99,9%)");
+    invalidos.push("margem mínima (maior ou igual a 0)");
   }
   if (
     form.margemDesejadaPercentual.trim() !== "" &&
@@ -86,7 +86,7 @@ export function montarTaxasCanaisProduto(form: TaxasCanaisFormValores): TaxasCan
   }
   if (
     form.margemMinimaPercentual.trim() !== "" &&
-    percentualValido(form.margemMinimaPercentual)
+    percentualSemTetoValido(form.margemMinimaPercentual)
   ) {
     taxas.margemMinimaPercentual = numeroDeTexto(form.margemMinimaPercentual);
   }

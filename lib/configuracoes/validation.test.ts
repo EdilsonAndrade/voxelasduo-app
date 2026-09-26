@@ -23,13 +23,13 @@ describe("validarTaxasCanais", () => {
     ).toEqual({});
     // margem desejada sem teto — 300% é válido (triplicar o custo)
     expect(validarTaxasCanais({ ...valido, margemDesejadaPercentual: 300 })).toEqual({});
+    expect(validarTaxasCanais({ ...valido, margemMinimaPercentual: 100 })).toEqual({});
   });
 
   it("rejeita percentual negativo ou >= 100", () => {
     expect(validarTaxasCanais({ ...valido, shopeeTaxaPercentual: -1 })).toHaveProperty("shopeeTaxaPercentual");
     expect(validarTaxasCanais({ ...valido, siteTaxaPercentual: 100 })).toHaveProperty("siteTaxaPercentual");
     expect(validarTaxasCanais({ ...valido, margemMinimaPercentual: -1 })).toHaveProperty("margemMinimaPercentual");
-    expect(validarTaxasCanais({ ...valido, margemMinimaPercentual: 100 })).toHaveProperty("margemMinimaPercentual");
     expect(validarTaxasCanais({ ...valido, margemDesejadaPercentual: -1 })).toHaveProperty("margemDesejadaPercentual");
   });
 

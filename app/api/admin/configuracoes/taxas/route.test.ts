@@ -54,8 +54,8 @@ describe("/api/admin/configuracoes/taxas", () => {
     expect(salvarTaxasCanais).not.toHaveBeenCalled();
   });
 
-  it("PUT 400 com margemMinimaPercentual fora de 0-100, sem salvar", async () => {
-    const resposta = await put({ ...valido, margemMinimaPercentual: 100 });
+  it("PUT 400 com margemMinimaPercentual negativa, sem salvar", async () => {
+    const resposta = await put({ ...valido, margemMinimaPercentual: -1 });
 
     expect(resposta.status).toBe(400);
     expect((await resposta.json()).campos).toHaveProperty("margemMinimaPercentual");
