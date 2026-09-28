@@ -30,6 +30,7 @@ export default async function AdminProdutosPage() {
               <th>Categoria</th>
               <th>Estoque</th>
               <th>Preço</th>
+              <th>Canais</th>
               <th></th>
             </tr>
           </thead>
@@ -44,6 +45,27 @@ export default async function AdminProdutosPage() {
                   </span>
                 </td>
                 <td>{formatarPreco(produto.preco)}</td>
+                <td>
+                  {produto.integracoes?.mercadoLivrePermalink ? (
+                    <a
+                      href={produto.integracoes.mercadoLivrePermalink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.badgeCanalMercadoLivre}
+                      title="Abrir anúncio no Mercado Livre"
+                    >
+                      Mercado Livre ↗
+                    </a>
+                  ) : (
+                    <span className={styles.badgeCanalShopeeEmBreve} title="Sem anúncio no Mercado Livre">
+                      Mercado Livre
+                    </span>
+                  )}{" "}
+                  {/* Sem link: a loja da Shopee ainda depende de vendas manuais para ser liberada. */}
+                  <span className={styles.badgeCanalShopeeEmBreve} title="Loja da Shopee ainda sem link">
+                    Shopee
+                  </span>
+                </td>
                 <td>
                   <Link href={`/admin/produtos/${produto._id?.toString()}/editar`} className={styles.btnGhost}>
                     editar
