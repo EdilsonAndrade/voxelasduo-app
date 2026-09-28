@@ -47,6 +47,13 @@ export default async function AdminProdutosPage() {
                 <td>
                   <Link href={`/admin/produtos/${produto._id?.toString()}/editar`} className={styles.btnGhost}>
                     editar
+                  </Link>{" "}
+                  <Link
+                    href={`/admin/produtos/novo?duplicarDe=${produto._id?.toString()}`}
+                    className={styles.btnGhost}
+                    title="Cria um novo produto com os mesmos dados e preços (sem fotos, estoque e anúncios)"
+                  >
+                    duplicar
                   </Link>
                 </td>
               </tr>
