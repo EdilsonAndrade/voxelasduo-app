@@ -126,6 +126,15 @@ describe("PATCH /api/produtos/[id]", () => {
 
     expect(sincronizarAnuncioProduto).not.toHaveBeenCalled();
   });
+
+  it("persiste metaCatalogo sem disparar a sincronização do Mercado Livre (EDI-109)", async () => {
+    const metaCatalogo = { publicar: true, titulo: "Vaso 🔥" };
+
+    await PATCH(requisicao({ metaCatalogo }), params(produtoBase._id!.toString()));
+
+    expect(atualizarProduto).toHaveBeenCalledWith(produtoBase._id!.toString(), { metaCatalogo });
+    expect(sincronizarAnuncioProduto).not.toHaveBeenCalled();
+  });
 });
 
 describe("DELETE /api/produtos/[id]", () => {

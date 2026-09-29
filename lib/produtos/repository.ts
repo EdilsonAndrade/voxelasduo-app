@@ -79,6 +79,12 @@ export async function listarProdutosComIntegracaoExterna(): Promise<Produto[]> {
     .toArray();
 }
 
+/** Produtos marcados para o catálogo da Meta (Facebook/Instagram Shop), usada pelo feed `/api/feeds/meta` (EDI-109). */
+export async function listarProdutosPublicadosMeta(): Promise<Produto[]> {
+  const colecao = await colecaoProdutos();
+  return colecao.find({ "metaCatalogo.publicar": true }).sort({ criadoEm: -1 }).toArray();
+}
+
 export async function buscarProdutoPorCategoriaESlug(
   categoria: string,
   slug: string

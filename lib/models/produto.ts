@@ -136,6 +136,24 @@ export interface FichaTecnicaProduto {
   corCabo?: string;
 }
 
+/** Limites de texto do catálogo da Meta (especificação de dados de produtos online). */
+export const LIMITE_TITULO_META = 200;
+export const LIMITE_DESCRICAO_META = 9999;
+
+/**
+ * Publicação no catálogo da Meta (Facebook/Instagram Shop) — EDI-109. Não há
+ * ID de anúncio externo: a Meta lê o feed `/api/feeds/meta` e usa o `_id` do
+ * produto como identificador do item.
+ */
+export interface MetaCatalogoProduto {
+  /** `true` = o produto entra no feed do catálogo. */
+  publicar: boolean;
+  /** Título chamativo próprio para Facebook/Instagram — ausente = usa `nome`. */
+  titulo?: string;
+  /** Descrição própria para Facebook/Instagram — ausente = usa `descricao`. */
+  descricao?: string;
+}
+
 export interface Produto {
   _id?: ObjectId;
   nome: string;
@@ -158,6 +176,8 @@ export interface Produto {
   embalagemEnvio?: EmbalagemEnvio;
   /** Ficha técnica opcional do produto (dimensões, peso, material, itens inclusos) — ausente = não preenchida (EDI-90). */
   fichaTecnica?: FichaTecnicaProduto;
+  /** Publicação no catálogo da Meta (Facebook/Instagram Shop) — ausente = não publicado (EDI-109). */
+  metaCatalogo?: MetaCatalogoProduto;
   criadoEm: Date;
   atualizadoEm: Date;
 }

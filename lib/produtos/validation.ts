@@ -1,3 +1,5 @@
+import { LIMITE_DESCRICAO_META, LIMITE_TITULO_META } from "@/lib/models/produto";
+
 export interface ProdutoPayload {
   nome?: unknown;
   descricao?: unknown;
@@ -17,6 +19,8 @@ export interface ProdutoPayload {
   taxasCanais?: unknown;
   /** Preços de venda próprios por canal (EDI-108) — opcional; ausente/vazio = usa `preco` (o preço do site) também nesse canal. */
   precosCanais?: unknown;
+  /** Publicação no catálogo da Meta (EDI-109) — opcional; ausente = não publicado. */
+  metaCatalogo?: unknown;
 }
 
 /** Campos monetários/numéricos obrigatórios de `custoProducao`, todos exigidos > 0 quando o objeto está presente (EDI-92). */
@@ -136,6 +140,38 @@ function validarPrecosCanais(valor: unknown): string | undefined {
     const preco = precos[campo];
     if (typeof preco !== "number" || !Number.isInteger(preco) || preco <= 0) {
       return `Informe um preço maior que zero para "${campo}".`;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Valida `metaCatalogo` quando presente no payload (EDI-109): `publicar`
+ * obrigatório; título e descrição próprios opcionais, dentro dos limites da Meta.
+ */
+function validarMetaCatalogo(valor: unknown): string | undefined {
+  if (typeof valor !== "object" || valor === null || Array.isArray(valor)) {
+    return "Formato de publicação no Facebook inválido.";
+  }
+
+  const meta = valor as Record<string, unknown>;
+
+  if (typeof meta.publicar !== "boolean") {
+    return "Informe se o produto deve ser publicado no Facebook/Instagram.";
+  }
+
+  if (meta.titulo !== undefined) {
+    if (typeof meta.titulo !== "string") return "Título para o Facebook inválido.";
+    if (meta.titulo.trim().length > LIMITE_TITULO_META) {
+      return `O título para o Facebook deve ter no máximo ${LIMITE_TITULO_META} caracteres.`;
+    }
+  }
+
+  if (meta.descricao !== undefined) {
+    if (typeof meta.descricao !== "string") return "Descrição para o Facebook inválida.";
+    if (meta.descricao.trim().length > LIMITE_DESCRICAO_META) {
+      return `A descrição para o Facebook deve ter no máximo ${LIMITE_DESCRICAO_META} caracteres.`;
     }
   }
 
@@ -286,6 +322,13 @@ export function validarProduto(
     const erro = validarPrecosCanais(payload.precosCanais);
     if (erro) {
       erros.precosCanais = erro;
+    }
+  }
+
+  if (payload.metaCatalogo !== undefined) {
+    const erro = validarMetaCatalogo(payload.metaCatalogo);
+    if (erro) {
+      erros.metaCatalogo = erro;
     }
   }
 

@@ -7,6 +7,7 @@ import type {
   EmbalagemEnvio,
   FichaTecnicaProduto,
   IntegracoesCanal,
+  MetaCatalogoProduto,
   PrecosCanaisProduto,
   TaxasCanaisProduto,
 } from "@/lib/models/produto";
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
     precosCanais: payload.precosCanais as PrecosCanaisProduto | undefined,
     embalagemEnvio: payload.embalagemEnvio as EmbalagemEnvio | undefined,
     fichaTecnica: payload.fichaTecnica as FichaTecnicaProduto | undefined,
+    metaCatalogo: payload.metaCatalogo as MetaCatalogoProduto | undefined,
   });
 
   return NextResponse.json({ produto }, { status: 201 });

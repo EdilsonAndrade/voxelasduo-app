@@ -64,7 +64,16 @@ export default async function AdminProdutosPage() {
                   {/* Sem link: a loja da Shopee ainda depende de vendas manuais para ser liberada. */}
                   <span className={styles.badgeCanalShopeeEmBreve} title="Loja da Shopee ainda sem link">
                     Shopee
-                  </span>
+                  </span>{" "}
+                  {produto.metaCatalogo?.publicar ? (
+                    <span className={styles.badgeCanalFacebook} title="No catálogo do Facebook/Instagram">
+                      Facebook
+                    </span>
+                  ) : (
+                    <span className={styles.badgeCanalShopeeEmBreve} title="Fora do catálogo do Facebook/Instagram">
+                      Facebook
+                    </span>
+                  )}
                 </td>
                 <td>
                   <Link href={`/admin/produtos/${produto._id?.toString()}/editar`} className={styles.btnGhost}>

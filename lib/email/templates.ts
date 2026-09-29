@@ -1,3 +1,5 @@
+import { urlBaseSite } from "@/lib/site/url";
+
 const COR_ROXO = "#7B5CF6";
 const COR_CREME = "#FFF6ED";
 const COR_SURFACE = "#FFFFFF";
@@ -12,13 +14,9 @@ const FONTE_DISPLAY =
 const FONTE_CORPO =
   "'Nunito', 'Segoe UI', Helvetica, Arial, sans-serif";
 
-/** Domínio público de produção — VERCEL_URL não serve: aponta para o deploy (protegido por login) e a logo quebra no e-mail. */
-const SITE_URL_PADRAO = "https://www.voxelasduo.com.br";
-
 /** Versão leve (280px) da logo, feita só para e-mail — a original tem ~860 KB. */
 function urlAbsolutaDaLogo(): string {
-  const base = process.env.SITE_URL || SITE_URL_PADRAO;
-  return `${base.replace(/\/$/, "")}/images/logo-email.png`;
+  return `${urlBaseSite()}/images/logo-email.png`;
 }
 
 const EMAIL_REMETENTE_PADRAO = "naoresponda@voxelasduo.com.br";

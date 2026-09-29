@@ -33,7 +33,12 @@ import {
 } from "@/lib/produtos/precosCanaisFormulario";
 import { resolverTaxasCanais, type CanalVenda } from "@/lib/produtos/canais";
 import { TAXAS_CANAIS_PADRAO, type TaxasCanaisConfig } from "@/lib/models/configuracao";
-import type { CustoProducao, TaxasCanaisProduto } from "@/lib/models/produto";
+import {
+  LIMITE_DESCRICAO_META,
+  LIMITE_TITULO_META,
+  type CustoProducao,
+  type TaxasCanaisProduto,
+} from "@/lib/models/produto";
 import {
   camposEmbalagemFaltando,
   montarEmbalagemEnvio,
@@ -152,6 +157,12 @@ export interface ProdutoFormValores {
   embalagemEnvio: EmbalagemEnvioFormValores;
   /** Ficha técnica opcional do produto — cada campo é independente, ausência não bloqueia a publicação (EDI-90). */
   fichaTecnica: FichaTecnicaFormValores;
+  /** `true` = o produto entra no feed do catálogo da Meta (Facebook/Instagram Shop) — EDI-109. */
+  metaPublicar: boolean;
+  /** Título chamativo próprio para Facebook/Instagram — vazio = usa o nome do produto. */
+  metaTitulo: string;
+  /** Descrição própria para Facebook/Instagram — vazio = usa a descrição do produto. */
+  metaDescricao: string;
 }
 
 const VAZIO: ProdutoFormValores = {
@@ -173,6 +184,9 @@ const VAZIO: ProdutoFormValores = {
   precosCanais: VAZIO_PRECOS_CANAIS,
   embalagemEnvio: VAZIO_EMBALAGEM_ENVIO,
   fichaTecnica: VAZIO_FICHA_TECNICA,
+  metaPublicar: false,
+  metaTitulo: "",
+  metaDescricao: "",
 };
 
 /** Produto listado na ação "copiar custos de outro produto" — só o necessário para copiar (EDI-106). */
@@ -540,6 +554,11 @@ export default function ProdutoForm({
       precosCanais: montarPrecosCanaisProduto(valores.precosCanais),
       embalagemEnvio: embalagemEnvioCalculada ?? undefined,
       fichaTecnica: fichaTecnicaCalculada ?? undefined,
+      metaCatalogo: {
+        publicar: valores.metaPublicar,
+        titulo: valores.metaTitulo.trim() || undefined,
+        descricao: valores.metaDescricao.trim() || undefined,
+      },
     };
 
     try {
@@ -1476,6 +1495,70 @@ export default function ProdutoForm({
           )}
 
           {erroPublicacao && <span className={styles.fieldError}>{erroPublicacao}</span>}
+        </div>
+
+        <div className={styles.channelCard}>
+          <div className={styles.channelHeader}>
+            <span className={styles.channelName}>Facebook/Instagram</span>
+            {valores.metaPublicar ? (
+              <span className={styles.badgeStatusPago}>No catálogo</span>
+            ) : (
+              <span className={styles.badgeZero}>Fora do catálogo</span>
+            )}
+          </div>
+
+          <label className={styles.channelToggle}>
+            <input
+              type="checkbox"
+              checked={valores.metaPublicar}
+              onChange={(e) => atualizarCampo("metaPublicar", e.target.checked)}
+            />
+            Publicar no Facebook/Instagram
+          </label>
+          <span className={styles.mlLinkAviso}>
+            O produto entra no catálogo da Meta na próxima leitura do feed. A compra é finalizada aqui no site.
+          </span>
+
+          <div className={styles.field}>
+            <label htmlFor="metaTitulo">Título para o Facebook (opcional)</label>
+            <input
+              id="metaTitulo"
+              placeholder={valores.nome || "Ex: Chaveiro 3D personalizado — a partir de R$ 39,90"}
+              value={valores.metaTitulo}
+              onChange={(e) => atualizarCampo("metaTitulo", e.target.value)}
+            />
+            <span
+              className={
+                valores.metaTitulo.trim().length > LIMITE_TITULO_META
+                  ? styles.charCounterExcedido
+                  : styles.charCounter
+              }
+            >
+              {valores.metaTitulo.trim().length}/{LIMITE_TITULO_META} — em branco, usa o nome do produto
+            </span>
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="metaDescricao">Descrição para o Facebook (opcional)</label>
+            <textarea
+              id="metaDescricao"
+              rows={4}
+              placeholder="Em branco, usa a descrição do produto."
+              value={valores.metaDescricao}
+              onChange={(e) => atualizarCampo("metaDescricao", e.target.value)}
+            />
+            <span
+              className={
+                valores.metaDescricao.trim().length > LIMITE_DESCRICAO_META
+                  ? styles.charCounterExcedido
+                  : styles.charCounter
+              }
+            >
+              {valores.metaDescricao.trim().length}/{LIMITE_DESCRICAO_META}
+            </span>
+          </div>
+
+          {camposErro.metaCatalogo && <span className={styles.fieldError}>{camposErro.metaCatalogo}</span>}
         </div>
 
         <div className={styles.field}>

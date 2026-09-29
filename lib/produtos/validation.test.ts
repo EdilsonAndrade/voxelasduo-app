@@ -327,4 +327,34 @@ describe("validarProduto", () => {
       expect(validarProduto({ ...payloadValido, precosCanais: "x" })).toHaveProperty("precosCanais");
     });
   });
+
+  describe("publicação no catálogo da Meta (EDI-109)", () => {
+    it("aceita metaCatalogo com e sem textos próprios", () => {
+      expect(validarProduto({ ...payloadValido, metaCatalogo: { publicar: true } })).toEqual({});
+      expect(
+        validarProduto({
+          ...payloadValido,
+          metaCatalogo: { publicar: false, titulo: "Chaveiro 🔥", descricao: "A partir de R$ 39,90" },
+        })
+      ).toEqual({});
+    });
+
+    it("exige publicar booleano e formato de objeto", () => {
+      expect(validarProduto({ ...payloadValido, metaCatalogo: {} })).toHaveProperty("metaCatalogo");
+      expect(validarProduto({ ...payloadValido, metaCatalogo: { publicar: "sim" } })).toHaveProperty("metaCatalogo");
+      expect(validarProduto({ ...payloadValido, metaCatalogo: [] })).toHaveProperty("metaCatalogo");
+    });
+
+    it("rejeita título acima de 200 e descrição acima de 9999 caracteres", () => {
+      expect(
+        validarProduto({ ...payloadValido, metaCatalogo: { publicar: true, titulo: "a".repeat(201) } })
+      ).toHaveProperty("metaCatalogo");
+      expect(
+        validarProduto({ ...payloadValido, metaCatalogo: { publicar: true, titulo: "a".repeat(200) } })
+      ).toEqual({});
+      expect(
+        validarProduto({ ...payloadValido, metaCatalogo: { publicar: true, descricao: "a".repeat(10000) } })
+      ).toHaveProperty("metaCatalogo");
+    });
+  });
 });

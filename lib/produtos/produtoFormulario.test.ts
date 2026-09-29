@@ -20,6 +20,7 @@ const produto = {
     shopeeItemId: "999",
   },
   precosCanais: { mercadoLivre: 5990, shopee: 5490 },
+  metaCatalogo: { publicar: true, titulo: "Vaso 🔥", descricao: "A partir de R$ 49,90" },
 } as unknown as Produto;
 
 describe("produtoParaDuplicar", () => {
@@ -43,5 +44,27 @@ describe("produtoParaDuplicar", () => {
     expect(duplicado.descricao).toBe(original.descricao);
     expect(duplicado.mercadoLivreCategoriaId).toBe("MLB1234");
     expect(duplicado.mercadoLivreTipoAnuncio).toBe("gold_pro");
+  });
+});
+
+describe("publicação no Facebook (EDI-109)", () => {
+  it("carrega a publicação e os textos próprios no formulário", () => {
+    const valores = produtoParaFormulario(produto, "abc");
+    expect(valores.metaPublicar).toBe(true);
+    expect(valores.metaTitulo).toBe("Vaso 🔥");
+    expect(valores.metaDescricao).toBe("A partir de R$ 49,90");
+  });
+
+  it("produto sem metaCatalogo vem desmarcado e com textos vazios", () => {
+    const valores = produtoParaFormulario({ ...produto, metaCatalogo: undefined }, "abc");
+    expect(valores.metaPublicar).toBe(false);
+    expect(valores.metaTitulo).toBe("");
+    expect(valores.metaDescricao).toBe("");
+  });
+
+  it("duplicar mantém os textos, mas não publica a cópia", () => {
+    const duplicado = produtoParaDuplicar(produto);
+    expect(duplicado.metaPublicar).toBe(false);
+    expect(duplicado.metaTitulo).toBe("Vaso 🔥");
   });
 });

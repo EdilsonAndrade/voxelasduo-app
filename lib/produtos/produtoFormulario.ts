@@ -28,6 +28,9 @@ export function produtoParaFormulario(produto: Produto, id: string): ProdutoForm
     precosCanais: precosCanaisParaFormulario(produto.precosCanais),
     embalagemEnvio: embalagemEnvioParaFormulario(produto.embalagemEnvio),
     fichaTecnica: fichaTecnicaParaFormulario(produto.fichaTecnica),
+    metaPublicar: produto.metaCatalogo?.publicar ?? false,
+    metaTitulo: produto.metaCatalogo?.titulo ?? "",
+    metaDescricao: produto.metaCatalogo?.descricao ?? "",
   };
 }
 
@@ -35,8 +38,8 @@ export function produtoParaFormulario(produto: Produto, id: string): ProdutoForm
  * Produto salvo → formulário de "Novo produto" pré-preenchido, para cadastrar
  * o mesmo produto em outra cor. Copia preços, custos, taxas, embalagem, ficha
  * técnica e a configuração de categoria/tipo de anúncio do Mercado Livre;
- * descarta o que é do anúncio original (IDs, permalink, pausado), as fotos e
- * zera o estoque. O nome ganha " (cópia)" porque o slug (categoria + nome) é único.
+ * descarta o que é do anúncio original (IDs, permalink, pausado, publicação
+ * no Facebook), as fotos e zera o estoque. O nome ganha " (cópia)" porque o slug (categoria + nome) é único.
  */
 export function produtoParaDuplicar(produto: Produto): ProdutoFormValores {
   return {
@@ -49,5 +52,7 @@ export function produtoParaDuplicar(produto: Produto): ProdutoFormValores {
     mercadoLivrePermalink: "",
     mercadoLivrePausado: false,
     shopeeItemId: "",
+    // A cópia nasce sem fotos: o vendedor decide publicar no Facebook depois (EDI-109).
+    metaPublicar: false,
   };
 }
