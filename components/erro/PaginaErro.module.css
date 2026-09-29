@@ -1,0 +1,196 @@
+.pagina {
+  min-height: 72vh;
+  display: grid;
+  place-items: center;
+  padding: 3rem 1rem;
+}
+
+.conteudo {
+  width: 100%;
+  max-width: 880px;
+  display: grid;
+  grid-template-columns: minmax(200px, 300px) 1fr;
+  align-items: center;
+  gap: 3rem;
+}
+
+/* Ilustração */
+
+.ilustracao {
+  position: relative;
+  margin: 0;
+}
+
+.voxels {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.voxels polygon {
+  stroke: var(--preto);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.sombraClara {
+  fill: #000;
+  opacity: 0.12;
+}
+
+.sombraEscura {
+  fill: #000;
+  opacity: 0.26;
+}
+
+.mesa {
+  fill: var(--surface-line);
+}
+
+.cuboContorno polygon {
+  fill: none;
+  stroke: var(--texto-soft);
+  stroke-dasharray: 6 6;
+}
+
+/* A camada de cima "patina" para o lado e volta — a falha é o movimento. */
+.camadaDeslocada {
+  animation: deslocar 2.8s ease-in-out infinite;
+}
+
+@keyframes deslocar {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .camadaDeslocada {
+    animation: none;
+  }
+}
+
+.nota {
+  position: absolute;
+  top: 0.25rem;
+  right: -1.5rem;
+  max-width: 9rem;
+  font-family: var(--font-hand);
+  font-size: 1.35rem;
+  line-height: 1.1;
+  color: var(--roxo);
+  transform: rotate(-6deg);
+}
+
+/* Texto */
+
+.texto {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.titulo {
+  font-size: clamp(2rem, 4.5vw, 2.9rem);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.descricao {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--texto-soft);
+  max-width: 34rem;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.botaoPrincipal,
+.botaoSecundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  padding: 0 1.4rem;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 1rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.botaoPrincipal {
+  border: 2.5px solid var(--preto);
+  background: var(--roxo);
+  color: #fff;
+  box-shadow: 3px 3px 0 var(--preto);
+}
+
+.botaoSecundario {
+  border: 2.5px solid var(--preto);
+  background: var(--surface);
+  color: var(--preto);
+}
+
+.botaoPrincipal:hover,
+.botaoSecundario:hover {
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .botaoPrincipal:hover,
+  .botaoSecundario:hover {
+    transform: none;
+  }
+}
+
+.codigo {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+}
+
+.codigoValor {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  color: var(--preto);
+  user-select: all;
+}
+
+@media (max-width: 720px) {
+  .conteudo {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    text-align: center;
+  }
+
+  .ilustracao {
+    max-width: 220px;
+    margin: 0 auto;
+  }
+
+  .nota {
+    right: -2.5rem;
+  }
+
+  .descricao {
+    margin: 0 auto;
+  }
+
+  .acoes {
+    justify-content: center;
+  }
+}
