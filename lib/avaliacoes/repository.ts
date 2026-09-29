@@ -1,26 +1,26 @@
 import { MongoServerError, ObjectId } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
+import { criarGarantiaDeIndices } from "@/lib/db/indices";
 import { AVALIACOES_COLLECTION, type Avaliacao, type CanalAvaliacao } from "@/lib/models/avaliacao";
 
 const LIMITE_PADRAO = 10;
 const LIMITE_MAXIMO = 50;
 
-let indicesGarantidos: Promise<void> | undefined;
+const garantirIndices = criarGarantiaDeIndices();
 
 async function colecaoAvaliacoes() {
   const client = await getMongoClient();
   const colecao = client.db(DB_NAME).collection<Avaliacao>(AVALIACOES_COLLECTION);
 
-  if (!indicesGarantidos) {
-    indicesGarantidos = Promise.all([
+  await garantirIndices(() =>
+    Promise.all([
       colecao.createIndex(
         { canal: 1, avaliacaoIdCanal: 1 },
         { unique: true, sparse: true }
       ),
       colecao.createIndex({ produtoId: 1, dataAvaliacao: -1 }),
-    ]).then(() => undefined);
-  }
-  await indicesGarantidos;
+    ])
+  );
 
   return colecao;
 }

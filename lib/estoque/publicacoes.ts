@@ -1,5 +1,6 @@
 import type { ObjectId } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
+import { criarGarantiaDeIndices } from "@/lib/db/indices";
 import {
   PUBLICACOES_CANAL_FALHAS_COLLECTION,
   type FalhaPublicacaoCanal,
@@ -7,7 +8,7 @@ import {
 } from "@/lib/models/publicacaoCanal";
 import type { Canal } from "@/lib/models/estoqueSincronizacao";
 
-let indicesGarantidos: Promise<void> | undefined;
+const garantirIndices = criarGarantiaDeIndices();
 
 async function colecaoPublicacoesFalhas() {
   const client = await getMongoClient();
@@ -15,13 +16,12 @@ async function colecaoPublicacoesFalhas() {
     .db(DB_NAME)
     .collection<FalhaPublicacaoCanal>(PUBLICACOES_CANAL_FALHAS_COLLECTION);
 
-  if (!indicesGarantidos) {
-    indicesGarantidos = Promise.all([
+  await garantirIndices(() =>
+    Promise.all([
       colecao.createIndex({ resolvidoEm: 1 }, { sparse: true }),
       colecao.createIndex({ produtoId: 1 }),
-    ]).then(() => undefined);
-  }
-  await indicesGarantidos;
+    ])
+  );
 
   return colecao;
 }

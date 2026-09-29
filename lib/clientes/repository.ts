@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
+import { criarGarantiaDeIndices } from "@/lib/db/indices";
 import {
   CLIENTES_COLLECTION,
   type Cliente,
@@ -8,7 +9,7 @@ import {
   type VerificacaoEmail,
 } from "@/lib/models/cliente";
 
-let indicesGarantidos: Promise<void> | undefined;
+const garantirIndices = criarGarantiaDeIndices();
 
 export async function colecaoClientes() {
   const client = await getMongoClient();
@@ -16,10 +17,9 @@ export async function colecaoClientes() {
 
   // Chave de unificação entre e-mail/senha e Google (research.md #2) — garante
   // uma única vez por instância (idempotente no MongoDB).
-  if (!indicesGarantidos) {
-    indicesGarantidos = colecao.createIndex({ email: 1 }, { unique: true }).then(() => undefined);
-  }
-  await indicesGarantidos;
+  await garantirIndices(() =>
+    colecao.createIndex({ email: 1 }, { unique: true })
+  );
 
   return colecao;
 }

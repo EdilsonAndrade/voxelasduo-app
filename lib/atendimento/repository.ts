@@ -1,5 +1,6 @@
 import { MongoServerError, ObjectId } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
+import { criarGarantiaDeIndices } from "@/lib/db/indices";
 import {
   MENSAGENS_MERCADO_LIVRE_COLLECTION,
   PERGUNTAS_MERCADO_LIVRE_COLLECTION,
@@ -10,9 +11,9 @@ import {
 } from "@/lib/models/atendimento";
 import { colecaoPedidos } from "@/lib/pedidos/repository";
 
-let indicesPerguntasGarantidos: Promise<void> | undefined;
-let indicesReclamacoesGarantidos: Promise<void> | undefined;
-let indicesMensagensGarantidos: Promise<void> | undefined;
+const garantirIndicesPerguntas = criarGarantiaDeIndices();
+const garantirIndicesReclamacoes = criarGarantiaDeIndices();
+const garantirIndicesMensagens = criarGarantiaDeIndices();
 
 export async function colecaoPerguntasMercadoLivre() {
   const client = await getMongoClient();
@@ -20,12 +21,10 @@ export async function colecaoPerguntasMercadoLivre() {
     .db(DB_NAME)
     .collection<PerguntaMercadoLivre>(PERGUNTAS_MERCADO_LIVRE_COLLECTION);
 
-  if (!indicesPerguntasGarantidos) {
-    indicesPerguntasGarantidos = colecao
+  await garantirIndicesPerguntas(() =>
+    colecao
       .createIndex({ perguntaId: 1 }, { unique: true, sparse: true })
-      .then(() => undefined);
-  }
-  await indicesPerguntasGarantidos;
+  );
 
   return colecao;
 }
@@ -36,12 +35,10 @@ export async function colecaoReclamacoesMercadoLivre() {
     .db(DB_NAME)
     .collection<ReclamacaoMercadoLivre>(RECLAMACOES_MERCADO_LIVRE_COLLECTION);
 
-  if (!indicesReclamacoesGarantidos) {
-    indicesReclamacoesGarantidos = colecao
+  await garantirIndicesReclamacoes(() =>
+    colecao
       .createIndex({ reclamacaoId: 1 }, { unique: true, sparse: true })
-      .then(() => undefined);
-  }
-  await indicesReclamacoesGarantidos;
+  );
 
   return colecao;
 }
@@ -52,12 +49,10 @@ export async function colecaoMensagensMercadoLivre() {
     .db(DB_NAME)
     .collection<MensagemPosVendaMercadoLivre>(MENSAGENS_MERCADO_LIVRE_COLLECTION);
 
-  if (!indicesMensagensGarantidos) {
-    indicesMensagensGarantidos = colecao
+  await garantirIndicesMensagens(() =>
+    colecao
       .createIndex({ mensagemId: 1 }, { unique: true, sparse: true })
-      .then(() => undefined);
-  }
-  await indicesMensagensGarantidos;
+  );
 
   return colecao;
 }

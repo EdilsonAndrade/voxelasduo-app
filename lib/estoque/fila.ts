@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
+import { criarGarantiaDeIndices } from "@/lib/db/indices";
 import {
   SINCRONIZACOES_ESTOQUE_COLLECTION,
   type Canal,
@@ -24,7 +25,7 @@ export function calcularBackoff(tentativas: number): number {
   return BACKOFF_MS[Math.max(indice, 0)];
 }
 
-let indicesGarantidos: Promise<void> | undefined;
+const garantirIndices = criarGarantiaDeIndices();
 
 async function colecaoSincronizacoes() {
   const client = await getMongoClient();
@@ -32,13 +33,12 @@ async function colecaoSincronizacoes() {
     .db(DB_NAME)
     .collection<RegistroSincronizacaoEstoque>(SINCRONIZACOES_ESTOQUE_COLLECTION);
 
-  if (!indicesGarantidos) {
-    indicesGarantidos = Promise.all([
+  await garantirIndices(() =>
+    Promise.all([
       colecao.createIndex({ status: 1, proximaTentativaEm: 1 }),
       colecao.createIndex({ produtoId: 1 }),
-    ]).then(() => undefined);
-  }
-  await indicesGarantidos;
+    ])
+  );
 
   return colecao;
 }

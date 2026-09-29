@@ -1,5 +1,6 @@
 import { MongoServerError, ObjectId, type Filter } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
+import { criarGarantiaDeIndices } from "@/lib/db/indices";
 import {
   PEDIDOS_COLLECTION,
   type CanalOrigem,
@@ -12,15 +13,15 @@ import { ErroEstoque, validarEstoque } from "./estoque";
 
 export const PEDIDOS_POR_PAGINA = 20;
 
-let indicesGarantidos: Promise<void> | undefined;
+const garantirIndices = criarGarantiaDeIndices();
 
 export async function colecaoPedidos() {
   const client = await getMongoClient();
   const colecao = client.db(DB_NAME).collection<Pedido>(PEDIDOS_COLLECTION);
 
   // Garante os índices uma única vez por instância (idempotente no MongoDB).
-  if (!indicesGarantidos) {
-    indicesGarantidos = Promise.all([
+  await garantirIndices(() =>
+    Promise.all([
       // Anti-duplicação de checkout: só indexa documentos com o campo.
       colecao.createIndex({ idempotencia: 1 }, { unique: true, sparse: true }),
       colecao.createIndex({ criadoEm: -1 }),
@@ -29,9 +30,8 @@ export async function colecaoPedidos() {
         { "origemExterna.pedidoExternoId": 1 },
         { unique: true, sparse: true }
       ),
-    ]).then(() => undefined);
-  }
-  await indicesGarantidos;
+    ])
+  );
 
   return colecao;
 }

@@ -1,21 +1,21 @@
 import { ObjectId } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
+import { criarGarantiaDeIndices } from "@/lib/db/indices";
 import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
 
-let indicesGarantidos: Promise<void> | undefined;
+const garantirIndices = criarGarantiaDeIndices();
 
 async function colecaoProdutos() {
   const client = await getMongoClient();
   const colecao = client.db(DB_NAME).collection<Produto>(PRODUTOS_COLLECTION);
 
   // Garante os índices uma única vez por instância (idempotente no MongoDB).
-  if (!indicesGarantidos) {
-    indicesGarantidos = Promise.all([
+  await garantirIndices(() =>
+    Promise.all([
       colecao.createIndex({ categoria: 1, slug: 1 }, { unique: true }),
       colecao.createIndex({ categoria: 1 }),
-    ]).then(() => undefined);
-  }
-  await indicesGarantidos;
+    ])
+  );
 
   return colecao;
 }

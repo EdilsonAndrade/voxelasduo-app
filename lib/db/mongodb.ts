@@ -21,7 +21,12 @@ export default function getMongoClient(): Promise<MongoClient> {
     );
   }
 
-  const clientPromise = new MongoClient(uri).connect();
+  // Falha de conexão não fica em cache: a próxima chamada tenta conectar de
+  // novo, em vez de a instância repetir o mesmo erro até ser reciclada.
+  const clientPromise = new MongoClient(uri).connect().catch((erro: unknown) => {
+    global._mongoClientPromise = undefined;
+    throw erro;
+  });
 
   // Reutiliza a mesma conexão entre invocações de função serverless em
   // desenvolvimento (evita esgotar o limite de conexões do tier M0 do Atlas
