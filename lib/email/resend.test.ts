@@ -248,9 +248,24 @@ describe("notificarAdminVendaSite", () => {
     expect(text).toContain("130,00");
     expect(text).toContain("Pagamento: Pix");
     expect(text).toContain("(19) 98157-5723");
+    expect(text).toContain("WhatsApp: https://wa.me/5519981575723");
+    const { html } = send.mock.calls[0][0] as { html: string };
+    expect(html).toContain('href="https://wa.me/5519981575723"');
+    expect(html).toContain('href="mailto:joao@exemplo.com"');
     expect(text).toContain("Rua das Flores, 123 — Apto 4");
     expect(text).toContain("Piracicaba/SP — CEP 13405108");
     expect(text).toContain("https://www.voxelasduo.com.br/admin/pedidos?status=pago");
+  });
+
+  it("sem telefone, mostra 'Não informado' e nenhum link de WhatsApp", async () => {
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await notificarAdminVendaSite({ ...pedidoSite, cliente: { ...pedidoSite.cliente, telefone: undefined } });
+
+    const { text, html } = send.mock.calls[0][0] as { text: string; html: string };
+    expect(text).toContain("Telefone: Não informado");
+    expect(text).not.toContain("wa.me");
+    expect(html).not.toContain("wa.me");
   });
 
   it("vai só para o e-mail da loja sem ADMIN_NOTIFICACAO_EMAIL", async () => {

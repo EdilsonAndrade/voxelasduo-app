@@ -234,7 +234,13 @@ export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
 
   const valorTotalTexto = formatarValorEmReais(pedido.valorTotal);
   const formaPagamento = rotuloFormaPagamento(pedido.pagamento.metodo);
-  const telefone = cliente.telefone ? formatarTelefone(cliente.telefone.replace(/\D/g, "")) : "Não informado";
+  const digitosTelefone = cliente.telefone?.replace(/\D/g, "") ?? "";
+  const telefone = digitosTelefone ? formatarTelefone(digitosTelefone) : "Não informado";
+  // Celular brasileiro com DDD (10–11 dígitos) → conversa direta no WhatsApp.
+  const linkWhatsApp =
+    digitosTelefone.length === 10 || digitosTelefone.length === 11
+      ? `https://wa.me/55${digitosTelefone}`
+      : undefined;
   const complemento = endereco.complemento ? ` — ${endereco.complemento}` : "";
   const enderecoLinha1 = `${endereco.logradouro}, ${endereco.numero}${complemento}`;
   const enderecoLinha2 = `${endereco.bairro} — ${endereco.cidade}/${endereco.estado} — CEP ${endereco.cep}`;
@@ -252,6 +258,7 @@ export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
     `Comprador: ${cliente.nome}`,
     `E-mail: ${cliente.email}`,
     `Telefone: ${telefone}`,
+    ...(linkWhatsApp ? [`WhatsApp: ${linkWhatsApp}`] : []),
     "",
     "Entregar em:",
     enderecoLinha1,
@@ -272,8 +279,12 @@ export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
       <p style="margin:0 0 16px;">Pagamento: ${escaparHtml(formaPagamento)}</p>
       <p style="margin:20px 0 8px;font-weight:700;">Comprador</p>
       <p style="margin:0;">${escaparHtml(cliente.nome)}</p>
-      <p style="margin:0;">E-mail: ${escaparHtml(cliente.email)}</p>
-      <p style="margin:0 0 16px;">Telefone: ${escaparHtml(telefone)}</p>
+      <p style="margin:0;">E-mail: <a href="mailto:${escaparHtml(cliente.email)}">${escaparHtml(cliente.email)}</a></p>
+      <p style="margin:0 0 16px;">Telefone: ${
+        linkWhatsApp
+          ? `<a href="${linkWhatsApp}">${escaparHtml(telefone)} (abrir no WhatsApp)</a>`
+          : escaparHtml(telefone)
+      }</p>
       <p style="margin:20px 0 8px;font-weight:700;">Entregar em</p>
       <p style="margin:0;padding:14px;background-color:#FFF6ED;border-radius:8px;">${escaparHtml(enderecoLinha1)}<br />${escaparHtml(enderecoLinha2)}</p>
       <p style="margin:20px 0 0;"><a href="${linkAdmin}">Ver pedidos pagos no admin</a></p>
