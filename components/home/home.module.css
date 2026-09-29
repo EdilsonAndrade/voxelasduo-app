@@ -219,29 +219,47 @@
   text-underline-offset: 3px;
 }
 
+/* Moldura do trilho: referência para as setas laterais. */
+.trilhoMoldura {
+  position: relative;
+  container-type: inline-size;
+  /* Foto é quadrada: altura = largura de uma coluna do trilho. */
+  --altura-foto: calc((100cqw - 3 * 1.25rem) / 4);
+}
+
+/* Setas sobre a borda do primeiro/último card, centralizadas na altura da foto. */
 .seta {
-  width: 44px;
-  height: 44px;
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--altura-foto, 50%) / 2);
+  transform: translateY(-50%);
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   border: 2px solid var(--surface-line);
   background: var(--surface);
+  color: var(--preto);
   font-size: 1.2rem;
   line-height: 1;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  box-shadow: 0 8px 20px -10px rgba(17, 17, 17, 0.45);
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
-.seta:hover:not(:disabled) {
+.setaAnterior {
+  left: -14px;
+}
+
+.setaProxima {
+  right: -14px;
+}
+
+.seta:hover {
   border-color: var(--roxo);
   background: var(--roxo);
   color: #fff;
-}
-
-.seta:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 
 .trilho {
@@ -334,6 +352,9 @@
 
 @media (max-width: 1024px) {
   .trilho { grid-auto-columns: calc((100% - 2 * 1.25rem) / 3); }
+  .trilhoMoldura { --altura-foto: calc((100cqw - 2 * 1.25rem) / 3); }
+  .setaAnterior { left: -8px; }
+  .setaProxima { right: -8px; }
 }
 
 @media (max-width: 767px) {

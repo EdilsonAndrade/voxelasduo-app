@@ -37,6 +37,7 @@ export default function ThemeToggle() {
         fontWeight: 700,
         fontSize: "0.8rem",
         color: "var(--preto)",
+        whiteSpace: "nowrap",
       }}
     >
       {tema === "dark" ? "🌙" : "☀️"} {tema === "dark" ? "escuro" : "claro"}

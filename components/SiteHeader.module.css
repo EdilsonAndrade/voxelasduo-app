@@ -20,11 +20,10 @@
   display: block;
   width: 138px;
   height: 138px;
-  position:absolute;
-  top:-10px;
-  left:10px;
-  transform: rotate(359deg)
-  
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  transform: rotate(359deg);
 }
 
 .nav {
@@ -78,6 +77,7 @@
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 .adminLinks a {
@@ -94,30 +94,206 @@
   color: var(--texto-soft);
 }
 
-@media (max-width: 500px) {
-  .logo {
-    top:-2px;
-    left:162px;
-  }
+/* ---------- Menu do celular (hambúrguer + painel lateral) ---------- */
 
+.hamburguer {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 999px;
+  cursor: pointer;
+  place-items: center;
+  color: var(--preto);
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-@media (max-width: 640px) {
+.hamburguer:hover {
+  border-color: var(--roxo);
+  background: var(--creme);
+}
+
+.hamburguerLinhas {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 14px;
+}
+
+.hamburguerLinhas span {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 0.2s ease, opacity 0.2s ease, top 0.2s ease;
+}
+
+.hamburguerLinhas span:nth-child(1) { top: 0; }
+.hamburguerLinhas span:nth-child(2) { top: 6px; }
+.hamburguerLinhas span:nth-child(3) { top: 12px; }
+
+/* Aberto: as três linhas viram um X. */
+.hamburguerLinhas[data-aberto="true"] span:nth-child(1) { top: 6px; transform: rotate(45deg); }
+.hamburguerLinhas[data-aberto="true"] span:nth-child(2) { opacity: 0; }
+.hamburguerLinhas[data-aberto="true"] span:nth-child(3) { top: 6px; transform: rotate(-45deg); }
+
+.menuVeu {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(17, 17, 17, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.menuVeu[data-aberto="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.menuPainel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  width: min(84vw, 340px);
+  background: var(--surface);
+  border-left: 2px solid var(--surface-line);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.5rem 1.75rem;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow-y: auto;
+}
+
+.menuPainel[data-aberto="true"] {
+  transform: translateX(0);
+  box-shadow: -18px 0 40px -24px rgba(17, 17, 17, 0.45);
+}
+
+/* Faixa de camadas da marca no topo do painel. */
+.menuPainel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(
+    90deg,
+    var(--laranja) 0 20%,
+    var(--rosa) 20% 40%,
+    var(--roxo) 40% 60%,
+    var(--turquesa) 60% 80%,
+    var(--amarelo) 80% 100%
+  );
+}
+
+.menuTopo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0 1.25rem;
+}
+
+.menuTitulo {
+  font-family: var(--font-hand);
+  font-size: 1.6rem;
+  color: var(--rosa);
+}
+
+.menuFechar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--preto);
+}
+
+.menuFechar:hover {
+  border-color: var(--roxo);
+}
+
+.menuLinks {
+  display: flex;
+  flex-direction: column;
+}
+
+.menuLinks a,
+.menuLinks .navBotao {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.45rem;
+  text-align: left;
+  text-decoration: none;
+  color: var(--preto);
+  padding: 0.7rem 0;
+  border-bottom: 2px dashed var(--surface-line);
+}
+
+.menuLinks a:hover,
+.menuLinks .navBotao:hover {
+  color: var(--roxo);
+}
+
+.menuAdmin {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  display: flex;
+  gap: 1.25rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.menuAdmin a,
+.menuAdmin .navBotao {
+  color: var(--texto-soft);
+  text-decoration: none;
+}
+
+.menuAdmin a:hover,
+.menuAdmin .navBotao:hover {
+  color: var(--roxo);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menuPainel,
+  .menuVeu,
+  .hamburguerLinhas span {
+    transition: none;
+  }
+}
+
+/* Celular/tablet: logo à esquerda; carrinho, tema e hambúrguer à direita. */
+@media (max-width: 768px) {
   .bar {
-    padding: 0.5rem 1.25rem;
     gap: 1rem;
+    padding: 0.5rem 1rem;
   }
 
   .logo {
-    width: 48px;
-    height: 48px;
-    
+    position: static;
+    width: 60px;
+    height: 60px;
   }
 
-  .nav {
-    gap: 1rem;
-    font-size: 0.85rem;
+  .nav,
+  .adminLinks {
+    display: none;
+  }
+
+  .hamburguer {
+    display: grid;
   }
 }
-
-
