@@ -52,6 +52,7 @@ import {
 } from "@/lib/produtos/fichaTecnicaFormulario";
 import { LIMITE_FOTOS_MERCADO_LIVRE } from "@/lib/estoque/canais/mercadoLivre/fotos";
 import { formatarPreco } from "@/lib/produtos/formato";
+import { montarTextoMarketplace, type TextoMarketplace } from "@/lib/produtos/textosMeta";
 
 /** Promoção elegível do Mercado Livre já com o veredito de margem calculado no servidor (EDI-108). */
 interface PromocaoElegivelML {
@@ -211,6 +212,8 @@ export default function ProdutoForm({
   const [fotoArrastada, setFotoArrastada] = useState<number | null>(null);
   const [fotoAlvo, setFotoAlvo] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [campoCopiadoMarketplace, setCampoCopiadoMarketplace] = useState<keyof TextoMarketplace | null>(null);
+  const [erroCopiaMarketplace, setErroCopiaMarketplace] = useState<string | null>(null);
   const [excluindo, setExcluindo] = useState(false);
   const [publicandoMercadoLivre, setPublicandoMercadoLivre] = useState(false);
   const [despublicandoMercadoLivre, setDespublicandoMercadoLivre] = useState(false);
@@ -288,6 +291,28 @@ export default function ProdutoForm({
 
   function atualizarCampo<K extends keyof ProdutoFormValores>(campo: K, valor: ProdutoFormValores[K]) {
     setValores((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  /** Copia um campo do anúncio para colar no Marketplace do Facebook, que não tem API (EDI-109). */
+  async function copiarParaMarketplace(campo: keyof TextoMarketplace) {
+    const precoCentavos = Math.round(parseFloat(valores.precoReais.replace(",", ".")) * 100);
+    const texto = montarTextoMarketplace({
+      nome: valores.nome,
+      descricao: valores.descricao,
+      metaTitulo: valores.metaTitulo,
+      metaDescricao: valores.metaDescricao,
+      precoCentavos: Number.isFinite(precoCentavos) ? precoCentavos : 0,
+    });
+
+    try {
+      await navigator.clipboard.writeText(texto[campo]);
+      setErroCopiaMarketplace(null);
+      setCampoCopiadoMarketplace(campo);
+      setTimeout(() => setCampoCopiadoMarketplace((atual) => (atual === campo ? null : atual)), 2000);
+    } catch {
+      setCampoCopiadoMarketplace(null);
+      setErroCopiaMarketplace("O navegador bloqueou a cópia. Selecione o texto no campo e copie com Ctrl+C.");
+    }
   }
 
   function atualizarCampoTaxasCanais<K extends keyof TaxasCanaisFormValores>(
@@ -1559,6 +1584,33 @@ export default function ProdutoForm({
           </div>
 
           {camposErro.metaCatalogo && <span className={styles.fieldError}>{camposErro.metaCatalogo}</span>}
+
+          <div className={styles.field}>
+            <span className={styles.channelName}>Anunciar no Marketplace</span>
+            <span className={styles.mlLinkAviso}>
+              O Marketplace não tem integração: crie o anúncio no app do Facebook (Marketplace → Vender) e cole
+              os textos abaixo. As fotos são as mesmas deste produto.
+            </span>
+            <div className={styles.channelActions}>
+              {(
+                [
+                  ["titulo", "Copiar título"],
+                  ["preco", "Copiar preço"],
+                  ["descricao", "Copiar descrição"],
+                ] as const
+              ).map(([campo, rotulo]) => (
+                <button
+                  key={campo}
+                  type="button"
+                  className={styles.btnGhost}
+                  onClick={() => copiarParaMarketplace(campo)}
+                >
+                  {campoCopiadoMarketplace === campo ? "Copiado ✓" : rotulo}
+                </button>
+              ))}
+            </div>
+            {erroCopiaMarketplace && <span className={styles.fieldError}>{erroCopiaMarketplace}</span>}
+          </div>
         </div>
 
         <div className={styles.field}>

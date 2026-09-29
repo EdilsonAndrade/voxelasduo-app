@@ -47,6 +47,11 @@
 
 - [X] T016 [US4] Exibir selo "Facebook" (ativo quando `metaCatalogo?.publicar`, inativo no estilo `badgeCanalShopeeEmBreve` caso contrário) em app/admin/(painel)/produtos/page.tsx, adicionando a classe `badgeCanalFacebook` em components/admin/admin.module.css
 
+## Phase 6b: User Story 5 — Copiar para o Marketplace (P3)
+
+- [X] T019 [US5] Extrair `resolverTextosMeta` e criar `montarTextoMarketplace` em lib/produtos/textosMeta.ts (usado pelo feed), com testes em lib/produtos/textosMeta.test.ts
+- [X] T020 [US5] Botões "Copiar título/preço/descrição" no card Facebook/Instagram em components/admin/ProdutoForm.tsx, com feedback "Copiado ✓" e erro quando o navegador bloqueia
+
 ## Phase 7: Polish
 
 - [X] T017 Rodar `npm test` e `npx tsc --noEmit` e corrigir falhas

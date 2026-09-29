@@ -4,6 +4,7 @@ import {
   type Produto,
 } from "@/lib/models/produto";
 import { urlAbsoluta } from "@/lib/site/url";
+import { resolverTextosMeta } from "./textosMeta";
 
 /**
  * Feed do catálogo da Meta (Facebook/Instagram Shop) — EDI-109. Gerado a cada
@@ -37,11 +38,6 @@ function truncar(texto: string, limite: number): string {
   return caracteres.length > limite ? caracteres.slice(0, limite).join("") : texto;
 }
 
-function textoPreenchido(valor: string | undefined): string | undefined {
-  const texto = valor?.trim();
-  return texto ? texto : undefined;
-}
-
 /** Centavos → "39.90 BRL" (formato de preço da Meta). */
 export function formatarPrecoMeta(centavos: number): string {
   return `${(centavos / 100).toFixed(2)} BRL`;
@@ -54,11 +50,12 @@ export function montarItemFeedMeta(produto: Produto, base: string): ItemFeedMeta
   const fotos = produto.fotos.filter((foto) => foto.trim().length > 0);
   if (fotos.length === 0) return null;
 
-  const titulo = textoPreenchido(produto.metaCatalogo.titulo) ?? produto.nome.trim();
-  const descricao =
-    textoPreenchido(produto.metaCatalogo.descricao) ??
-    textoPreenchido(produto.descricao) ??
-    produto.nome.trim();
+  const { titulo, descricao } = resolverTextosMeta({
+    nome: produto.nome,
+    descricao: produto.descricao,
+    metaTitulo: produto.metaCatalogo.titulo,
+    metaDescricao: produto.metaCatalogo.descricao,
+  });
 
   const caminho = `/produtos/${encodeURIComponent(produto.categoria)}/${encodeURIComponent(produto.slug)}`;
 

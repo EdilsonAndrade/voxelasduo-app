@@ -82,6 +82,19 @@ Na listagem de produtos do admin, ao lado dos selos de Mercado Livre e Shopee, a
 
 ---
 
+### User Story 5 - Copiar os textos para anunciar no Marketplace (Priority: P3)
+
+O Marketplace (classificados) do Facebook não tem integração e a loja só permite finalizar a compra no site. Para anunciar à mão no Marketplace e receber contatos pelo Messenger, o vendedor copia do admin, com um clique cada, o título, o preço e a descrição do produto (os mesmos textos do Facebook, com fallback para os do site) e cola no anúncio.
+
+**Why this priority**: Agiliza o anúncio manual; não depende de API.
+
+**Acceptance Scenarios**:
+
+1. **Given** um produto com título próprio do Facebook, **When** o vendedor clica em "Copiar título", **Then** a área de transferência recebe o título próprio e o botão mostra "Copiado ✓".
+2. **Given** o navegador bloqueia a área de transferência, **When** o vendedor clica em copiar, **Then** aparece uma mensagem orientando a copiar manualmente.
+
+---
+
 ### Edge Cases
 
 - Produto marcado cuja categoria ou slug muda: o link no feed passa a apontar para a nova URL pública do produto (sempre gerada a partir dos dados atuais), e o identificador do item continua o mesmo para a Meta não duplicá-lo.
