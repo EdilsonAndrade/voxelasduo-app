@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TentativaPagamento } from "@/lib/models/pedido";
 
 const { abaterEstoquePedido } = vi.hoisted(() => ({ abaterEstoquePedido: vi.fn() }));
-const { enviarConfirmacaoPedido } = vi.hoisted(() => ({ enviarConfirmacaoPedido: vi.fn() }));
+const { enviarConfirmacaoPedido, notificarAdminVendaSite } = vi.hoisted(() => ({
+  enviarConfirmacaoPedido: vi.fn(),
+  notificarAdminVendaSite: vi.fn(),
+}));
 const { updateOne, findOneAndUpdate } = vi.hoisted(() => ({
   updateOne: vi.fn().mockResolvedValue({ matchedCount: 1 }),
   findOneAndUpdate: vi.fn(),
@@ -11,7 +14,7 @@ const { updateOne, findOneAndUpdate } = vi.hoisted(() => ({
 const { buscarPedidoPorId } = vi.hoisted(() => ({ buscarPedidoPorId: vi.fn() }));
 
 vi.mock("@/lib/estoque/abatimento", () => ({ abaterEstoquePedido }));
-vi.mock("@/lib/email/resend", () => ({ enviarConfirmacaoPedido }));
+vi.mock("@/lib/email/resend", () => ({ enviarConfirmacaoPedido, notificarAdminVendaSite }));
 vi.mock("@/lib/pedidos/repository", () => ({
   buscarPedidoPorId,
   colecaoPedidos: vi.fn().mockResolvedValue({ updateOne, findOneAndUpdate }),
@@ -49,6 +52,8 @@ describe("promoverPedidoSeAprovado (via registrarTentativa/atualizarStatusTentat
     expect(abaterEstoquePedido).toHaveBeenCalledWith(pedidoPromovido);
     expect(enviarConfirmacaoPedido).toHaveBeenCalledTimes(1);
     expect(enviarConfirmacaoPedido).toHaveBeenCalledWith(pedidoPromovido);
+    expect(notificarAdminVendaSite).toHaveBeenCalledTimes(1);
+    expect(notificarAdminVendaSite).toHaveBeenCalledWith(pedidoPromovido);
   });
 
   it("não dispara de novo quando a mesma aprovação é reprocessada (pedido já estava pago)", async () => {
@@ -59,6 +64,7 @@ describe("promoverPedidoSeAprovado (via registrarTentativa/atualizarStatusTentat
 
     expect(abaterEstoquePedido).not.toHaveBeenCalled();
     expect(enviarConfirmacaoPedido).not.toHaveBeenCalled();
+    expect(notificarAdminVendaSite).not.toHaveBeenCalled();
   });
 
   it("não dispara a confirmação quando a tentativa não foi aprovada", async () => {
@@ -66,5 +72,6 @@ describe("promoverPedidoSeAprovado (via registrarTentativa/atualizarStatusTentat
 
     expect(findOneAndUpdate).not.toHaveBeenCalled();
     expect(enviarConfirmacaoPedido).not.toHaveBeenCalled();
+    expect(notificarAdminVendaSite).not.toHaveBeenCalled();
   });
 });

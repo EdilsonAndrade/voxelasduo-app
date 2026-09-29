@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import { buscarPedidoPorId, colecaoPedidos } from "@/lib/pedidos/repository";
 import type { StatusTentativaPagamento, TentativaPagamento } from "@/lib/models/pedido";
 import { abaterEstoquePedido } from "@/lib/estoque/abatimento";
-import { enviarConfirmacaoPedido } from "@/lib/email/resend";
+import { enviarConfirmacaoPedido, notificarAdminVendaSite } from "@/lib/email/resend";
 
 /** Janela em que uma tentativa "pendente" é considerada ativa (evita cobrança dupla em abas simultâneas). */
 const JANELA_TENTATIVA_ATIVA_MS = 10 * 60 * 1000;
@@ -59,6 +59,8 @@ async function promoverPedidoSeAprovado(
     await abaterEstoquePedido(pedidoPromovido);
     // Best-effort (Tarefa 12/EDI-87) — nunca bloqueia a confirmação do pagamento.
     await enviarConfirmacaoPedido(pedidoPromovido);
+    // Aviso à loja (EDI-110) — mesma condição de no-máximo-uma-vez, também best-effort.
+    await notificarAdminVendaSite(pedidoPromovido);
   }
 }
 

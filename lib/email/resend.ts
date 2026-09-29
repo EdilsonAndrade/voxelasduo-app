@@ -3,6 +3,7 @@ import type { Encomenda } from "@/lib/models/encomenda";
 import type { Pedido } from "@/lib/models/pedido";
 import { buscarProdutosPorIds } from "@/lib/pedidos/repository";
 import { renderEmailLayout } from "@/lib/email/templates";
+import { urlBaseSite } from "@/lib/site/url";
 
 let clienteResend: Resend | undefined;
 
@@ -40,6 +41,21 @@ function escaparHtml(texto: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/** Avisos para a loja: ADMIN_NOTIFICACAO_EMAIL (se houver) + e-mail da loja, sem duplicar. */
+function destinatariosLoja(): string[] {
+  return [...new Set([process.env.ADMIN_NOTIFICACAO_EMAIL?.trim(), EMAIL_LOJA])].filter(
+    (email): email is string => Boolean(email)
+  );
+}
+
+/** `payment_method_id` do Mercado Pago → rótulo legível no e-mail da loja. */
+function rotuloFormaPagamento(metodo: string | undefined): string {
+  if (!metodo) return "Não informado";
+  if (metodo === "pix") return "Pix";
+  if (metodo.startsWith("bol") || metodo === "boleto") return "Boleto";
+  return `Cartão (${metodo})`;
 }
 
 function formatarTelefone(digitos: string): string {
@@ -198,6 +214,87 @@ export async function enviarConfirmacaoPedido(pedido: Pedido): Promise<void> {
 }
 
 /**
+ * Avisa a loja de uma venda do site com pagamento aprovado (EDI-110) — inclui
+ * as vendas da loja do Facebook/Instagram, que finalizam a compra no site.
+ * Disparada por `promoverPedidoSeAprovado` junto com a confirmação ao
+ * comprador (no-máximo-uma-vez por pedido). `replyTo` no comprador.
+ * Best-effort: falha de envio é logada e nunca lança.
+ */
+export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
+  const numeroPedido = pedido._id?.toString() ?? "";
+  const { cliente } = pedido;
+  const { endereco } = cliente;
+
+  const produtos = await buscarProdutosPorIds(pedido.itens.map((item) => item.produtoId.toString()));
+  const itens = pedido.itens.map((item) => ({
+    nome: produtos.get(item.produtoId.toString())?.nome ?? "Produto",
+    quantidade: item.quantidade,
+    subtotal: formatarValorEmReais(item.precoUnitario * item.quantidade),
+  }));
+
+  const valorTotalTexto = formatarValorEmReais(pedido.valorTotal);
+  const formaPagamento = rotuloFormaPagamento(pedido.pagamento.metodo);
+  const telefone = cliente.telefone ? formatarTelefone(cliente.telefone.replace(/\D/g, "")) : "Não informado";
+  const complemento = endereco.complemento ? ` — ${endereco.complemento}` : "";
+  const enderecoLinha1 = `${endereco.logradouro}, ${endereco.numero}${complemento}`;
+  const enderecoLinha2 = `${endereco.bairro} — ${endereco.cidade}/${endereco.estado} — CEP ${endereco.cep}`;
+  const linkAdmin = `${urlBaseSite()}/admin/pedidos?status=pago`;
+
+  const text = [
+    `Nova venda no site — pedido #${numeroPedido}`,
+    "",
+    "Itens:",
+    ...itens.map((item) => `${item.quantidade}x ${item.nome} — ${item.subtotal}`),
+    "",
+    `Valor total: ${valorTotalTexto}`,
+    `Pagamento: ${formaPagamento}`,
+    "",
+    `Comprador: ${cliente.nome}`,
+    `E-mail: ${cliente.email}`,
+    `Telefone: ${telefone}`,
+    "",
+    "Entregar em:",
+    enderecoLinha1,
+    enderecoLinha2,
+    "",
+    `Ver pedidos pagos: ${linkAdmin}`,
+  ].join("\n");
+
+  const html = renderEmailLayout({
+    titulo: "Nova venda no site",
+    corpoHtml: `
+      <p>O pagamento do pedido <strong>#${numeroPedido}</strong> foi aprovado.</p>
+      <p style="margin:20px 0 8px;font-weight:700;">Itens</p>
+      <ul style="margin:0 0 12px;padding-left:20px;">${itens
+        .map((item) => `<li>${item.quantidade}x ${escaparHtml(item.nome)} — ${item.subtotal}</li>`)
+        .join("")}</ul>
+      <p style="margin:0;font-weight:700;">Valor total: ${valorTotalTexto}</p>
+      <p style="margin:0 0 16px;">Pagamento: ${escaparHtml(formaPagamento)}</p>
+      <p style="margin:20px 0 8px;font-weight:700;">Comprador</p>
+      <p style="margin:0;">${escaparHtml(cliente.nome)}</p>
+      <p style="margin:0;">E-mail: ${escaparHtml(cliente.email)}</p>
+      <p style="margin:0 0 16px;">Telefone: ${escaparHtml(telefone)}</p>
+      <p style="margin:20px 0 8px;font-weight:700;">Entregar em</p>
+      <p style="margin:0;padding:14px;background-color:#FFF6ED;border-radius:8px;">${escaparHtml(enderecoLinha1)}<br />${escaparHtml(enderecoLinha2)}</p>
+      <p style="margin:20px 0 0;"><a href="${linkAdmin}">Ver pedidos pagos no admin</a></p>
+    `,
+  });
+
+  try {
+    await obterClienteResend().emails.send({
+      from: remetente(),
+      to: destinatariosLoja(),
+      replyTo: cliente.email,
+      subject: `Nova venda no site — #${numeroPedido} — ${valorTotalTexto}`,
+      text,
+      html,
+    });
+  } catch (erro) {
+    console.error("Falha ao enviar e-mail de notificação de venda do site:", erro);
+  }
+}
+
+/**
  * Avisa o admin de uma nova encomenda sob medida (formulário de /encomendas).
  * `replyTo` aponta para o cliente, para responder direto do e-mail. Best-effort:
  * a encomenda já foi gravada no banco antes desta chamada, então falha de
@@ -205,9 +302,7 @@ export async function enviarConfirmacaoPedido(pedido: Pedido): Promise<void> {
  */
 export async function notificarAdminNovaEncomenda(encomenda: Encomenda): Promise<void> {
   // Sempre vai para o e-mail da loja, mesmo sem ADMIN_NOTIFICACAO_EMAIL configurada.
-  const destinatarios = [...new Set([process.env.ADMIN_NOTIFICACAO_EMAIL?.trim(), EMAIL_LOJA])].filter(
-    (email): email is string => Boolean(email)
-  );
+  const destinatarios = destinatariosLoja();
 
   const telefone = formatarTelefone(encomenda.telefone);
   const text = `Nova encomenda de ${encomenda.nome}.\nE-mail: ${encomenda.email}\nTelefone: ${telefone}\n\n${encomenda.descricao}`;

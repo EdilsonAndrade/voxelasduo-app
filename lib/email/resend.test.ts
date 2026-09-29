@@ -18,6 +18,7 @@ const {
   enviarCodigoVerificacao,
   notificarAdminVendaExterna,
   enviarConfirmacaoPedido,
+  notificarAdminVendaSite,
   notificarAdminNovaEncomenda,
   enviarConfirmacaoEncomenda,
 } = await import("./resend");
@@ -184,6 +185,108 @@ describe("enviarConfirmacaoPedido", () => {
     buscarProdutosPorIds.mockResolvedValue(new Map());
     send.mockRejectedValue(new Error("falha de rede"));
     await expect(enviarConfirmacaoPedido(pedidoBase)).resolves.toBeUndefined();
+  });
+});
+
+const pedidoSite: Pedido = {
+  ...pedidoBase,
+  canalOrigem: "site",
+  cliente: {
+    nome: "João <b>Souza</b>",
+    email: "joao@exemplo.com",
+    telefone: "19981575723",
+    endereco: {
+      logradouro: "Rua das Flores",
+      numero: "123",
+      complemento: "Apto 4",
+      bairro: "Centro",
+      cidade: "Piracicaba",
+      estado: "SP",
+      cep: "13405108",
+    },
+  },
+  pagamento: { metodo: "pix", status: "aprovado", tentativas: [] },
+};
+
+describe("notificarAdminVendaSite", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.RESEND_API_KEY = "re_teste";
+    process.env.EMAIL_FROM = "naoresponda@voxelasduo.com.br";
+    process.env.ADMIN_NOTIFICACAO_EMAIL = "admin@voxelasduo.com";
+    process.env.SITE_URL = "https://www.voxelasduo.com.br";
+    const [produtoId1, produtoId2] = pedidoSite.itens.map((item) => item.produtoId);
+    buscarProdutosPorIds.mockResolvedValue(
+      new Map([
+        [produtoId1.toString(), { _id: produtoId1, nome: "Kit Soldados" }],
+        [produtoId2.toString(), { _id: produtoId2, nome: "Chaveiro" }],
+      ])
+    );
+  });
+
+  afterEach(() => {
+    delete process.env.ADMIN_NOTIFICACAO_EMAIL;
+    delete process.env.SITE_URL;
+  });
+
+  it("envia para a loja com replyTo no comprador e todos os dados da venda", async () => {
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await notificarAdminVendaSite(pedidoSite);
+
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: "Voxelas Duo <naoresponda@voxelasduo.com.br>",
+        to: ["admin@voxelasduo.com", "voxelasduo@gmail.com"],
+        replyTo: "joao@exemplo.com",
+        subject: expect.stringContaining(pedidoSite._id!.toString()),
+      })
+    );
+    const { text } = send.mock.calls[0][0] as { text: string };
+    expect(text).toContain("2x Kit Soldados");
+    expect(text).toContain("1x Chaveiro");
+    expect(text).toContain("130,00");
+    expect(text).toContain("Pagamento: Pix");
+    expect(text).toContain("(19) 98157-5723");
+    expect(text).toContain("Rua das Flores, 123 — Apto 4");
+    expect(text).toContain("Piracicaba/SP — CEP 13405108");
+    expect(text).toContain("https://www.voxelasduo.com.br/admin/pedidos?status=pago");
+  });
+
+  it("vai só para o e-mail da loja sem ADMIN_NOTIFICACAO_EMAIL", async () => {
+    delete process.env.ADMIN_NOTIFICACAO_EMAIL;
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await notificarAdminVendaSite(pedidoSite);
+
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: ["voxelasduo@gmail.com"] }));
+  });
+
+  it("rotula cartão e boleto, e usa 'Produto' quando o produto não existe mais", async () => {
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+    buscarProdutosPorIds.mockResolvedValue(new Map());
+
+    await notificarAdminVendaSite({ ...pedidoSite, pagamento: { metodo: "visa", tentativas: [] } });
+    await notificarAdminVendaSite({ ...pedidoSite, pagamento: { metodo: "bolbradesco", tentativas: [] } });
+
+    expect((send.mock.calls[0][0] as { text: string }).text).toContain("Pagamento: Cartão (visa)");
+    expect((send.mock.calls[0][0] as { text: string }).text).toContain("2x Produto");
+    expect((send.mock.calls[1][0] as { text: string }).text).toContain("Pagamento: Boleto");
+  });
+
+  it("escapa HTML dos dados do comprador", async () => {
+    send.mockResolvedValue({ data: { id: "1" }, error: null });
+
+    await notificarAdminVendaSite(pedidoSite);
+
+    const { html } = send.mock.calls[0][0] as { html: string };
+    expect(html).not.toContain("<b>Souza</b>");
+    expect(html).toContain("&lt;b&gt;Souza&lt;/b&gt;");
+  });
+
+  it("não lança quando o envio falha", async () => {
+    send.mockRejectedValue(new Error("falha de rede"));
+    await expect(notificarAdminVendaSite(pedidoSite)).resolves.toBeUndefined();
   });
 });
 

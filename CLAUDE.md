@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/022-meta-catalogo-facebook/plan.md
+at specs/023-notificar-venda-site/plan.md
 
 ## RULES
 
