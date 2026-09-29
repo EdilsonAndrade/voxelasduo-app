@@ -26,6 +26,19 @@ export default function MarcarCarrosselProduto({
   const [pendente, setPendente] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const raizRef = useRef<HTMLDivElement>(null);
+  const gatilhoRef = useRef<HTMLButtonElement>(null);
+  // Posição fixa na tela: a tabela rola na horizontal no celular e cortaria um painel absoluto.
+  const [posicao, setPosicao] = useState<{ top: number; right: number } | null>(null);
+
+  function abrirOuFechar() {
+    if (aberto) {
+      setAberto(false);
+      return;
+    }
+    const rect = gatilhoRef.current?.getBoundingClientRect();
+    if (rect) setPosicao({ top: rect.bottom + 6, right: Math.max(8, window.innerWidth - rect.right) });
+    setAberto(true);
+  }
 
   useEffect(() => {
     if (!aberto) return;
@@ -35,11 +48,17 @@ export default function MarcarCarrosselProduto({
     function tecla(evento: KeyboardEvent) {
       if (evento.key === "Escape") setAberto(false);
     }
+    // Rolar a página/tabela deslocaria o painel fixo — fecha.
+    function rolagem(evento: Event) {
+      if (!raizRef.current?.contains(evento.target as Node)) setAberto(false);
+    }
     document.addEventListener("mousedown", fora);
     document.addEventListener("keydown", tecla);
+    window.addEventListener("scroll", rolagem, true);
     return () => {
       document.removeEventListener("mousedown", fora);
       document.removeEventListener("keydown", tecla);
+      window.removeEventListener("scroll", rolagem, true);
     };
   }, [aberto]);
 
@@ -72,17 +91,21 @@ export default function MarcarCarrosselProduto({
   return (
     <div className={styles.marcar} ref={raizRef}>
       <button
+        ref={gatilhoRef}
         type="button"
         className={`${styles.marcarGatilho} ${quantidade > 0 ? styles.marcarGatilhoAtivo : ""}`}
         aria-expanded={aberto}
         aria-label={`Carrosséis da home de ${produtoNome}`}
-        onClick={() => setAberto((a) => !a)}
+        onClick={abrirOuFechar}
       >
         {quantidade > 0 ? `★ ${quantidade}` : "☆ marcar"}
       </button>
 
       {aberto && (
-        <div className={styles.marcarPainel}>
+        <div
+          className={styles.marcarPainel}
+          style={posicao ? { position: "fixed", top: posicao.top, right: posicao.right } : undefined}
+        >
           {carrosseis.length === 0 ? (
             <p className={styles.marcarVazio}>
               Nenhum carrossel criado. <Link href="/admin/banners/nova">Criar carrossel</Link>
