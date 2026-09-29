@@ -24,6 +24,7 @@ vi.mock("@/lib/produtos/repository", () => ({
   removerProduto,
   slugDisponivel,
 }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/produtos/slug", () => ({ gerarSlug }));
 vi.mock("@/lib/storage/blob", () => ({ removerFotoProduto }));
 vi.mock("@/lib/produtos/validation", () => ({ validarProduto }));

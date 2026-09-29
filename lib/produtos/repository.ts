@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
 import { criarGarantiaDeIndices } from "@/lib/db/indices";
+import { removerProdutoDeTodosCarrosseis } from "@/lib/home/repository";
 import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
 
 const garantirIndices = criarGarantiaDeIndices();
@@ -61,6 +62,13 @@ export async function buscarProdutoPorId(id: string): Promise<Produto | null> {
 }
 
 /** Busca reversa anúncio → produto, usada pelo webhook de pedidos do Mercado Livre (Tarefa 7/EDI-80). */
+/** Busca vários produtos de uma vez (carrosséis da home, EDI-114) — ids inexistentes são simplesmente ignorados. */
+export async function listarProdutosPorIds(ids: ObjectId[]): Promise<Produto[]> {
+  if (ids.length === 0) return [];
+  const colecao = await colecaoProdutos();
+  return colecao.find({ _id: { $in: ids } }).toArray();
+}
+
 export async function buscarProdutoPorMercadoLivreId(itemId: string): Promise<Produto | null> {
   const colecao = await colecaoProdutos();
   return colecao.findOne({ "integracoes.mercadoLivreId": itemId });
@@ -137,6 +145,8 @@ export async function removerProduto(id: string): Promise<Produto | null> {
   if (!ObjectId.isValid(id)) return null;
   const colecao = await colecaoProdutos();
   const resultado = await colecao.findOneAndDelete({ _id: new ObjectId(id) });
+  // Sem isso o id ficaria órfão nos carrosséis da home (EDI-114).
+  if (resultado) await removerProdutoDeTodosCarrosseis(resultado._id);
   return resultado ?? null;
 }
 

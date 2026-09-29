@@ -13,6 +13,7 @@ export default async function AdminPainelLayout({ children }: { children: React.
           <span className={styles.topoAdminMarca}>Voxelas Duo · painel</span>
           <nav className={styles.topoAdminNav}>
             <Link href="/admin/produtos">Produtos</Link>
+            <Link href="/admin/banners">Banners</Link>
             <Link href="/admin/pedidos">Pedidos</Link>
             <Link href="/admin/atendimento">Atendimento</Link>
             <Link href="/admin/tendencias">Tendências (ML)</Link>

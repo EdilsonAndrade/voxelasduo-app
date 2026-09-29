@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import {
   atualizarProduto,
   buscarProdutoPorId,
@@ -97,6 +98,8 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   await Promise.all(produto.fotos.map((url) => removerFotoProduto(url).catch(() => undefined)));
   await removerProduto(id);
+  // O produto pode estar em carrosséis da home (EDI-114).
+  revalidatePath("/");
 
   return new NextResponse(null, { status: 204 });
 }

@@ -12,7 +12,7 @@
 ## 1. Hierarquia de páginas
 
 ```
-Home (/)
+Home (/)                                 ← EDI-114: seções gerenciadas no admin; sem seção ativa, 307 → /produtos
 ├── Produtos (/produtos)
 │   ├── Categoria (/produtos/[categoria])
 │   └── Produto (/produtos/[categoria]/[slug])
@@ -24,7 +24,10 @@ Home (/)
 │   ├── /admin/produtos
 │   ├── /admin/produtos/novo
 │   ├── /admin/produtos/[id]/editar
-│   └── /admin/pedidos                  (EDI-81: pedidos de todos os canais)
+│   ├── /admin/pedidos                  (EDI-81: pedidos de todos os canais)
+│   ├── /admin/banners                  (EDI-114: seções da home — banners, carrosséis, texto de destaque)
+│   ├── /admin/banners/nova
+│   └── /admin/banners/[id]/editar
 └── Legal
     ├── /privacidade
     └── /termos

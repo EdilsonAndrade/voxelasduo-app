@@ -1,4 +1,7 @@
 import Link from "next/link";
+import FiltroCarrossel from "@/components/admin/FiltroCarrossel";
+import MarcarCarrosselProduto from "@/components/admin/MarcarCarrosselProduto";
+import { listarCarrosseis } from "@/lib/home/repository";
 import { listarProdutos } from "@/lib/produtos/repository";
 import { formatarPreco } from "@/lib/produtos/formato";
 import styles from "@/components/admin/admin.module.css";
@@ -8,8 +11,31 @@ import styles from "@/components/admin/admin.module.css";
 // congelando a listagem e escondendo criações/edições/remoções em produção.
 export const dynamic = "force-dynamic";
 
-export default async function AdminProdutosPage() {
-  const produtos = await listarProdutos();
+export default async function AdminProdutosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ carrossel?: string }>;
+}) {
+  const { carrossel: carrosselFiltro } = await searchParams;
+  const [todosProdutos, carrosseis] = await Promise.all([listarProdutos(), listarCarrosseis()]);
+
+  // Carrosséis de cada produto (coluna "Destaques", EDI-114).
+  const carrosseisPorProduto = new Map<string, string[]>();
+  for (const carrossel of carrosseis) {
+    for (const pid of carrossel.produtoIds) {
+      const chave = pid.toString();
+      carrosseisPorProduto.set(chave, [...(carrosseisPorProduto.get(chave) ?? []), carrossel._id!.toString()]);
+    }
+  }
+  const opcoesCarrossel = carrosseis.map((c) => ({ id: c._id!.toString(), titulo: c.titulo }));
+
+  // Filtro ?carrossel=<id>: só os marcados, na ordem do carrossel.
+  const carrosselSelecionado = carrosseis.find((c) => c._id!.toString() === carrosselFiltro);
+  const produtos = carrosselSelecionado
+    ? carrosselSelecionado.produtoIds
+        .map((pid) => todosProdutos.find((p) => p._id?.toString() === pid.toString()))
+        .filter((p) => p !== undefined)
+    : todosProdutos;
 
   return (
     <div className="container">
@@ -20,8 +46,14 @@ export default async function AdminProdutosPage() {
         </Link>
       </div>
 
+      <FiltroCarrossel carrosseis={opcoesCarrossel} atual={carrosselSelecionado ? carrosselFiltro : undefined} />
+
       {produtos.length === 0 ? (
-        <p className={styles.empty}>Nenhum produto cadastrado ainda.</p>
+        <p className={styles.empty}>
+          {carrosselSelecionado
+            ? "Nenhum produto marcado neste carrossel. Use a coluna Destaques para marcar."
+            : "Nenhum produto cadastrado ainda."}
+        </p>
       ) : (
         <table className={styles.table}>
           <thead>
@@ -31,6 +63,7 @@ export default async function AdminProdutosPage() {
               <th>Estoque</th>
               <th>Preço</th>
               <th>Canais</th>
+              <th>Destaques</th>
               <th></th>
             </tr>
           </thead>
@@ -74,6 +107,14 @@ export default async function AdminProdutosPage() {
                       Facebook
                     </span>
                   )}
+                </td>
+                <td>
+                  <MarcarCarrosselProduto
+                    produtoId={produto._id!.toString()}
+                    produtoNome={produto.nome}
+                    carrosseis={opcoesCarrossel}
+                    marcadosIniciais={carrosseisPorProduto.get(produto._id!.toString()) ?? []}
+                  />
                 </td>
                 <td>
                   <Link href={`/admin/produtos/${produto._id?.toString()}/editar`} className={styles.btnGhost}>

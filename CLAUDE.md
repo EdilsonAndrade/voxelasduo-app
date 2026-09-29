@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/024-tela-erro-404/plan.md
+at specs/025-banners-destaques-home/plan.md
 
 ## RULES
 
