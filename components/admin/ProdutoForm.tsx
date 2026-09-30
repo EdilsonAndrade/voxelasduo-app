@@ -7,6 +7,8 @@ import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 import SimuladorPrecificacao from "./SimuladorPrecificacao";
 import CategoriaMercadoLivreSelect from "./CategoriaMercadoLivreSelect";
+import SelectBusca from "./SelectBusca";
+import { SLUG_CATEGORIA_PADRAO, type CategoriaResumo } from "@/lib/models/categoria";
 import styles from "./admin.module.css";
 import { calcularCustoCaixa, calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import {
@@ -201,10 +203,13 @@ interface ProdutoParaCopiar {
 export default function ProdutoForm({
   valoresIniciais = VAZIO,
   taxasGlobais = TAXAS_CANAIS_PADRAO,
+  categorias = [],
 }: {
   valoresIniciais?: ProdutoFormValores;
   /** Padrão global das taxas de Shopee/site próprio, definido em /admin/configuracoes. */
   taxasGlobais?: TaxasCanaisConfig;
+  /** Categorias do site cadastradas, na ordem (EDI-123). */
+  categorias?: CategoriaResumo[];
 }) {
   const router = useRouter();
   const [valores, setValores] = useState(valoresIniciais);
@@ -826,12 +831,14 @@ export default function ProdutoForm({
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="categoria">Categoria {selo("republicar")}</label>
-        <input
+        <label htmlFor="categoria">Categoria no site {selo("republicar")}</label>
+        <SelectBusca
           id="categoria"
-          value={valores.categoria}
-          onChange={(e) => atualizarCampo("categoria", e.target.value)}
-          required
+          opcoes={categorias.map((c) => ({ valor: c.slug, rotulo: c.nome }))}
+          valor={valores.categoria}
+          onChange={(slug) => atualizarCampo("categoria", slug)}
+          placeholder="Diversos (padrão)"
+          placeholderBusca="Buscar categoria"
         />
         {camposErro.categoria && <span className={styles.fieldError}>{camposErro.categoria}</span>}
       </div>
@@ -1307,7 +1314,7 @@ export default function ProdutoForm({
 
       <SimuladorPrecificacao
         nome={valores.nome}
-        categoria={valores.categoria}
+        categoria={valores.categoria || SLUG_CATEGORIA_PADRAO}
         precoVendaReais={valores.precoReais}
         mercadoLivreCategoriaId={valores.mercadoLivreCategoriaId}
         mercadoLivreTipoAnuncio={valores.mercadoLivreTipoAnuncio}

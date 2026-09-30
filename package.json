@@ -10,6 +10,7 @@
     "test": "vitest run",
     "seed": "tsx scripts/seed.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
+    "migrar:categorias": "tsx scripts/migrar-categorias.ts",
     "corrigir:atributos-ml": "tsx scripts/corrigir-atributos-mercado-livre.ts",
     "inspecionar:item-ml": "tsx scripts/inspecionar-item-mercado-livre.ts"
   },

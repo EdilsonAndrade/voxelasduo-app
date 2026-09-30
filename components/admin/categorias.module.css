@@ -1,0 +1,202 @@
+/* Admin de categorias do site (EDI-123). Complementa admin.module.css. */
+
+.intro {
+  font-family: var(--font-body);
+  color: var(--texto-soft);
+  font-size: 0.92rem;
+  margin: -0.5rem 0 1.25rem;
+  max-width: 62ch;
+}
+
+/* Criar: campo + prévia do chip exatamente como na vitrine */
+.nova {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 2px dashed var(--surface-line);
+  border-radius: 16px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.novaCampo {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 12px;
+  padding: 0.6rem 0.85rem;
+  background: var(--surface);
+  color: var(--preto);
+}
+
+.novaCampo:focus {
+  outline: none;
+  border-color: var(--roxo);
+}
+
+.previa {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--texto-soft);
+}
+
+.aviso {
+  flex-basis: 100%;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: #b4540a;
+  margin: 0;
+}
+
+/* O chip da vitrine é a assinatura da tela: a vendedora vê o nome como o cliente vai ver. */
+.chip {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  color: var(--preto);
+  white-space: nowrap;
+}
+
+.chipVazio {
+  color: var(--texto-soft);
+  border-style: dashed;
+  font-weight: 400;
+}
+
+.lista {
+  list-style: none;
+  margin: 0 0 3rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.linha {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 1rem;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 16px;
+  padding: 0.55rem 0.9rem;
+}
+
+.ordemBotoes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ordemBotoes button {
+  width: 30px;
+  height: 24px;
+  border: 2px solid var(--surface-line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ordemBotoes button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ordemBotoes button:focus-visible,
+.chip:focus-visible {
+  outline: 2px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+.identidade {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  min-width: 0;
+}
+
+.endereco {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--texto-soft);
+  overflow-wrap: anywhere;
+}
+
+.selo {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--roxo);
+  border: 1.5px solid var(--roxo);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.contagem {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+  white-space: nowrap;
+}
+
+.contagemZero {
+  opacity: 0.6;
+}
+
+.acoes {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.renomear {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex: 1 1 220px;
+}
+
+.renomear input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 2px solid var(--roxo);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  background: var(--surface);
+  color: var(--preto);
+}
+
+.renomear input:focus {
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .linha {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .contagem,
+  .acoes {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}

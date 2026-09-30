@@ -2,6 +2,10 @@ import { ObjectId } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
 import { criarGarantiaDeIndices } from "@/lib/db/indices";
 import { removerProdutoDeTodosCarrosseis } from "@/lib/home/repository";
+import {
+  registrarRedirecionamentoProduto,
+  removerRedirecionamentosDoProduto,
+} from "@/lib/categorias/redirecionamentos";
 import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
 
 const garantirIndices = criarGarantiaDeIndices();
@@ -47,12 +51,6 @@ export async function listarProdutos(filtro: FiltroListagem = {}) {
   }
 
   return colecao.find(query).sort({ criadoEm: -1 }).toArray();
-}
-
-export async function listarCategorias(): Promise<string[]> {
-  const colecao = await colecaoProdutos();
-  const categorias = await colecao.distinct("categoria");
-  return categorias.filter((c): c is string => typeof c === "string" && c.length > 0).sort();
 }
 
 export async function buscarProdutoPorId(id: string): Promise<Produto | null> {
@@ -115,6 +113,41 @@ export async function slugDisponivel(
   return existente === null;
 }
 
+/** Slug disponível na categoria: o próprio `slugBase` ou ele com sufixo curto, mesmo critério usado na criação do produto. */
+export async function slugLivreNaCategoria(
+  categoria: string,
+  slugBase: string,
+  ignorarId?: string
+): Promise<string> {
+  if (await slugDisponivel(categoria, slugBase, ignorarId)) return slugBase;
+  return `${slugBase}-${Date.now().toString(36)}`;
+}
+
+/**
+ * Muda a categoria (e o slug, quando `novoSlugBase` é informado) de um
+ * produto, resolvendo conflito de slug no destino e registrando o endereço
+ * antigo para redirecionar ao novo (EDI-123). Retorna o produto atualizado.
+ */
+export async function moverProdutoDeCategoria(
+  produto: Produto,
+  novaCategoria: string,
+  novoSlugBase: string = produto.slug
+): Promise<Produto | null> {
+  if (novaCategoria === produto.categoria && novoSlugBase === produto.slug) return produto;
+
+  const id = produto._id!.toString();
+  const slug = await slugLivreNaCategoria(novaCategoria, novoSlugBase, id);
+  const atualizado = await atualizarProduto(id, { categoria: novaCategoria, slug });
+  if (atualizado) {
+    await registrarRedirecionamentoProduto(
+      { categoria: produto.categoria, slug: produto.slug },
+      { categoria: novaCategoria, slug },
+      produto._id!
+    );
+  }
+  return atualizado;
+}
+
 export type NovoProduto = Omit<Produto, "_id" | "criadoEm" | "atualizadoEm">;
 
 export async function criarProduto(dados: NovoProduto): Promise<Produto> {
@@ -145,8 +178,13 @@ export async function removerProduto(id: string): Promise<Produto | null> {
   if (!ObjectId.isValid(id)) return null;
   const colecao = await colecaoProdutos();
   const resultado = await colecao.findOneAndDelete({ _id: new ObjectId(id) });
-  // Sem isso o id ficaria órfão nos carrosséis da home (EDI-114).
-  if (resultado) await removerProdutoDeTodosCarrosseis(resultado._id);
+  // Sem isso o id ficaria órfão nos carrosséis da home (EDI-114) e nos redirecionamentos (EDI-123).
+  if (resultado) {
+    await Promise.all([
+      removerProdutoDeTodosCarrosseis(resultado._id),
+      removerRedirecionamentosDoProduto(resultado._id),
+    ]);
+  }
   return resultado ?? null;
 }
 

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { criarProduto, listarProdutos, slugDisponivel } from "@/lib/produtos/repository";
+import { revalidatePath } from "next/cache";
+import { criarProduto, listarProdutos, slugLivreNaCategoria } from "@/lib/produtos/repository";
+import { slugCategoriaValido } from "@/lib/categorias/repository";
+import { SLUG_CATEGORIA_PADRAO } from "@/lib/models/categoria";
 import { gerarSlug } from "@/lib/produtos/slug";
 import { validarProduto, type ProdutoPayload } from "@/lib/produtos/validation";
 import type {
@@ -30,12 +33,16 @@ export async function POST(request: Request) {
   }
 
   const nome = payload.nome as string;
-  const categoria = payload.categoria as string;
-  let slug = gerarSlug(nome);
-
-  if (!(await slugDisponivel(categoria, slug))) {
-    slug = `${slug}-${Date.now().toString(36)}`;
+  // Sem categoria escolhida, o produto vai para "Diversos"; só categorias cadastradas são aceitas (EDI-123).
+  const categoria = (typeof payload.categoria === "string" && payload.categoria.trim()) || SLUG_CATEGORIA_PADRAO;
+  if (!(await slugCategoriaValido(categoria))) {
+    return NextResponse.json(
+      { erro: "Payload inválido.", campos: { categoria: "Escolha uma categoria cadastrada." } },
+      { status: 400 }
+    );
   }
+
+  const slug = await slugLivreNaCategoria(categoria, gerarSlug(nome));
 
   const produto = await criarProduto({
     nome,
@@ -53,6 +60,9 @@ export async function POST(request: Request) {
     fichaTecnica: payload.fichaTecnica as FichaTecnicaProduto | undefined,
     metaCatalogo: payload.metaCatalogo as MetaCatalogoProduto | undefined,
   });
+
+  // Uma categoria que estava vazia passa a aparecer nos filtros da vitrine.
+  revalidatePath("/produtos", "layout");
 
   return NextResponse.json({ produto }, { status: 201 });
 }

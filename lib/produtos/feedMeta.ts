@@ -44,7 +44,12 @@ export function formatarPrecoMeta(centavos: number): string {
 }
 
 /** Item do feed de um produto, ou `null` quando ele não deve constar (não marcado ou sem foto). */
-export function montarItemFeedMeta(produto: Produto, base: string): ItemFeedMeta | null {
+export function montarItemFeedMeta(
+  produto: Produto,
+  base: string,
+  /** slug → nome da categoria (EDI-123); sem entrada, usa o próprio slug. */
+  nomesCategorias: Map<string, string> = new Map()
+): ItemFeedMeta | null {
   if (produto.metaCatalogo?.publicar !== true || !produto._id) return null;
 
   const fotos = produto.fotos.filter((foto) => foto.trim().length > 0);
@@ -73,7 +78,7 @@ export function montarItemFeedMeta(produto: Produto, base: string): ItemFeedMeta
       .map((foto) => urlAbsoluta(foto, base))
       .join(","),
     brand: MARCA,
-    product_type: produto.categoria,
+    product_type: nomesCategorias.get(produto.categoria) ?? produto.categoria,
   };
 }
 
@@ -83,11 +88,15 @@ function campoCsv(valor: string): string {
 }
 
 /** CSV completo do feed — só o cabeçalho quando nenhum produto está marcado. */
-export function gerarCsvFeedMeta(produtos: Produto[], base: string): string {
+export function gerarCsvFeedMeta(
+  produtos: Produto[],
+  base: string,
+  nomesCategorias: Map<string, string> = new Map()
+): string {
   const linhas = [COLUNAS_FEED_META.join(",")];
 
   for (const produto of produtos) {
-    const item = montarItemFeedMeta(produto, base);
+    const item = montarItemFeedMeta(produto, base, nomesCategorias);
     if (item) {
       linhas.push(COLUNAS_FEED_META.map((coluna) => campoCsv(item[coluna])).join(","));
     }

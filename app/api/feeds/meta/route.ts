@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { listarProdutosPublicadosMeta } from "@/lib/produtos/repository";
 import { gerarCsvFeedMeta } from "@/lib/produtos/feedMeta";
 import { urlBaseSite } from "@/lib/site/url";
+import { mapaNomesCategorias } from "@/lib/categorias/repository";
 
 // A Meta lê este feed em horário programado — sempre dados atuais, nunca cache.
 export const dynamic = "force-dynamic";
@@ -12,8 +13,11 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   try {
-    const produtos = await listarProdutosPublicadosMeta();
-    const csv = gerarCsvFeedMeta(produtos, urlBaseSite());
+    const [produtos, nomesCategorias] = await Promise.all([
+      listarProdutosPublicadosMeta(),
+      mapaNomesCategorias(),
+    ]);
+    const csv = gerarCsvFeedMeta(produtos, urlBaseSite(), nomesCategorias);
 
     return new NextResponse(csv, {
       status: 200,

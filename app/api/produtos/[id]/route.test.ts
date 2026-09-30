@@ -2,14 +2,15 @@ import { ObjectId } from "mongodb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Produto } from "@/lib/models/produto";
 
-const { buscarProdutoPorId, atualizarProduto, removerProduto, slugDisponivel } = vi.hoisted(
+const { buscarProdutoPorId, atualizarProduto, removerProduto, moverProdutoDeCategoria } = vi.hoisted(
   () => ({
     buscarProdutoPorId: vi.fn(),
     atualizarProduto: vi.fn(),
     removerProduto: vi.fn(),
-    slugDisponivel: vi.fn(),
+    moverProdutoDeCategoria: vi.fn(),
   })
 );
+const { slugCategoriaValido } = vi.hoisted(() => ({ slugCategoriaValido: vi.fn() }));
 const { gerarSlug } = vi.hoisted(() => ({ gerarSlug: vi.fn() }));
 const { removerFotoProduto } = vi.hoisted(() => ({ removerFotoProduto: vi.fn() }));
 const { validarProduto } = vi.hoisted(() => ({ validarProduto: vi.fn().mockReturnValue({}) }));
@@ -22,8 +23,9 @@ vi.mock("@/lib/produtos/repository", () => ({
   buscarProdutoPorId,
   atualizarProduto,
   removerProduto,
-  slugDisponivel,
+  moverProdutoDeCategoria,
 }));
+vi.mock("@/lib/categorias/repository", () => ({ slugCategoriaValido }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/produtos/slug", () => ({ gerarSlug }));
 vi.mock("@/lib/storage/blob", () => ({ removerFotoProduto }));
@@ -135,6 +137,52 @@ describe("PATCH /api/produtos/[id]", () => {
 
     expect(atualizarProduto).toHaveBeenCalledWith(produtoBase._id!.toString(), { metaCatalogo });
     expect(sincronizarAnuncioProduto).not.toHaveBeenCalled();
+  });
+
+  describe("troca de categoria (EDI-123)", () => {
+    it("move o produto para a categoria escolhida, sem gravar categoria solta no $set", async () => {
+      slugCategoriaValido.mockResolvedValue(true);
+
+      const resposta = await PATCH(requisicao({ categoria: "religioso" }), params(produtoBase._id!.toString()));
+
+      expect(resposta.status).toBe(200);
+      expect(moverProdutoDeCategoria).toHaveBeenCalledWith(produtoBase, "religioso", "vaso-geometrico");
+      expect(atualizarProduto).toHaveBeenCalledWith(produtoBase._id!.toString(), {});
+    });
+
+    it("categoria vazia vai para Diversos", async () => {
+      slugCategoriaValido.mockResolvedValue(true);
+
+      await PATCH(requisicao({ categoria: "  " }), params(produtoBase._id!.toString()));
+
+      expect(moverProdutoDeCategoria).toHaveBeenCalledWith(produtoBase, "diversos", "vaso-geometrico");
+    });
+
+    it("400 com categoria não cadastrada", async () => {
+      slugCategoriaValido.mockResolvedValue(false);
+
+      const resposta = await PATCH(requisicao({ categoria: "inventada" }), params(produtoBase._id!.toString()));
+
+      expect(resposta.status).toBe(400);
+      expect(await resposta.json()).toMatchObject({ campos: { categoria: expect.any(String) } });
+      expect(moverProdutoDeCategoria).not.toHaveBeenCalled();
+    });
+
+    it("mesma categoria e mesmo nome: não move", async () => {
+      slugCategoriaValido.mockResolvedValue(true);
+
+      await PATCH(requisicao({ categoria: "decoracao", preco: 100 }), params(produtoBase._id!.toString()));
+
+      expect(moverProdutoDeCategoria).not.toHaveBeenCalled();
+    });
+
+    it("mudar o nome gera novo slug e registra o endereço antigo via mover", async () => {
+      gerarSlug.mockReturnValue("vaso-novo");
+
+      await PATCH(requisicao({ nome: "Vaso Novo" }), params(produtoBase._id!.toString()));
+
+      expect(moverProdutoDeCategoria).toHaveBeenCalledWith(produtoBase, "decoracao", "vaso-novo");
+    });
   });
 });
 

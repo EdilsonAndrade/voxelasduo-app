@@ -2,7 +2,12 @@ import Link from "next/link";
 import FaixaEncomendas from "@/components/encomendas/FaixaEncomendas";
 import ProdutoCard from "@/components/produtos/ProdutoCard";
 import RainbowTitle from "@/components/produtos/RainbowTitle";
-import { listarCategorias, listarProdutos } from "@/lib/produtos/repository";
+import { listarProdutos } from "@/lib/produtos/repository";
+import {
+  listarCategoriasComProdutos,
+  mapaNomesCategorias,
+  nomeDaCategoria,
+} from "@/lib/categorias/repository";
 import styles from "@/components/produtos/produtos.module.css";
 
 export default async function ProdutosPage({
@@ -11,9 +16,10 @@ export default async function ProdutosPage({
   searchParams: Promise<{ q?: string; categoria?: string }>;
 }) {
   const { q, categoria } = await searchParams;
-  const [produtos, categorias] = await Promise.all([
+  const [produtos, categorias, nomes] = await Promise.all([
     listarProdutos({ q, categoria }),
-    listarCategorias(),
+    listarCategoriasComProdutos(),
+    mapaNomesCategorias(),
   ]);
 
   return (
@@ -30,11 +36,11 @@ export default async function ProdutosPage({
           </Link>
           {categorias.map((c) => (
             <Link
-              key={c}
-              href={`/produtos/${c}`}
-              className={categoria === c ? styles.catChipActive : styles.catChip}
+              key={c.slug}
+              href={`/produtos/${c.slug}`}
+              className={categoria === c.slug ? styles.catChipActive : styles.catChip}
             >
-              {c}
+              {c.nome}
             </Link>
           ))}
         </div>
@@ -51,7 +57,13 @@ export default async function ProdutosPage({
               : "Nenhum produto cadastrado ainda."}
           </p>
         ) : (
-          produtos.map((produto) => <ProdutoCard key={produto._id?.toString()} produto={produto} />)
+          produtos.map((produto) => (
+            <ProdutoCard
+              key={produto._id?.toString()}
+              produto={produto}
+              categoriaNome={nomeDaCategoria(nomes, produto.categoria)}
+            />
+          ))
         )}
       </div>
 

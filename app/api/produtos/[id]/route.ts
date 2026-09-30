@@ -3,9 +3,11 @@ import { revalidatePath } from "next/cache";
 import {
   atualizarProduto,
   buscarProdutoPorId,
+  moverProdutoDeCategoria,
   removerProduto,
-  slugDisponivel,
 } from "@/lib/produtos/repository";
+import { slugCategoriaValido } from "@/lib/categorias/repository";
+import { SLUG_CATEGORIA_PADRAO } from "@/lib/models/categoria";
 import { gerarSlug } from "@/lib/produtos/slug";
 import { removerFotoProduto } from "@/lib/storage/blob";
 import { validarProduto, type ProdutoPayload } from "@/lib/produtos/validation";
@@ -40,18 +42,37 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ erro: "Payload inválido.", campos: erros }, { status: 400 });
   }
 
-  const dados: Record<string, unknown> = { ...payload };
+  const { categoria: categoriaPayload, ...dados } = payload as Record<string, unknown>;
 
-  if (typeof payload.nome === "string" && payload.nome !== produtoAtual.nome) {
-    const categoria = (payload.categoria as string) ?? produtoAtual.categoria;
-    let novoSlug = gerarSlug(payload.nome);
-    if (!(await slugDisponivel(categoria, novoSlug, id))) {
-      novoSlug = `${novoSlug}-${Date.now().toString(36)}`;
+  // Categoria vazia = "Diversos"; só categorias cadastradas são aceitas (EDI-123).
+  let categoriaDestino = produtoAtual.categoria;
+  if (typeof categoriaPayload === "string") {
+    categoriaDestino = categoriaPayload.trim() || SLUG_CATEGORIA_PADRAO;
+    if (!(await slugCategoriaValido(categoriaDestino))) {
+      return NextResponse.json(
+        { erro: "Payload inválido.", campos: { categoria: "Escolha uma categoria cadastrada." } },
+        { status: 400 }
+      );
     }
-    dados.slug = novoSlug;
+  }
+
+  const slugBase =
+    typeof payload.nome === "string" && payload.nome !== produtoAtual.nome
+      ? gerarSlug(payload.nome)
+      : produtoAtual.slug;
+
+  // Troca de categoria e/ou slug: resolve conflito no destino e redireciona o endereço antigo (EDI-123).
+  const enderecoMudou = categoriaDestino !== produtoAtual.categoria || slugBase !== produtoAtual.slug;
+  if (enderecoMudou) {
+    await moverProdutoDeCategoria(produtoAtual, categoriaDestino, slugBase);
   }
 
   const produto = await atualizarProduto(id, dados);
+
+  if (enderecoMudou) {
+    revalidatePath("/");
+    revalidatePath("/produtos", "layout");
+  }
 
   // Mantém o anúncio já publicado (Tarefa 7/EDI-80) refletindo preço,
   // estoque e descrição após uma edição no admin — best-effort, nunca trava

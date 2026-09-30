@@ -128,3 +128,11 @@ describe("gerarCsvFeedMeta", () => {
     expect(csv).toContain('"https://x/b.jpg,https://x/c.jpg"');
   });
 });
+
+describe("montarItemFeedMeta — nome da categoria (EDI-123)", () => {
+  it("usa o nome cadastrado da categoria em product_type, mantendo o slug no link", () => {
+    const item = montarItemFeedMeta(produto(), BASE, new Map([["chaveiros", "Chaveiros"]]));
+    expect(item?.product_type).toBe("Chaveiros");
+    expect(item?.link).toContain("/produtos/chaveiros/");
+  });
+});

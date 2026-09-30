@@ -272,8 +272,9 @@ export function validarProduto(
     erros.descricao = "Informe a descrição do produto.";
   }
 
-  if (presente("categoria") && !textoValido(payload.categoria)) {
-    erros.categoria = "Informe a categoria do produto.";
+  // Categoria opcional: vazia/ausente vai para "Diversos"; a existência do slug é checada na rota (EDI-123).
+  if (payload.categoria !== undefined && typeof payload.categoria !== "string") {
+    erros.categoria = "Categoria inválida.";
   }
 
   if (presente("preco")) {

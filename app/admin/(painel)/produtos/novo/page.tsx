@@ -4,6 +4,7 @@ import styles from "@/components/admin/admin.module.css";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
 import { buscarProdutoPorId } from "@/lib/produtos/repository";
 import { produtoParaDuplicar } from "@/lib/produtos/produtoFormulario";
+import { listarCategoriasResumo } from "@/lib/categorias/repository";
 
 // Precisa do padrão global de taxas atual — não pode ser pré-renderizada no build.
 export const dynamic = "force-dynamic";
@@ -14,9 +15,10 @@ export default async function NovoProdutoPage({
   searchParams: Promise<{ duplicarDe?: string }>;
 }) {
   const { duplicarDe } = await searchParams;
-  const [taxasGlobais, original] = await Promise.all([
+  const [taxasGlobais, original, categorias] = await Promise.all([
     buscarTaxasCanais(),
     duplicarDe ? buscarProdutoPorId(duplicarDe) : null,
+    listarCategoriasResumo(),
   ]);
 
   if (duplicarDe && !original) {
@@ -30,6 +32,7 @@ export default async function NovoProdutoPage({
       </div>
       <ProdutoForm
         taxasGlobais={taxasGlobais}
+        categorias={categorias}
         valoresIniciais={original ? produtoParaDuplicar(original) : undefined}
       />
     </div>

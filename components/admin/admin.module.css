@@ -631,6 +631,41 @@
   outline: none;
 }
 
+.catItemAtivo {
+  background: var(--surface-line);
+}
+
+/* Versão compacta do seletor com busca, para linhas de tabela (EDI-123). */
+.catGatilhoCompacto {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 10px;
+  min-width: 150px;
+}
+
+.catGatilho:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.catPainelCompacto {
+  right: auto;
+  min-width: 240px;
+  white-space: normal;
+}
+
+/* No celular a tabela rola na horizontal e cortaria o painel: vira uma folha fixa no rodapé. */
+@media (max-width: 720px) {
+  .catPainelCompacto {
+    position: fixed;
+    top: auto;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    min-width: 0;
+  }
+}
+
 .catVazio {
   font-family: var(--font-body);
   font-size: 0.82rem;

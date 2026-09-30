@@ -3,7 +3,14 @@ import type { Produto } from "@/lib/models/produto";
 import { formatarPreco } from "@/lib/produtos/formato";
 import styles from "./produtos.module.css";
 
-export default function ProdutoCard({ produto }: { produto: Produto }) {
+export default function ProdutoCard({
+  produto,
+  categoriaNome = produto.categoria,
+}: {
+  produto: Produto;
+  /** Nome de exibição da categoria — `produto.categoria` guarda o slug (EDI-123). */
+  categoriaNome?: string;
+}) {
   const semEstoque = produto.estoque === 0;
 
   return (
@@ -21,7 +28,7 @@ export default function ProdutoCard({ produto }: { produto: Produto }) {
         <div className={styles.cardPrice}>{formatarPreco(produto.preco)}</div>
         <div className={styles.specLabel}>
           <span>categoria</span>
-          <span className={styles.v}>{produto.categoria}</span>
+          <span className={styles.v}>{categoriaNome}</span>
           <span>estoque</span>
           <span className={styles.v}>{produto.estoque} un.</span>
         </div>

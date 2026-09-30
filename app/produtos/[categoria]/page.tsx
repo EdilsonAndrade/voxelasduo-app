@@ -1,6 +1,12 @@
 import Link from "next/link";
+import { notFound, permanentRedirect } from "next/navigation";
 import ProdutoCard from "@/components/produtos/ProdutoCard";
-import { listarCategorias, listarProdutos } from "@/lib/produtos/repository";
+import { listarProdutos } from "@/lib/produtos/repository";
+import {
+  buscarCategoriaPorSlug,
+  listarCategoriasComProdutos,
+  resolverRedirecionamentoCategoria,
+} from "@/lib/categorias/repository";
 import { decodificarSegmentoRota } from "@/lib/produtos/slug";
 import styles from "@/components/produtos/produtos.module.css";
 
@@ -12,18 +18,27 @@ export default async function ProdutosPorCategoriaPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { categoria: categoriaParam } = await params;
-  const categoria = decodificarSegmentoRota(categoriaParam);
+  const slugCategoria = decodificarSegmentoRota(categoriaParam);
   const { q } = await searchParams;
+  const categoria = await buscarCategoriaPorSlug(slugCategoria);
+
+  // Endereço antigo (texto livre legado, variação de digitação ou categoria removida) → categoria atual (EDI-123).
+  if (!categoria) {
+    const destino = await resolverRedirecionamentoCategoria(slugCategoria);
+    if (destino) permanentRedirect(`/produtos/${destino}${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+    notFound();
+  }
+
   const [produtos, categorias] = await Promise.all([
-    listarProdutos({ categoria, q }),
-    listarCategorias(),
+    listarProdutos({ categoria: categoria.slug, q }),
+    listarCategoriasComProdutos(),
   ]);
 
   return (
     <div className="container">
       <div className={styles.hero}>
         <p className={styles.eyebrow}>catálogo impresso sob demanda</p>
-        <h1>{categoria}</h1>
+        <h1>{categoria.nome}</h1>
       </div>
 
       <div className={styles.filters}>
@@ -33,15 +48,15 @@ export default async function ProdutosPorCategoriaPage({
           </Link>
           {categorias.map((c) => (
             <Link
-              key={c}
-              href={`/produtos/${c}`}
-              className={c === categoria ? styles.catChipActive : styles.catChip}
+              key={c.slug}
+              href={`/produtos/${c.slug}`}
+              className={c.slug === categoria.slug ? styles.catChipActive : styles.catChip}
             >
-              {c}
+              {c.nome}
             </Link>
           ))}
         </div>
-        <form className={styles.search} action={`/produtos/${categoria}`}>
+        <form className={styles.search} action={`/produtos/${categoria.slug}`}>
           <input type="search" name="q" placeholder="buscar produto…" defaultValue={q ?? ""} />
         </form>
       </div>
@@ -50,7 +65,9 @@ export default async function ProdutosPorCategoriaPage({
         {produtos.length === 0 ? (
           <p className={styles.empty}>Nenhum produto encontrado nesta categoria.</p>
         ) : (
-          produtos.map((produto) => <ProdutoCard key={produto._id?.toString()} produto={produto} />)
+          produtos.map((produto) => (
+            <ProdutoCard key={produto._id?.toString()} produto={produto} categoriaNome={categoria.nome} />
+          ))
         )}
       </div>
     </div>

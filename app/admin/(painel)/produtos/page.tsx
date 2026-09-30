@@ -1,6 +1,8 @@
 import Link from "next/link";
 import FiltroCarrossel from "@/components/admin/FiltroCarrossel";
 import MarcarCarrosselProduto from "@/components/admin/MarcarCarrosselProduto";
+import TrocarCategoriaProduto from "@/components/admin/TrocarCategoriaProduto";
+import { listarCategoriasResumo } from "@/lib/categorias/repository";
 import { listarCarrosseis } from "@/lib/home/repository";
 import { listarProdutos } from "@/lib/produtos/repository";
 import { formatarPreco } from "@/lib/produtos/formato";
@@ -17,7 +19,11 @@ export default async function AdminProdutosPage({
   searchParams: Promise<{ carrossel?: string }>;
 }) {
   const { carrossel: carrosselFiltro } = await searchParams;
-  const [todosProdutos, carrosseis] = await Promise.all([listarProdutos(), listarCarrosseis()]);
+  const [todosProdutos, carrosseis, categorias] = await Promise.all([
+    listarProdutos(),
+    listarCarrosseis(),
+    listarCategoriasResumo(),
+  ]);
 
   // Carrosséis de cada produto (coluna "Destaques", EDI-114).
   const carrosseisPorProduto = new Map<string, string[]>();
@@ -71,7 +77,14 @@ export default async function AdminProdutosPage({
             {produtos.map((produto) => (
               <tr key={produto._id?.toString()}>
                 <td>{produto.nome}</td>
-                <td>{produto.categoria}</td>
+                <td>
+                  <TrocarCategoriaProduto
+                    produtoId={produto._id!.toString()}
+                    produtoNome={produto.nome}
+                    categoriaInicial={produto.categoria}
+                    categorias={categorias}
+                  />
+                </td>
                 <td>
                   <span className={produto.estoque === 0 ? styles.badgeZero : styles.badge}>
                     {produto.estoque} un.

@@ -7,6 +7,9 @@ const { listarProdutosPublicadosMeta } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/produtos/repository", () => ({ listarProdutosPublicadosMeta }));
+vi.mock("@/lib/categorias/repository", () => ({
+  mapaNomesCategorias: vi.fn().mockResolvedValue(new Map([["decoracao", "Decoração"]])),
+}));
 
 const { GET } = await import("./route");
 

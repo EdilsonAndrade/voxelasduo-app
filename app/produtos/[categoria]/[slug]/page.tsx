@@ -1,6 +1,12 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { buscarProdutoPorCategoriaESlug } from "@/lib/produtos/repository";
+import { notFound, permanentRedirect } from "next/navigation";
+import { buscarProdutoPorCategoriaESlug, buscarProdutoPorId } from "@/lib/produtos/repository";
+import {
+  mapaNomesCategorias,
+  nomeDaCategoria,
+  resolverRedirecionamentoCategoria,
+} from "@/lib/categorias/repository";
+import { buscarRedirecionamentoProduto } from "@/lib/categorias/redirecionamentos";
 import { decodificarSegmentoRota } from "@/lib/produtos/slug";
 import { formatarPreco } from "@/lib/produtos/formato";
 import { buscarAvaliacoesProduto } from "@/lib/avaliacoes/repository";
@@ -24,12 +30,25 @@ export default async function ProdutoDetalhePage({
 }: {
   params: Promise<{ categoria: string; slug: string }>;
 }) {
-  const { categoria, slug } = await params;
-  const produto = await buscarProdutoPorCategoriaESlug(decodificarSegmentoRota(categoria), slug);
+  const { categoria: categoriaParam, slug: slugParam } = await params;
+  const categoria = decodificarSegmentoRota(categoriaParam);
+  const slug = decodificarSegmentoRota(slugParam);
+  const produto = await buscarProdutoPorCategoriaESlug(categoria, slug);
 
   if (!produto) {
+    // Endereço antigo (troca de categoria, renomeação do produto, migração) → endereço atual (EDI-123).
+    const produtoId = await buscarRedirecionamentoProduto(categoria, slug);
+    let destino = produtoId ? await buscarProdutoPorId(produtoId.toString()) : null;
+    if (!destino) {
+      // Sem registro: tenta a categoria equivalente (alias/variação) com o mesmo slug do produto.
+      const categoriaAtual = await resolverRedirecionamentoCategoria(categoria);
+      destino = categoriaAtual ? await buscarProdutoPorCategoriaESlug(categoriaAtual, slug) : null;
+    }
+    if (destino) permanentRedirect(`/produtos/${destino.categoria}/${destino.slug}`);
     notFound();
   }
+
+  const categoriaNome = nomeDaCategoria(await mapaNomesCategorias(), produto.categoria);
 
   const semEstoque = produto.estoque === 0;
   const paginaAvaliacoes = await buscarAvaliacoesProduto(produto._id!);
@@ -38,7 +57,7 @@ export default async function ProdutoDetalhePage({
     <div className="container">
       <p className={styles.crumb}>
         <Link href="/produtos">Produtos</Link> ›{" "}
-        <Link href={`/produtos/${produto.categoria}`}>{produto.categoria}</Link> › {produto.nome}
+        <Link href={`/produtos/${produto.categoria}`}>{categoriaNome}</Link> › {produto.nome}
       </p>
 
       <div className={styles.detail}>
@@ -53,7 +72,7 @@ export default async function ProdutoDetalhePage({
             <div className={styles.datasheetTitle}>ficha técnica</div>
             <dl>
               <dt>categoria</dt>
-              <dd>{produto.categoria}</dd>
+              <dd>{categoriaNome}</dd>
               <dt>estoque</dt>
               <dd>{semEstoque ? "esgotado" : `${produto.estoque} unidades`}</dd>
             </dl>
