@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import CarrinhoProvider from "@/components/carrinho/CarrinhoProvider";
 import "./globals.css";
@@ -43,6 +44,7 @@ export default function RootLayout({
         <CarrinhoProvider>
           <SiteHeader />
           {children}
+          <SiteFooter />
         </CarrinhoProvider>
       </body>
     </html>

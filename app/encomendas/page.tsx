@@ -22,7 +22,7 @@ export default function EncomendasPage() {
           <div className={`${styles.palco} ${styles.palcoPoster}`}>
             <Image
               src="/images/encomendas.png"
-              alt="Voxelas Duo — também fazemos encomendas de impressão 3D. WhatsApp (19) 98157-5723, site www.voxelasduo.com.br, e-mail voxelasduo@gmail.com"
+              alt="Voxelas Duo — também fazemos encomendas de impressão 3D. WhatsApp (19) 98342-3586, site www.voxelasduo.com.br, e-mail voxelasduo@gmail.com"
               width={1254}
               height={1254}
               sizes="(max-width: 860px) 90vw, 460px"

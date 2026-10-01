@@ -45,7 +45,7 @@ export function renderEmailLayout(input: {
   const logoHtml = `<img src="${logoUrl}" alt="Voxelas Duo" width="140" style="display:block;margin:0 auto;height:auto;max-width:140px;border:0;">`;
 
   const linhaRodape = input.permiteResposta
-    ? "Dúvidas? Responda este e-mail ou chame no WhatsApp (19) 98157-5723."
+    ? "Dúvidas? Responda este e-mail ou chame no WhatsApp (19) 98342-3586."
     : "Este é um e-mail automático — não responda.";
 
   // Aviso fixo em todos os e-mails: parte dos clientes relatou receber na pasta de spam.

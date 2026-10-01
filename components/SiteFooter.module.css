@@ -1,0 +1,130 @@
+.footer {
+  margin-top: 4rem;
+  background: var(--surface);
+  border-top: 2px solid var(--surface-line);
+  overflow: hidden;
+}
+
+/* Fileira de cubinhos coloridos — a "camada" de impressão que fecha a página. */
+.voxels {
+  display: flex;
+  gap: 4px;
+  margin-top: -2px;
+}
+
+.voxels span {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 10px;
+  border-radius: 0 0 4px 4px;
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1.2fr;
+  gap: 2rem;
+  padding-top: 2.5rem;
+  padding-bottom: 2rem;
+}
+
+.nome {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  color: var(--roxo);
+}
+
+.lema {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: var(--rosa);
+}
+
+.coluna {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.titulo {
+  margin: 0 0 0.2rem;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto-soft);
+}
+
+.coluna a {
+  color: var(--preto);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.coluna a:hover {
+  color: var(--roxo);
+}
+
+.coluna a:focus-visible {
+  outline: 2px solid var(--roxo);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.canal {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.canalNome {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--texto-soft);
+}
+
+.icone {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: #fff;
+}
+
+.icone svg {
+  width: 20px;
+  height: 20px;
+}
+
+.iconeWhatsapp {
+  background: var(--turquesa);
+}
+
+.iconeInstagram {
+  background: var(--rosa);
+}
+
+.base {
+  padding-top: 1rem;
+  padding-bottom: 1.5rem;
+  border-top: 1px dashed var(--surface-line);
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+}
+
+@media (max-width: 768px) {
+  .grade {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+    padding-top: 2rem;
+  }
+}

@@ -12,10 +12,8 @@ import {
   validarImagensEncomenda,
   type ErrosValidacao,
 } from "@/lib/encomendas/validacao";
+import { WHATSAPP_TEXTO, WHATSAPP_URL } from "@/lib/contato";
 import styles from "./encomendas.module.css";
-
-const WHATSAPP_TEXTO = "(19) 98157-5723";
-const WHATSAPP_URL = "https://wa.me/5519981575723";
 
 export default function FormularioEncomenda() {
   const [formulario, setFormulario] = useState({ nome: "", email: "", telefone: "", descricao: "", website: "" });

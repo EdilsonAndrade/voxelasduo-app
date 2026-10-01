@@ -35,7 +35,7 @@
 
 /* Assinatura da página: o pôster vira um adesivo colado no palco. */
 .palcoPoster {
-  background: var(--palco-fundo);
+  background: transparent;
   border-radius: 28px;
   padding: 1.6rem;
   display: flex;
