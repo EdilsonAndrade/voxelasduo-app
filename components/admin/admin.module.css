@@ -953,3 +953,10 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Barra do painel não sai na impressão (EDI-126, lista de preços). */
+@media print {
+  .topoAdmin {
+    display: none;
+  }
+}

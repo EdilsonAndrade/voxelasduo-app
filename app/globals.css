@@ -97,3 +97,29 @@ textarea {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Impressão (EDI-126): o que estiver em .nao-imprimir (cabeçalho/rodapé do
+ * site, barras do admin, botões) some do papel. Na tela, display: contents
+ * mantém o layout como se o wrapper não existisse.
+ */
+.nao-imprimir {
+  display: contents;
+}
+
+@page {
+  size: A4;
+  margin: 12mm 12mm 14mm;
+}
+
+@media print {
+  .nao-imprimir {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+}

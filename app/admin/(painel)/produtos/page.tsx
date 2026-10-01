@@ -1,11 +1,10 @@
 import Link from "next/link";
 import FiltroCarrossel from "@/components/admin/FiltroCarrossel";
-import MarcarCarrosselProduto from "@/components/admin/MarcarCarrosselProduto";
-import TrocarCategoriaProduto from "@/components/admin/TrocarCategoriaProduto";
+import ListaProdutosAdmin, { type ProdutoLinha } from "@/components/admin/ListaProdutosAdmin";
 import { listarCategoriasResumo } from "@/lib/categorias/repository";
 import { listarCarrosseis } from "@/lib/home/repository";
 import { listarProdutos } from "@/lib/produtos/repository";
-import { formatarPreco } from "@/lib/produtos/formato";
+import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import styles from "@/components/admin/admin.module.css";
 
 // Sempre busca dados atuais — sem isso o Next.js pré-renderiza esta página
@@ -43,6 +42,25 @@ export default async function AdminProdutosPage({
         .filter((p) => p !== undefined)
     : todosProdutos;
 
+  // Dados prontos para a lista client (EDI-126): o custo vem calculado, igual ao da tela de edição.
+  const linhas: ProdutoLinha[] = produtos.map((produto) => {
+    const id = produto._id!.toString();
+    const custo = produto.custoProducao ? calcularCustoProducao(produto.custoProducao).totalCentavos : null;
+    return {
+      id,
+      nome: produto.nome,
+      categoria: produto.categoria,
+      estoque: produto.estoque,
+      precoCentavos: produto.preco,
+      precoMercadoLivreCentavos: produto.precosCanais?.mercadoLivre ?? null,
+      precoShopeeCentavos: produto.precosCanais?.shopee ?? null,
+      custoCentavos: custo !== null && Number.isFinite(custo) ? custo : null,
+      mercadoLivrePermalink: produto.integracoes?.mercadoLivrePermalink ?? null,
+      noCatalogoFacebook: produto.metaCatalogo?.publicar === true,
+      carrosseis: carrosseisPorProduto.get(id) ?? [],
+    };
+  });
+
   return (
     <div className="container">
       <div className={styles.bar}>
@@ -61,90 +79,7 @@ export default async function AdminProdutosPage({
             : "Nenhum produto cadastrado ainda."}
         </p>
       ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th>Categoria</th>
-              <th>Estoque</th>
-              <th>Preço</th>
-              <th>Canais</th>
-              <th>Destaques</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {produtos.map((produto) => (
-              <tr key={produto._id?.toString()}>
-                <td>{produto.nome}</td>
-                <td>
-                  <TrocarCategoriaProduto
-                    produtoId={produto._id!.toString()}
-                    produtoNome={produto.nome}
-                    categoriaInicial={produto.categoria}
-                    categorias={categorias}
-                  />
-                </td>
-                <td>
-                  <span className={produto.estoque === 0 ? styles.badgeZero : styles.badge}>
-                    {produto.estoque} un.
-                  </span>
-                </td>
-                <td>{formatarPreco(produto.preco)}</td>
-                <td>
-                  {produto.integracoes?.mercadoLivrePermalink ? (
-                    <a
-                      href={produto.integracoes.mercadoLivrePermalink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.badgeCanalMercadoLivre}
-                      title="Abrir anúncio no Mercado Livre"
-                    >
-                      Mercado Livre ↗
-                    </a>
-                  ) : (
-                    <span className={styles.badgeCanalShopeeEmBreve} title="Sem anúncio no Mercado Livre">
-                      Mercado Livre
-                    </span>
-                  )}{" "}
-                  {/* Sem link: a loja da Shopee ainda depende de vendas manuais para ser liberada. */}
-                  <span className={styles.badgeCanalShopeeEmBreve} title="Loja da Shopee ainda sem link">
-                    Shopee
-                  </span>{" "}
-                  {produto.metaCatalogo?.publicar ? (
-                    <span className={styles.badgeCanalFacebook} title="No catálogo do Facebook/Instagram">
-                      Facebook
-                    </span>
-                  ) : (
-                    <span className={styles.badgeCanalShopeeEmBreve} title="Fora do catálogo do Facebook/Instagram">
-                      Facebook
-                    </span>
-                  )}
-                </td>
-                <td>
-                  <MarcarCarrosselProduto
-                    produtoId={produto._id!.toString()}
-                    produtoNome={produto.nome}
-                    carrosseis={opcoesCarrossel}
-                    marcadosIniciais={carrosseisPorProduto.get(produto._id!.toString()) ?? []}
-                  />
-                </td>
-                <td>
-                  <Link href={`/admin/produtos/${produto._id?.toString()}/editar`} className={styles.btnGhost}>
-                    editar
-                  </Link>{" "}
-                  <Link
-                    href={`/admin/produtos/novo?duplicarDe=${produto._id?.toString()}`}
-                    className={styles.btnGhost}
-                    title="Cria um novo produto com os mesmos dados e preços (sem fotos, estoque e anúncios)"
-                  >
-                    duplicar
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ListaProdutosAdmin produtos={linhas} categorias={categorias} carrosseis={opcoesCarrossel} />
       )}
     </div>
   );

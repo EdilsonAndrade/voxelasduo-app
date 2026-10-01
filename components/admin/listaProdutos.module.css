@@ -1,0 +1,406 @@
+/*
+ * Lista de produtos do admin (EDI-126): tabela no desktop, cartões no
+ * celular. Linha marcada para a lista de preços = fundo creme; linha com
+ * preço não salvo = faixa amarela à esquerda.
+ */
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.tabela th {
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texto-soft);
+  font-weight: 700;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 2px solid var(--surface-line);
+}
+
+.tabela td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--surface-line);
+  vertical-align: middle;
+}
+
+.linha {
+  box-shadow: inset 4px 0 0 transparent;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.linhaMarcada {
+  background: var(--creme);
+}
+
+.linhaAlterada {
+  box-shadow: inset 4px 0 0 var(--amarelo);
+}
+
+.colSelecao {
+  width: 2.5rem;
+  padding-right: 0 !important;
+}
+
+.caixa {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--roxo);
+  cursor: pointer;
+}
+
+.colNome {
+  font-weight: 700;
+  min-width: 10rem;
+}
+
+.colCusto {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.custo {
+  font-variant-numeric: tabular-nums;
+  color: var(--texto-soft);
+  font-weight: 700;
+}
+
+.semCusto {
+  color: var(--texto-soft);
+}
+
+/* Preços editáveis */
+
+.precos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(7.5rem, 1fr)) auto;
+  gap: 0.35rem 0.75rem;
+  align-items: start;
+}
+
+.campoPreco {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.rotuloCampo {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texto-soft);
+}
+
+.entrada {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 10px;
+  padding: 0 0.55rem;
+  background: var(--surface);
+  color: var(--texto-soft);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.entrada:focus-within {
+  border-color: var(--roxo);
+}
+
+.entrada input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0.5rem 0;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--preto);
+  font-variant-numeric: tabular-nums;
+}
+
+.entrada input::placeholder {
+  color: var(--texto-soft);
+  opacity: 0.6;
+}
+
+.margem,
+.margemBaixa,
+.margemNegativa,
+.dica {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.margem {
+  color: #2f8f52;
+}
+
+.margemBaixa {
+  color: var(--laranja);
+}
+
+.margemNegativa {
+  color: #c23a3a;
+}
+
+.dica {
+  color: var(--texto-soft);
+  font-weight: 600;
+}
+
+.acaoLinha {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding-top: 1.05rem;
+}
+
+.btnSalvar {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.85rem;
+  border-radius: 999px;
+  padding: 0.5rem 1.1rem;
+  border: 2px solid var(--roxo);
+  background: var(--roxo);
+  color: #fff;
+  cursor: pointer;
+}
+
+.btnSalvar:disabled {
+  background: transparent;
+  border-color: var(--surface-line);
+  color: var(--texto-soft);
+  cursor: default;
+}
+
+.btnSalvar:focus-visible,
+.caixa:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+.seloPendente {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--amarelo);
+  color: #111;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.statusOk {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #2f8f52;
+}
+
+.statusErro {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #c23a3a;
+  max-width: 16rem;
+}
+
+.avisoPendentes {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--amarelo) 30%, transparent);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+/* Barra de seleção para a lista de preços — fica no rodapé da tela. */
+
+.barraSelecao {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -6px 18px rgba(17, 17, 17, 0.06);
+}
+
+.marcarTodos {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.contagem {
+  flex: 1;
+  color: var(--texto-soft);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.barraSelecao button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/*
+ * Celular: cada produto vira um cartão. A caixa de seleção fica ao lado do
+ * nome, e os preços ocupam a largura toda com Salvar embaixo.
+ */
+@media (max-width: 768px) {
+  .tabela,
+  .tabela tbody,
+  .tabela tr,
+  .tabela td {
+    display: block;
+  }
+
+  .tabela thead {
+    display: none;
+  }
+
+  .tabela tr {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding: 0.9rem 0.9rem 0.9rem 1rem;
+    margin-bottom: 0.75rem;
+    border: 2px solid var(--surface-line);
+    border-radius: 16px;
+  }
+
+  .tabela td {
+    padding: 0;
+    border: 0;
+  }
+
+  /* Primeira linha do cartão: seleção · nome · custo (fora da ordem do DOM). */
+  .colSelecao {
+    width: auto;
+    grid-area: 1 / 1;
+  }
+
+  .colNome {
+    grid-area: 1 / 2;
+  }
+
+  .tabela .colCusto {
+    grid-area: 1 / 3;
+  }
+
+  .caixa {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+
+  .colNome {
+    min-width: 0;
+    font-size: 1rem;
+  }
+
+  .colCusto {
+    text-align: right;
+  }
+
+  .colCusto::before {
+    content: "custo ";
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--texto-soft);
+  }
+
+  .colCategoria,
+  .colEstoque,
+  .colPrecos,
+  .colCanais,
+  .colDestaques,
+  .colAcoes {
+    grid-column: 1 / -1;
+  }
+
+  .colCategoria,
+  .colEstoque {
+    display: flex !important;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .colCategoria::before,
+  .colEstoque::before {
+    content: attr(data-rotulo);
+    min-width: 4.5rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--texto-soft);
+  }
+
+  .colCategoria > div {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .precos {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .acaoLinha {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    padding-top: 0.15rem;
+  }
+
+  .btnSalvar {
+    min-height: 44px;
+    padding: 0.6rem 1.6rem;
+  }
+
+  .entrada input {
+    padding: 0.7rem 0;
+    font-size: 1rem;
+  }
+
+  .colCanais {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .barraSelecao {
+    margin: 0.5rem 0 0;
+    border-radius: 16px 16px 0 0;
+    border-bottom: 0;
+  }
+
+  .contagem {
+    flex-basis: 100%;
+    order: -1;
+  }
+
+  .barraSelecao a,
+  .barraSelecao button {
+    margin-left: auto;
+  }
+}
