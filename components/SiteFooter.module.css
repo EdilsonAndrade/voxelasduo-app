@@ -13,13 +13,12 @@
 }
 
 .voxels span {
-  flex: 0 0 auto;
-  width: 22px;
+  flex: 1 0 22px;
   height: 10px;
   border-radius: 0 0 4px 4px;
 }
 
-.grade {
+.footer .grade {
   display: grid;
   grid-template-columns: 1.4fr 1fr 1.2fr;
   gap: 2rem;
@@ -113,7 +112,7 @@
   background: var(--rosa);
 }
 
-.base {
+.footer .base {
   padding-top: 1rem;
   padding-bottom: 1.5rem;
   border-top: 1px dashed var(--surface-line);
@@ -122,7 +121,7 @@
 }
 
 @media (max-width: 768px) {
-  .grade {
+  .footer .grade {
     grid-template-columns: 1fr;
     gap: 1.75rem;
     padding-top: 2rem;

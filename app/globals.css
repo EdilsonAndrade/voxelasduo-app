@@ -49,6 +49,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Rodapé sempre no fim da tela, mesmo em páginas curtas: o conteúdo ocupa o espaço que sobra. */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.site-conteudo {
+  flex: 1 0 auto;
+}
+
 h1,
 h2,
 h3 {

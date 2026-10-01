@@ -43,7 +43,7 @@ export default function RootLayout({
       <body>
         <CarrinhoProvider>
           <SiteHeader />
-          {children}
+          <div className="site-conteudo">{children}</div>
           <SiteFooter />
         </CarrinhoProvider>
       </body>
