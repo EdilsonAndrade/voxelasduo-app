@@ -23,9 +23,15 @@ export async function enviarImagemEncomenda(arquivo: File): Promise<string> {
   return enviarImagem(arquivo, "encomendas", `${crypto.randomUUID()}.${extensao}`);
 }
 
+/** Fotos dos itens anotados em eventos presenciais (EDI-125) — já comprimidas no aparelho. */
+export async function enviarFotoEvento(arquivo: File): Promise<string> {
+  const extensao = arquivo.type.split("/")[1] ?? "jpg";
+  return enviarImagem(arquivo, "eventos", `${crypto.randomUUID()}.${extensao}`);
+}
+
 async function enviarImagem(
   arquivo: File,
-  pasta: "produtos" | "banners" | "encomendas",
+  pasta: "produtos" | "banners" | "encomendas" | "eventos",
   nome = `${crypto.randomUUID()}-${arquivo.name}`
 ): Promise<string> {
   if (!TIPOS_ACEITOS.includes(arquivo.type)) {

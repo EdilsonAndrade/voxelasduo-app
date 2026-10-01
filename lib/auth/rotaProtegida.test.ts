@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rotaExigeAutenticacao } from "./rotaProtegida";
+import { paginaDeLogin, rotaExigeAutenticacao } from "./rotaProtegida";
 
 describe("rotaExigeAutenticacao", () => {
   it("não protege a própria tela de login", () => {
@@ -93,5 +93,17 @@ describe("rotaExigeAutenticacao", () => {
       protegida: false,
     });
     expect(rotaExigeAutenticacao("/api/health", "GET")).toEqual({ protegida: false });
+  });
+
+  it("não protege o login da equipe de evento, mas protege a área", () => {
+    expect(rotaExigeAutenticacao("/admin/evento/entrar", "GET")).toEqual({ protegida: false });
+    expect(rotaExigeAutenticacao("/admin/evento", "GET")).toEqual({ protegida: true, tipoResposta: "redirect" });
+    expect(rotaExigeAutenticacao("/api/admin/evento/pedidos", "GET")).toEqual({ protegida: true, tipoResposta: "json" });
+  });
+
+  it("manda a área de evento para o login próprio", () => {
+    expect(paginaDeLogin("/admin/evento")).toBe("/admin/evento/entrar");
+    expect(paginaDeLogin("/admin/evento/x")).toBe("/admin/evento/entrar");
+    expect(paginaDeLogin("/admin/produtos")).toBe("/admin/login");
   });
 });

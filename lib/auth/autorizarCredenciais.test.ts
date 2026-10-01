@@ -12,6 +12,14 @@ vi.mock("@/lib/db/mongodb", () => ({
   DB_NAME: "voxelasduo",
 }));
 
+const { loginBloqueado, registrarFalhaLogin, limparFalhasLogin } = vi.hoisted(() => ({
+  loginBloqueado: vi.fn(),
+  registrarFalhaLogin: vi.fn(),
+  limparFalhasLogin: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/limiteTentativas", () => ({ loginBloqueado, registrarFalhaLogin, limparFalhasLogin }));
+
 const { autorizarCredenciais } = await import("./autorizarCredenciais");
 
 const usuarioBase: Usuario = {
@@ -26,6 +34,7 @@ const usuarioBase: Usuario = {
 describe("autorizarCredenciais", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loginBloqueado.mockResolvedValue(false);
   });
 
   it("retorna o usuário quando e-mail e senha estão corretos", async () => {
@@ -40,6 +49,7 @@ describe("autorizarCredenciais", () => {
       id: usuarioBase._id!.toString(),
       email: usuarioBase.email,
       name: usuarioBase.nome,
+      papel: "admin",
     });
   });
 
@@ -77,6 +87,31 @@ describe("autorizarCredenciais", () => {
     expect(await autorizarCredenciais({ email: "admin@voxelasduo.com.br" })).toBeNull();
     expect(await autorizarCredenciais({ senha: "senha-correta" })).toBeNull();
     expect(await autorizarCredenciais(undefined)).toBeNull();
+    expect(findOne).not.toHaveBeenCalled();
+  });
+
+  it("aceita o login curto da equipe e devolve o papel", async () => {
+    findOne.mockResolvedValue({ ...usuarioBase, usuario: "malu", papel: "equipe", nome: "Malu" });
+
+    const resultado = await autorizarCredenciais({ email: " Malu ", senha: "senha-correta" });
+
+    expect(findOne).toHaveBeenCalledWith({ usuario: "malu", papel: "equipe" });
+    expect(resultado).toMatchObject({ name: "Malu", papel: "equipe" });
+    expect(limparFalhasLogin).toHaveBeenCalledWith("malu");
+  });
+
+  it("registra a falha quando a senha está errada", async () => {
+    findOne.mockResolvedValue(usuarioBase);
+
+    await autorizarCredenciais({ email: "admin@voxelasduo.com.br", senha: "senha-errada" });
+
+    expect(registrarFalhaLogin).toHaveBeenCalledWith("admin@voxelasduo.com.br");
+  });
+
+  it("recusa sem consultar o usuário quando o identificador está bloqueado", async () => {
+    loginBloqueado.mockResolvedValue(true);
+
+    expect(await autorizarCredenciais({ email: "malu", senha: "senha-correta" })).toBeNull();
     expect(findOne).not.toHaveBeenCalled();
   });
 });

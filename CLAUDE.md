@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/026-categorias-site/plan.md
+at specs/027-pedidos-evento/plan.md
 
 ## RULES
 

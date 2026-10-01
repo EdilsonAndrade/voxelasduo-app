@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import ChromeDoSite from "@/components/ChromeDoSite";
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import CarrinhoProvider from "@/components/carrinho/CarrinhoProvider";
@@ -42,9 +43,13 @@ export default function RootLayout({
       </head>
       <body>
         <CarrinhoProvider>
-          <SiteHeader />
+          <ChromeDoSite>
+            <SiteHeader />
+          </ChromeDoSite>
           <div className="site-conteudo">{children}</div>
-          <SiteFooter />
+          <ChromeDoSite>
+            <SiteFooter />
+          </ChromeDoSite>
         </CarrinhoProvider>
       </body>
     </html>

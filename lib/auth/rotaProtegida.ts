@@ -7,9 +7,17 @@ export type VeredictoRota =
   | { protegida: false }
   | { protegida: true; tipoResposta: "redirect" | "json" };
 
+/** Login simples da equipe de evento (EDI-125). */
+export const LOGIN_EVENTO = "/admin/evento/entrar";
+
+/** Para onde mandar quem chega sem sessão: a área de evento tem login próprio, mais simples. */
+export function paginaDeLogin(pathname: string): string {
+  return pathname === "/admin/evento" || pathname.startsWith("/admin/evento/") ? LOGIN_EVENTO : "/admin/login";
+}
+
 export function rotaExigeAutenticacao(pathname: string, method: string): VeredictoRota {
   // Tela de login precisa ficar acessível sem sessão (senão ninguém entra).
-  if (pathname === "/admin/login") {
+  if (pathname === "/admin/login" || pathname === LOGIN_EVENTO) {
     return { protegida: false };
   }
 

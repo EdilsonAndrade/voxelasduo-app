@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { auth } from "@/lib/auth/config";
-import { rotaExigeAutenticacao } from "@/lib/auth/rotaProtegida";
+import { AREA_EVENTO, rotaPermitidaParaPapel } from "@/lib/auth/papeis";
+import { paginaDeLogin, rotaExigeAutenticacao } from "@/lib/auth/rotaProtegida";
 import { rotaClienteExigeAutenticacao } from "@/lib/auth/rotaProtegidaCliente";
 
 const CLIENTE_COOKIE_NAME =
@@ -59,12 +60,20 @@ export default auth(async (req) => {
   const { pathname } = req.nextUrl;
   const veredito = rotaExigeAutenticacao(pathname, req.method);
 
+  if (veredito.protegida && req.auth && !rotaPermitidaParaPapel(req.auth.user?.papel, pathname)) {
+    // EDI-125: a equipe de evento só acessa /admin/evento — o resto do painel é negado.
+    if (veredito.tipoResposta === "redirect") {
+      return NextResponse.redirect(new URL(AREA_EVENTO, req.nextUrl));
+    }
+    return NextResponse.json({ erro: "Sem permissão para esta área." }, { status: 403 });
+  }
+
   if (!veredito.protegida || req.auth) {
     return NextResponse.next();
   }
 
   if (veredito.tipoResposta === "redirect") {
-    const loginUrl = new URL("/admin/login", req.nextUrl);
+    const loginUrl = new URL(paginaDeLogin(pathname), req.nextUrl);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
