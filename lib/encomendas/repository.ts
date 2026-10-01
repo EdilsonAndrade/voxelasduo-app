@@ -6,6 +6,7 @@ export interface NovaEncomenda {
   email: string;
   telefone: string;
   descricao: string;
+  imagens?: string[];
 }
 
 /** Grava a encomenda já normalizada (e-mail em minúsculas, telefone só com dígitos). */
@@ -18,6 +19,7 @@ export async function criarEncomenda(dados: NovaEncomenda): Promise<Encomenda> {
     email: dados.email.trim().toLowerCase(),
     telefone: dados.telefone.replace(/\D/g, ""),
     descricao: dados.descricao.trim(),
+    ...(dados.imagens?.length ? { imagens: dados.imagens } : {}),
     criadoEm: new Date(),
   };
 

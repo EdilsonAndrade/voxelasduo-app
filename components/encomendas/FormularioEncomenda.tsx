@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AvisoSpam from "@/components/AvisoSpam";
 import checkoutStyles from "@/components/checkout/checkout.module.css";
-import { DESCRICAO_TAMANHO_MAXIMO, validarEncomenda, type ErrosValidacao } from "@/lib/encomendas/validacao";
+import {
+  DESCRICAO_TAMANHO_MAXIMO,
+  IMAGEM_TIPOS_ACEITOS,
+  IMAGENS_QUANTIDADE_MAXIMA,
+  validarEncomenda,
+  validarImagensEncomenda,
+  type ErrosValidacao,
+} from "@/lib/encomendas/validacao";
 import styles from "./encomendas.module.css";
 
 const WHATSAPP_TEXTO = "(19) 98157-5723";
@@ -16,6 +23,29 @@ export default function FormularioEncomenda() {
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [emailEnviado, setEmailEnviado] = useState<string | null>(null);
+  const [imagens, setImagens] = useState<File[]>([]);
+
+  // Miniaturas das imagens escolhidas; as URLs temporárias são liberadas ao trocar a lista.
+  const previas = useMemo(() => imagens.map((arquivo) => URL.createObjectURL(arquivo)), [imagens]);
+  useEffect(() => () => previas.forEach((url) => URL.revokeObjectURL(url)), [previas]);
+
+  function adicionarImagens(evento: React.ChangeEvent<HTMLInputElement>) {
+    const novas = Array.from(evento.target.files ?? []);
+    evento.target.value = "";
+    if (novas.length === 0) return;
+    const lista = [...imagens, ...novas];
+    const erro = validarImagensEncomenda(lista);
+    setErros((atual) => {
+      const { imagens: _, ...resto } = atual;
+      return erro ? { ...resto, imagens: erro } : resto;
+    });
+    if (!erro) setImagens(lista);
+  }
+
+  function removerImagem(indice: number) {
+    setImagens((atual) => atual.filter((_, i) => i !== indice));
+    setErros(({ imagens: _, ...resto }) => resto);
+  }
 
   function atualizar(campo: keyof typeof formulario, valor: string) {
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
@@ -26,28 +56,34 @@ export default function FormularioEncomenda() {
     if (enviando) return;
 
     const errosLocais = validarEncomenda(formulario);
+    const erroImagens = validarImagensEncomenda(imagens);
+    if (erroImagens) errosLocais.imagens = erroImagens;
     setErros(errosLocais);
     setErroGeral(null);
     if (Object.keys(errosLocais).length > 0) return;
 
     setEnviando(true);
     try {
-      const resposta = await fetch("/api/encomendas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formulario),
-      });
+      const dados = new FormData();
+      Object.entries(formulario).forEach(([campo, valor]) => dados.append(campo, valor));
+      imagens.forEach((arquivo) => dados.append("imagens", arquivo));
+
+      const resposta = await fetch("/api/encomendas", { method: "POST", body: dados });
 
       if (resposta.ok) {
         setEmailEnviado(formulario.email.trim());
         return;
       }
 
-      const corpo = (await resposta.json().catch(() => ({}))) as { erros?: ErrosValidacao };
+      const corpo = (await resposta.json().catch(() => ({}))) as { erros?: ErrosValidacao; erro?: string };
       if (corpo.erros) {
         setErros(corpo.erros);
+      } else if (resposta.status === 413) {
+        setErroGeral("As imagens ficaram grandes demais para enviar juntas. Remova uma e tente de novo.");
       } else {
-        setErroGeral(`Não conseguimos enviar agora (erro ${resposta.status}). Tente de novo em instantes ou chame no WhatsApp.`);
+        setErroGeral(
+          `${corpo.erro ?? "Não conseguimos enviar agora."} (erro ${resposta.status}). Tente de novo em instantes ou chame no WhatsApp.`
+        );
       }
     } catch {
       setErroGeral("Sem conexão com o servidor. Confira sua internet e tente de novo.");
@@ -161,6 +197,54 @@ export default function FormularioEncomenda() {
           {erros.descricao && (
             <p id="enc-descricao-erro" className={checkoutStyles.erroCampo}>
               {erros.descricao}
+            </p>
+          )}
+        </div>
+
+        <div className={`${checkoutStyles.campo} ${checkoutStyles.campoLargo}`}>
+          <span className={checkoutStyles.rotulo} id="enc-imagens-rotulo">
+            imagens de referência (opcional)
+          </span>
+          <p className={checkoutStyles.statusCampo}>
+            Fotos, desenhos ou a logo da sua empresa. Até {IMAGENS_QUANTIDADE_MAXIMA} imagens JPEG, PNG ou WebP, com 5MB cada.
+          </p>
+
+          {imagens.length > 0 && (
+            <ul className={styles.imagens} aria-labelledby="enc-imagens-rotulo">
+              {imagens.map((arquivo, indice) => (
+                <li key={previas[indice]} className={styles.imagem}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- prévia local (blob:), sem otimização */}
+                  <img src={previas[indice]} alt={arquivo.name} />
+                  <button
+                    type="button"
+                    className={styles.imagemRemover}
+                    onClick={() => removerImagem(indice)}
+                    aria-label={`Remover ${arquivo.name}`}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {imagens.length < IMAGENS_QUANTIDADE_MAXIMA && (
+            <label className={styles.imagensBotao}>
+              <input
+                type="file"
+                accept={IMAGEM_TIPOS_ACEITOS.join(",")}
+                multiple
+                onChange={adicionarImagens}
+                className={styles.imagensInput}
+                aria-describedby={erros.imagens ? "enc-imagens-erro" : undefined}
+              />
+              {imagens.length === 0 ? "Adicionar imagens" : "Adicionar mais"}
+            </label>
+          )}
+
+          {erros.imagens && (
+            <p id="enc-imagens-erro" className={checkoutStyles.erroCampo}>
+              {erros.imagens}
             </p>
           )}
         </div>

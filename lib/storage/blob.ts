@@ -14,7 +14,20 @@ export async function enviarImagemBanner(arquivo: File): Promise<string> {
   return enviarImagem(arquivo, "banners");
 }
 
-async function enviarImagem(arquivo: File, pasta: "produtos" | "banners"): Promise<string> {
+/**
+ * Imagens de referência enviadas pelo cliente no formulário de /encomendas.
+ * O nome do arquivo do visitante é descartado: fica só um UUID + extensão.
+ */
+export async function enviarImagemEncomenda(arquivo: File): Promise<string> {
+  const extensao = arquivo.type.split("/")[1] ?? "jpg";
+  return enviarImagem(arquivo, "encomendas", `${crypto.randomUUID()}.${extensao}`);
+}
+
+async function enviarImagem(
+  arquivo: File,
+  pasta: "produtos" | "banners" | "encomendas",
+  nome = `${crypto.randomUUID()}-${arquivo.name}`
+): Promise<string> {
   if (!TIPOS_ACEITOS.includes(arquivo.type)) {
     throw new ArquivoInvalidoError(
       "Formato de imagem não suportado. Envie um arquivo JPEG, PNG ou WebP."
@@ -25,7 +38,7 @@ async function enviarImagem(arquivo: File, pasta: "produtos" | "banners"): Promi
     throw new ArquivoInvalidoError("A imagem deve ter no máximo 5MB.");
   }
 
-  const resultado = await put(`${pasta}/${crypto.randomUUID()}-${arquivo.name}`, arquivo, {
+  const resultado = await put(`${pasta}/${nome}`, arquivo, {
     access: "public",
     addRandomSuffix: false,
   });

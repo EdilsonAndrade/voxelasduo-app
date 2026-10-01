@@ -316,7 +316,20 @@ export async function notificarAdminNovaEncomenda(encomenda: Encomenda): Promise
   const destinatarios = destinatariosLoja();
 
   const telefone = formatarTelefone(encomenda.telefone);
-  const text = `Nova encomenda de ${encomenda.nome}.\nE-mail: ${encomenda.email}\nTelefone: ${telefone}\n\n${encomenda.descricao}`;
+  const imagens = encomenda.imagens ?? [];
+  const textoImagens = imagens.length > 0 ? `\n\nImagens enviadas:\n${imagens.join("\n")}` : "";
+  const text = `Nova encomenda de ${encomenda.nome}.\nE-mail: ${encomenda.email}\nTelefone: ${telefone}\n\n${encomenda.descricao}${textoImagens}`;
+  const htmlImagens =
+    imagens.length > 0
+      ? `
+      <p style="margin:20px 0 8px;font-weight:700;">Imagens enviadas pelo cliente (${imagens.length})</p>
+      <p style="margin:0;">${imagens
+        .map(
+          (url, i) =>
+            `<a href="${escaparHtml(url)}" target="_blank" style="display:inline-block;margin:0 8px 8px 0;"><img src="${escaparHtml(url)}" alt="Imagem ${i + 1}" width="160" style="display:block;width:160px;height:auto;border-radius:8px;border:1px solid #F0E4D3;" /></a>`
+        )
+        .join("")}</p>`
+      : "";
   const html = renderEmailLayout({
     titulo: "Nova encomenda sob medida",
     corpoHtml: `
@@ -324,7 +337,7 @@ export async function notificarAdminNovaEncomenda(encomenda: Encomenda): Promise
       <p style="margin:0;">E-mail: ${escaparHtml(encomenda.email)}</p>
       <p style="margin:0 0 16px;">Telefone: ${telefone}</p>
       <p style="margin:20px 0 8px;font-weight:700;">O que o cliente pediu</p>
-      <p style="margin:0;padding:14px;background-color:#FFF6ED;border-radius:8px;white-space:pre-wrap;">${escaparHtml(encomenda.descricao)}</p>
+      <p style="margin:0;padding:14px;background-color:#FFF6ED;border-radius:8px;white-space:pre-wrap;">${escaparHtml(encomenda.descricao)}</p>${htmlImagens}
     `,
   });
 

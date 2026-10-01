@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validarEncomenda } from "./validacao";
+import { validarEncomenda, validarImagensEncomenda } from "./validacao";
 
 const payloadValido = {
   nome: "Maria",
@@ -43,5 +43,26 @@ describe("validarEncomenda", () => {
       telefone: expect.any(String),
       descricao: expect.any(String),
     });
+  });
+});
+
+describe("validarImagensEncomenda", () => {
+  const png = (tamanho = 10) => ({ type: "image/png", size: tamanho });
+
+  it("aceita nenhuma imagem e até 3 imagens válidas", () => {
+    expect(validarImagensEncomenda([])).toBeUndefined();
+    expect(validarImagensEncomenda([png(), png(), { type: "image/webp", size: 10 }])).toBeUndefined();
+  });
+
+  it("recusa mais de 3 imagens", () => {
+    expect(validarImagensEncomenda([png(), png(), png(), png()])).toMatch(/no máximo 3/);
+  });
+
+  it("recusa formato que não é JPEG, PNG ou WebP", () => {
+    expect(validarImagensEncomenda([{ type: "application/pdf", size: 10 }])).toMatch(/Formato/);
+  });
+
+  it("recusa imagem acima de 5MB", () => {
+    expect(validarImagensEncomenda([png(5 * 1024 * 1024 + 1)])).toMatch(/5MB/);
   });
 });

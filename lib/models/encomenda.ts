@@ -11,5 +11,7 @@ export interface Encomenda {
   /** Somente dígitos, com DDD (10 ou 11 dígitos). */
   telefone: string;
   descricao: string;
+  /** URLs (Vercel Blob) das imagens de referência enviadas pelo cliente — até 3. */
+  imagens?: string[];
   criadoEm: Date;
 }

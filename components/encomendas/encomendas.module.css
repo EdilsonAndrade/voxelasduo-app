@@ -285,3 +285,75 @@
     transform: none;
   }
 }
+
+/* ---------- Imagens de referência ---------- */
+
+.imagens {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.imagem {
+  position: relative;
+  width: 88px;
+  height: 88px;
+}
+
+.imagem img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 2px solid var(--surface-line);
+}
+
+.imagemRemover {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  border: 2px solid var(--surface);
+  background: var(--preto);
+  color: var(--creme);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.imagensBotao {
+  position: relative;
+  align-self: flex-start;
+  margin-top: 0.35rem;
+  padding: 0.6rem 1.1rem;
+  border: 2px dashed var(--roxo);
+  border-radius: 12px;
+  color: var(--roxo);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.imagensBotao:focus-within {
+  outline: 3px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+/* Input real fica invisível sobre o botão: clique e teclado continuam funcionando. */
+.imagensInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  cursor: pointer;
+}

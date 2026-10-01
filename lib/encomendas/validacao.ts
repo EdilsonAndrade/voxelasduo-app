@@ -5,6 +5,10 @@ export interface EncomendaPayload {
   descricao?: unknown;
 }
 
+export const IMAGENS_QUANTIDADE_MAXIMA = 3;
+export const IMAGEM_TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5MB
+export const IMAGEM_TIPOS_ACEITOS = ["image/jpeg", "image/png", "image/webp"];
+
 export type ErrosValidacao = Record<string, string>;
 
 export const DESCRICAO_TAMANHO_MINIMO = 10;
@@ -60,4 +64,18 @@ export function validarEncomenda(payload: EncomendaPayload): ErrosValidacao {
   }
 
   return erros;
+}
+
+/** Imagens de referência (opcionais) — até 3, JPEG/PNG/WebP, 5MB cada. Retorna a mensagem de erro ou `undefined`. */
+export function validarImagensEncomenda(arquivos: { type: string; size: number }[]): string | undefined {
+  if (arquivos.length > IMAGENS_QUANTIDADE_MAXIMA) {
+    return `Envie no máximo ${IMAGENS_QUANTIDADE_MAXIMA} imagens.`;
+  }
+  if (arquivos.some((arquivo) => !IMAGEM_TIPOS_ACEITOS.includes(arquivo.type))) {
+    return "Formato de imagem não suportado. Envie arquivos JPEG, PNG ou WebP.";
+  }
+  if (arquivos.some((arquivo) => arquivo.size > IMAGEM_TAMANHO_MAXIMO_BYTES)) {
+    return "Cada imagem deve ter no máximo 5MB.";
+  }
+  return undefined;
 }
