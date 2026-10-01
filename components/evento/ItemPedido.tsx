@@ -42,6 +42,12 @@ export default function ItemPedido({ item, indice, podeRemover, erro, erroQuanti
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(false);
   const [preparandoFoto, setPreparandoFoto] = useState(false);
   const [erroFoto, setErroFoto] = useState<string | null>(null);
+  // Texto do campo de quantidade: pode ficar vazio enquanto se digita (ex.: apagar o 1 para escrever 300).
+  const [textoQuantidade, setTextoQuantidade] = useState(String(item.quantidade));
+
+  useEffect(() => {
+    setTextoQuantidade((atual) => (Number(atual) === item.quantidade ? atual : String(item.quantidade)));
+  }, [item.quantidade]);
 
   const cheioDeFotos = item.fotos.length >= L.fotosPorItem;
 
@@ -63,6 +69,22 @@ export default function ItemPedido({ item, indice, podeRemover, erro, erroQuanti
       setPreparandoFoto(false);
       if (camera.current) camera.current.value = "";
       if (galeria.current) galeria.current.value = "";
+    }
+  }
+
+  function digitarQuantidade(valor: string) {
+    const digitos = valor.replace(/\D/g, "").slice(0, String(L.quantidadeMax).length);
+    setTextoQuantidade(digitos);
+    // Vazio vira 0 para a validação acusar, caso salvem sem preencher.
+    onChange({ ...item, quantidade: digitos ? Math.min(L.quantidadeMax, Number(digitos)) : 0 });
+  }
+
+  function confirmarQuantidade() {
+    if (item.quantidade < L.quantidadeMin) {
+      setTextoQuantidade(String(L.quantidadeMin));
+      onChange({ ...item, quantidade: L.quantidadeMin });
+    } else {
+      setTextoQuantidade(String(item.quantidade));
     }
   }
 
@@ -176,9 +198,17 @@ export default function ItemPedido({ item, indice, podeRemover, erro, erroQuanti
           >
             −
           </button>
-          <output aria-live="polite" aria-label="Quantidade">
-            {item.quantidade}
-          </output>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            enterKeyHint="done"
+            aria-label="Quantidade"
+            value={textoQuantidade}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => digitarQuantidade(e.target.value)}
+            onBlur={confirmarQuantidade}
+          />
           <button
             type="button"
             onClick={() => mudarQuantidade(1)}

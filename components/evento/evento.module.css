@@ -411,10 +411,20 @@ select.input {
   cursor: default;
 }
 
-.contador output {
-  min-width: 64px;
+.contador input {
+  width: 76px;
+  height: 56px;
+  box-sizing: border-box;
+  border: none;
+  background: var(--surface);
+  color: var(--preto);
   text-align: center;
   font: 800 1.6rem var(--font-display);
+}
+
+.contador input:focus {
+  outline: none;
+  background: color-mix(in srgb, var(--cor-item) 15%, var(--surface));
 }
 
 .botaoAdicionar {
