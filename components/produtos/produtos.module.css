@@ -318,6 +318,7 @@
   max-width: 52ch;
   margin-bottom: 1.5rem;
   font-size: 1.02rem;
+  white-space: pre-line;
 }
 
 .datasheet {
