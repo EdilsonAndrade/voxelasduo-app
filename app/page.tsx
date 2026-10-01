@@ -40,6 +40,9 @@ export default async function Home() {
                 botao={secao.botao}
                 alinhamentoHorizontal={secao.alinhamentoHorizontal}
                 alinhamentoVertical={secao.alinhamentoVertical}
+                corSubtitulo={secao.corSubtitulo}
+                corTitulo={secao.corTitulo}
+                corTexto={secao.corTexto}
               />
             );
           }

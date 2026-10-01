@@ -24,6 +24,7 @@
   overflow: hidden;
   background: var(--surface-line);
   isolation: isolate;
+  --veu-rgb: 17, 17, 17;
 }
 
 .bannerHero {
@@ -53,12 +54,16 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--veu, linear-gradient(0deg, rgba(17, 17, 17, 0.62), rgba(17, 17, 17, 0) 62%));
+  background: var(--veu, linear-gradient(0deg, rgba(var(--veu-rgb), 0.62), rgba(var(--veu-rgb), 0) 62%));
 }
 
-.veuEsquerda { --veu: linear-gradient(90deg, rgba(17, 17, 17, 0.62), rgba(17, 17, 17, 0) 64%); }
-.veuDireita { --veu: linear-gradient(270deg, rgba(17, 17, 17, 0.62), rgba(17, 17, 17, 0) 64%); }
-.veuCentro { --veu: radial-gradient(ellipse at center, rgba(17, 17, 17, 0.5), rgba(17, 17, 17, 0.08) 70%); }
+.veuEsquerda { --veu: linear-gradient(90deg, rgba(var(--veu-rgb), 0.62), rgba(var(--veu-rgb), 0) 64%); }
+.veuDireita { --veu: linear-gradient(270deg, rgba(var(--veu-rgb), 0.62), rgba(var(--veu-rgb), 0) 64%); }
+.veuCentro { --veu: radial-gradient(ellipse at center, rgba(var(--veu-rgb), 0.5), rgba(var(--veu-rgb), 0.08) 70%); }
+
+/* Texto escuro (preto/roxo): o véu vira creme, e a sombra do título clareia. */
+.veuClaro { --veu-rgb: 255, 246, 237; }
+.veuClaro .bannerTitulo { text-shadow: 0 2px 18px rgba(255, 255, 255, 0.4); }
 
 /* Faixa de camadas — assinatura da marca. */
 .banner::after {
@@ -365,7 +370,7 @@
   /* No celular o texto sempre vai para a base, com véu de baixo para cima. */
   .bannerConteudo { align-self: end; }
   .veuEsquerda, .veuDireita, .veuCentro {
-    --veu: linear-gradient(0deg, rgba(17, 17, 17, 0.7), rgba(17, 17, 17, 0) 70%);
+    --veu: linear-gradient(0deg, rgba(var(--veu-rgb), 0.7), rgba(var(--veu-rgb), 0) 70%);
   }
 
   .seta { display: none; }
@@ -378,7 +383,7 @@
 .modoMobile { border-radius: 22px; }
 .modoMobile .bannerConteudo { align-self: end; padding: 1.5rem; }
 .modoMobile.veuEsquerda, .modoMobile.veuDireita, .modoMobile.veuCentro {
-  --veu: linear-gradient(0deg, rgba(17, 17, 17, 0.7), rgba(17, 17, 17, 0) 70%);
+  --veu: linear-gradient(0deg, rgba(var(--veu-rgb), 0.7), rgba(var(--veu-rgb), 0) 70%);
 }
 .modoMobile.bannerHero .bannerTitulo { font-size: 2.2rem; }
 .modoMobile.bannerIntermediario .bannerTitulo { font-size: 1.8rem; }

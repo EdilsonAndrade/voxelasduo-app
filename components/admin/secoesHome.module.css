@@ -325,3 +325,57 @@
   object-fit: cover;
   border-radius: 8px;
 }
+
+/* ---------- Paleta de cor do texto do banner ---------- */
+
+.cores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.coresRotulo {
+  font-size: 0.8rem;
+  color: var(--texto-soft);
+  margin-right: 0.25rem;
+}
+
+.coresRotulo strong {
+  color: var(--preto);
+}
+
+.cor {
+  position: relative;
+  display: grid;
+  cursor: pointer;
+}
+
+/* Rádio real fica invisível sobre a amostra: teclado e leitor de tela continuam funcionando. */
+.cor input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.corAmostra {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  border: 2px solid var(--surface-line);
+  box-shadow: inset 0 0 0 1px rgba(17, 17, 17, 0.15);
+  transition: transform 0.12s ease;
+}
+
+.cor input:checked + .corAmostra {
+  border-color: var(--preto);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--roxo);
+  transform: scale(1.08);
+}
+
+.cor input:focus-visible + .corAmostra {
+  outline: 3px solid var(--roxo);
+  outline-offset: 3px;
+}

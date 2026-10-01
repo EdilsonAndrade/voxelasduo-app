@@ -20,6 +20,9 @@ const CAMPOS_EDITAVEIS = [
   "imagemMobile",
   "alinhamentoHorizontal",
   "alinhamentoVertical",
+  "corSubtitulo",
+  "corTitulo",
+  "corTexto",
   "linkVerTudo",
   "limite",
 ] as const;

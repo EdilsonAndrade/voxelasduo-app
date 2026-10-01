@@ -1,11 +1,13 @@
 import {
   ALINHAMENTOS_HORIZONTAIS,
   ALINHAMENTOS_VERTICAIS,
+  CORES_TEXTO_BANNER,
   LIMITES_SECAO_HOME,
   TIPOS_SECAO_HOME,
   type AlinhamentoHorizontal,
   type AlinhamentoVertical,
   type BotaoSecao,
+  type CorTextoBanner,
   type TipoSecaoHome,
 } from "@/lib/models/secaoHome";
 
@@ -21,6 +23,9 @@ export type ErrosSecaoHome = Partial<
     | "imagemMobile"
     | "alinhamentoHorizontal"
     | "alinhamentoVertical"
+    | "corSubtitulo"
+    | "corTitulo"
+    | "corTexto"
     | "linkVerTudo"
     | "limite",
     string
@@ -39,6 +44,9 @@ export interface DadosSecaoHome {
   imagemMobile?: string;
   alinhamentoHorizontal?: AlinhamentoHorizontal;
   alinhamentoVertical?: AlinhamentoVertical;
+  corSubtitulo?: CorTextoBanner;
+  corTitulo?: CorTextoBanner;
+  corTexto?: CorTextoBanner;
   linkVerTudo?: string;
   limite?: number;
 }
@@ -166,6 +174,17 @@ export function validarSecaoHome(
     }
     dados.alinhamentoHorizontal = horizontal as AlinhamentoHorizontal;
     dados.alinhamentoVertical = vertical as AlinhamentoVertical;
+
+    // Cores do texto: opcionais (ausente = cor padrão); só valores da paleta.
+    for (const campo of ["corSubtitulo", "corTitulo", "corTexto"] as const) {
+      const cor = mesclado[campo];
+      if (cor === undefined || cor === null || cor === "") continue;
+      if (!CORES_TEXTO_BANNER.includes(cor as CorTextoBanner)) {
+        erros[campo] = "Escolha uma cor da paleta.";
+      } else {
+        dados[campo] = cor as CorTextoBanner;
+      }
+    }
   }
 
   if (dados.tipo === "carrossel") {

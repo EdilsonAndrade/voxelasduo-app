@@ -25,6 +25,9 @@ export default function SecaoHomePreview({ dados }: { dados: DadosSecaoHome }) {
         botao={dados.botao?.texto && dados.botao.link ? dados.botao : undefined}
         alinhamentoHorizontal={dados.alinhamentoHorizontal}
         alinhamentoVertical={dados.alinhamentoVertical}
+        corSubtitulo={dados.corSubtitulo}
+        corTitulo={dados.corTitulo}
+        corTexto={dados.corTexto}
         modoMobile={mobile}
       />
     );

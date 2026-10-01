@@ -17,6 +17,43 @@ export type AlinhamentoHorizontal = (typeof ALINHAMENTOS_HORIZONTAIS)[number];
 export const ALINHAMENTOS_VERTICAIS = ["topo", "meio", "base"] as const;
 export type AlinhamentoVertical = (typeof ALINHAMENTOS_VERTICAIS)[number];
 
+/**
+ * Paleta da marca para o texto dos banners — a cor fica salva pelo nome, e o
+ * hex é fixo (não muda com o tema), porque o texto fica sobre a foto.
+ */
+export const CORES_TEXTO_BANNER = ["branco", "preto", "amarelo", "laranja", "rosa", "roxo", "turquesa"] as const;
+export type CorTextoBanner = (typeof CORES_TEXTO_BANNER)[number];
+
+export const HEX_COR_TEXTO_BANNER: Record<CorTextoBanner, string> = {
+  branco: "#ffffff",
+  preto: "#111111",
+  amarelo: "#ffd24d",
+  laranja: "#ff7a00",
+  rosa: "#ff5bae",
+  roxo: "#7b5cf6",
+  turquesa: "#31d0c6",
+};
+
+export const ROTULOS_COR_TEXTO_BANNER: Record<CorTextoBanner, string> = {
+  branco: "Branco",
+  preto: "Preto",
+  amarelo: "Amarelo",
+  laranja: "Laranja",
+  rosa: "Rosa",
+  roxo: "Roxo",
+  turquesa: "Turquesa",
+};
+
+/** Cores escuras pedem véu claro atrás do texto (em vez do véu escuro padrão). */
+export const CORES_TEXTO_ESCURAS: readonly CorTextoBanner[] = ["preto", "roxo"];
+
+/** Cor usada quando o banner não tem cor salva — mantém o visual dos banners antigos. */
+export const COR_TEXTO_BANNER_PADRAO = {
+  corSubtitulo: "amarelo",
+  corTitulo: "branco",
+  corTexto: "branco",
+} as const satisfies Record<string, CorTextoBanner>;
+
 /** Limites de texto — protegem o layout do texto sobreposto à imagem. */
 export const LIMITES_SECAO_HOME = {
   titulo: 80,
@@ -62,6 +99,10 @@ export interface SecaoBanner extends SecaoHomeBase {
   botao?: BotaoSecao;
   alinhamentoHorizontal: AlinhamentoHorizontal;
   alinhamentoVertical: AlinhamentoVertical;
+  /** Ausentes = `COR_TEXTO_BANNER_PADRAO`. */
+  corSubtitulo?: CorTextoBanner;
+  corTitulo?: CorTextoBanner;
+  corTexto?: CorTextoBanner;
 }
 
 export interface SecaoTextoDestaque extends SecaoHomeBase {

@@ -94,3 +94,40 @@ describe("validarSecaoHome", () => {
     expect(r.ok).toBe(false);
   });
 });
+
+describe("cores do texto do banner", () => {
+  it("salva as cores escolhidas da paleta", () => {
+    const r = validarSecaoHome({
+      tipo: "bannerIntermediario",
+      imagemDesktop: IMAGEM,
+      corSubtitulo: "rosa",
+      corTitulo: "preto",
+      corTexto: "roxo",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.dados).toMatchObject({ corSubtitulo: "rosa", corTitulo: "preto", corTexto: "roxo" });
+    }
+  });
+
+  it("não grava cor quando nenhuma foi escolhida (usa a padrão)", () => {
+    const r = validarSecaoHome({ tipo: "bannerHero", imagemDesktop: IMAGEM, corTitulo: "" });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.dados.corTitulo).toBeUndefined();
+      expect(r.dados.corSubtitulo).toBeUndefined();
+    }
+  });
+
+  it("rejeita cor fora da paleta", () => {
+    const r = validarSecaoHome({ tipo: "bannerHero", imagemDesktop: IMAGEM, corTitulo: "#00ff00" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.erros.corTitulo).toBeDefined();
+  });
+
+  it("ignora cores em seções que não são banner", () => {
+    const r = validarSecaoHome({ tipo: "textoDestaque", titulo: "Olá", corTitulo: "preto" });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.dados.corTitulo).toBeUndefined();
+  });
+});
