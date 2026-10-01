@@ -28,3 +28,15 @@ interface ProdutoLinha {
 - Preço do site: obrigatório, número > 0, aceita "49,90" ou "49.90".
 - Preço do ML: vazio permitido; se preenchido, número > 0.
 - "Alterado" = valor em centavos diferente do último salvo.
+
+## AjusteEvento (novo, `Produto.ajusteEvento`, opcional)
+```ts
+interface AjusteEvento {
+  percentual: number;                        // 1–90
+  precoAnterior: number;                     // centavos
+  precosCanaisAnteriores?: PrecosCanaisProduto;
+  aplicadoEm: Date;
+}
+```
+- Criado ao gravar um ajuste (só se ausente). Removido ao restaurar.
+- Cálculo: `ceil90(preco ÷ (1 − percentual/100))`, onde `ceil90` = menor valor ≥ x terminando em ,90.

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  ajustarPrecoEvento,
+  arredondarPara90Acima,
+  percentualAjusteValido,
   centavosParaTexto,
   erroPrecoMercadoLivre,
   erroPrecoSite,
@@ -73,5 +76,30 @@ describe("letraIndice", () => {
     expect(letraIndice("Árvore")).toBe("A");
     expect(letraIndice("  chaveiro")).toBe("C");
     expect(letraIndice("3D Dragão")).toBe("#");
+  });
+});
+
+describe("ajuste do evento", () => {
+  it("arredonda para cima terminando em ,90", () => {
+    expect(arredondarPara90Acima(14286)).toBe(14290);
+    expect(arredondarPara90Acima(14290)).toBe(14290);
+    expect(arredondarPara90Acima(14295)).toBe(14390);
+    expect(arredondarPara90Acima(5)).toBe(90);
+  });
+
+  it("divide por (1 − %) e, descontada a comissão, cobre o preço de antes", () => {
+    expect(ajustarPrecoEvento(10000, 30)).toBe(14290);
+    for (const preco of [990, 4990, 12345, 29990]) {
+      const evento = ajustarPrecoEvento(preco, 30);
+      expect(evento * 0.7).toBeGreaterThanOrEqual(preco);
+      expect(evento % 100).toBe(90);
+    }
+  });
+
+  it("aceita percentual de 1 a 90", () => {
+    expect(percentualAjusteValido(30)).toBe(true);
+    expect(percentualAjusteValido(0)).toBe(false);
+    expect(percentualAjusteValido(91)).toBe(false);
+    expect(percentualAjusteValido(Number.NaN)).toBe(false);
   });
 });

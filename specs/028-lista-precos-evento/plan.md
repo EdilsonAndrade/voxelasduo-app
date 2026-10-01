@@ -9,6 +9,8 @@ A lista de produtos do admin (`/admin/produtos`) passa a ser um componente clien
 - campos de **preço do site** e **preço no Mercado Livre** por linha, com **Salvar** por linha (PATCH já existente em `/api/produtos/[id]`, que sincroniza o anúncio do ML);
 - a coluna **Custo** (custo total por peça, `calcularCustoProducao().totalCentavos`, calculado no servidor).
 
+**Ajuste do evento (US4)**: o estado de preços sobe para `ListaProdutosAdmin` (a linha vira apresentacional). "Aplicar %" calcula no cliente (`ajustarPrecoEvento`: ÷ (1 − %), ,90 para cima) só nos marcados. Linhas com ajuste pendente gravam em `POST /api/produtos/[id]/ajuste-evento`, que guarda os preços anteriores de forma atômica (update com pipeline, filtro `ajusteEvento` inexistente → 409 se já houver ajuste). `DELETE` no mesmo caminho restaura. Os dois sincronizam o ML. Novo campo opcional `Produto.ajusteEvento`.
+
 A página `lista-precos` é server component: busca os produtos por id, ordena com `localeCompare("pt-BR", { sensitivity: "base" })` e mostra nome + preço do site. CSS de impressão esconde cabeçalho/rodapé do site e a barra do admin; o PDF vem do "Salvar como PDF" do navegador.
 
 ## Technical Context
@@ -32,6 +34,9 @@ A página `lista-precos` é server component: busca os produtos por id, ordena c
 
 ## Project Structure
 ```text
+lib/models/produto.ts                                  # + AjusteEvento, Produto.ajusteEvento (alterado)
+lib/produtos/repository.ts                             # + aplicarAjusteEvento, restaurarAjusteEvento (alterado)
+app/api/produtos/[id]/ajuste-evento/route.ts (+ test)  # POST aplica / DELETE restaura (novo)
 lib/produtos/precoLista.ts (+ .test.ts)                # textoParaCentavos, centavosParaTexto, ordenarPorNome (novo)
 components/admin/ListaProdutosAdmin.tsx                # tabela client: seleção, preços editáveis, custo (novo)
 components/admin/LinhaPrecoProduto.tsx                 # campos + Salvar de uma linha (novo)

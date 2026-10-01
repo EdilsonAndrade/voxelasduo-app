@@ -13,3 +13,10 @@
     ```js
     db.produtos.findOne({ nome: "<produto>" }, { preco: 1, precosCanais: 1 })
     ```
+
+## Ajuste do evento (US4)
+11. Marque 3 produtos (um com preço próprio no ML), digite `30` em **Comissão** → **Aplicar nos marcados**. Preços viram preço ÷ 0,70 terminando em ,90 (R$ 100,00 → R$ 142,90); linhas "não salvo"; campo trava até **Salvar todos** ou **Descartar ajuste**.
+12. **Salvar todos os alterados** → cada linha "Salvo"; aparece "Ajuste do evento ativo em 3 produtos (30%)". Network: `POST /api/produtos/<id>/ajuste-evento` → 200.
+13. Marque um dos ajustados e aplique de novo → é pulado com aviso.
+14. **Restaurar preços anteriores** → confirmar → preços exatos de antes; Network: `DELETE ...ajuste-evento` → 200.
+15. Banco: `db.produtos.find({ ajusteEvento: { $exists: true } }, { nome: 1, preco: 1, ajusteEvento: 1 })` (vazio após restaurar).

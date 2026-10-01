@@ -55,3 +55,23 @@ export function letraIndice(nome: string): string {
   const inicial = nome.trim().charAt(0).normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
   return /^[A-Z]$/.test(inicial) ? inicial : "#";
 }
+
+/** Menor valor ≥ `centavos` terminando em ,90 (ex.: 14286 → 14290; 14295 → 14390). */
+export function arredondarPara90Acima(centavos: number): number {
+  const candidato = Math.floor(centavos / 100) * 100 + 90;
+  return candidato >= centavos ? candidato : candidato + 100;
+}
+
+/** Percentual do ajuste do evento aceito: 1 a 90 (90% já multiplica o preço por 10). */
+export function percentualAjusteValido(percentual: number): boolean {
+  return Number.isFinite(percentual) && percentual >= 1 && percentual <= 90;
+}
+
+/**
+ * Preço do evento que, descontada a comissão, devolve o preço atual (EDI-126):
+ * `preço ÷ (1 − %)`, arredondado para cima terminando em ,90. Multiplicar por
+ * (1 + %) faria o vendedor receber menos que o preço de antes.
+ */
+export function ajustarPrecoEvento(centavos: number, percentual: number): number {
+  return arredondarPara90Acima(Math.ceil(centavos / (1 - percentual / 100)));
+}

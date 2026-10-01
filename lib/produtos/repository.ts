@@ -6,7 +6,7 @@ import {
   registrarRedirecionamentoProduto,
   removerRedirecionamentosDoProduto,
 } from "@/lib/categorias/redirecionamentos";
-import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
+import { PRODUTOS_COLLECTION, type PrecosCanaisProduto, type Produto } from "@/lib/models/produto";
 
 const garantirIndices = criarGarantiaDeIndices();
 
@@ -169,6 +169,66 @@ export async function atualizarProduto(
   const resultado = await colecao.findOneAndUpdate(
     { _id: new ObjectId(id) },
     { $set: { ...dados, atualizadoEm: new Date() } },
+    { returnDocument: "after" }
+  );
+  return resultado ?? null;
+}
+
+/**
+ * Grava o ajuste do evento (EDI-126) guardando os preços atuais em
+ * `ajusteEvento`, numa única operação: o filtro só casa produto **sem** ajuste
+ * ativo, então dois ajustes nunca se somam. `null` = produto inexistente ou já
+ * ajustado (o chamador distingue com `buscarProdutoPorId`).
+ */
+export async function aplicarAjusteEvento(
+  id: string,
+  ajuste: { percentual: number; preco: number; precosCanais: PrecosCanaisProduto }
+): Promise<Produto | null> {
+  if (!ObjectId.isValid(id)) return null;
+  const colecao = await colecaoProdutos();
+  const agora = new Date();
+  const resultado = await colecao.findOneAndUpdate(
+    { _id: new ObjectId(id), ajusteEvento: { $exists: false } },
+    [
+      {
+        // No mesmo estágio, "$preco"/"$precosCanais" ainda são os valores de antes.
+        $set: {
+          ajusteEvento: {
+            percentual: ajuste.percentual,
+            precoAnterior: "$preco",
+            precosCanaisAnteriores: "$precosCanais",
+            aplicadoEm: agora,
+          },
+          preco: ajuste.preco,
+          precosCanais: { $literal: ajuste.precosCanais },
+          atualizadoEm: agora,
+        },
+      },
+    ],
+    { returnDocument: "after" }
+  );
+  return resultado ?? null;
+}
+
+/**
+ * Restaura os preços guardados no ajuste do evento e encerra o ajuste
+ * (EDI-126). `null` = produto inexistente ou sem ajuste ativo.
+ */
+export async function restaurarAjusteEvento(id: string): Promise<Produto | null> {
+  if (!ObjectId.isValid(id)) return null;
+  const colecao = await colecaoProdutos();
+  const resultado = await colecao.findOneAndUpdate(
+    { _id: new ObjectId(id), ajusteEvento: { $exists: true } },
+    [
+      {
+        $set: {
+          preco: "$ajusteEvento.precoAnterior",
+          precosCanais: { $ifNull: ["$ajusteEvento.precosCanaisAnteriores", {}] },
+          atualizadoEm: new Date(),
+        },
+      },
+      { $unset: "ajusteEvento" },
+    ],
     { returnDocument: "after" }
   );
   return resultado ?? null;

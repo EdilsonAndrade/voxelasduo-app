@@ -29,7 +29,18 @@
 **Independent Test**: custo da lista = custo total da tela de edição; "—" sem custo.
 - [X] T013 [US3] Calcular `custoCentavos` com `calcularCustoProducao(...).totalCentavos` em app/admin/(painel)/produtos/page.tsx e exibir a coluna Custo em components/admin/ListaProdutosAdmin.tsx
 
-## Phase 6: Polish
+## Phase 6: User Story 4 – Ajuste de preços do evento (P2)
+**Independent Test**: marcar 3 produtos, aplicar 30%, salvar todos, restaurar e conferir os valores exatos de antes.
+- [X] T016 [P] [US4] `arredondarPara90Acima` e `ajustarPrecoEvento` (+ testes) em lib/produtos/precoLista.ts e lib/produtos/precoLista.test.ts
+- [X] T017 [P] [US4] `AjusteEvento` e `Produto.ajusteEvento` em lib/models/produto.ts
+- [X] T018 [US4] `aplicarAjusteEvento` / `restaurarAjusteEvento` atômicos em lib/produtos/repository.ts
+- [X] T019 [US4] POST/DELETE em app/api/produtos/[id]/ajuste-evento/route.ts (+ route.test.ts), com sync do ML
+- [X] T020 [US4] Subir o estado de preços para components/admin/ListaProdutosAdmin.tsx; LinhaPrecoProduto vira apresentacional com campo Shopee e selo do ajuste
+- [X] T021 [US4] Barra "Ajustar preços em %" + Aplicar (marcados), "Salvar todos os alterados", aviso de ajuste ativo + "Restaurar preços anteriores" com ConfirmModal em components/admin/ListaProdutosAdmin.tsx e listaProdutos.module.css
+- [X] T022 [US4] Enviar `ajusteEvento` ao client em app/admin/(painel)/produtos/page.tsx
+
+## Phase 7: Polish
+- [X] T023 Rodar tsc e testes novamente; atualizar quickstart.md
 - [X] T014 Rodar `npx tsc --noEmit`, `npm run lint` e `npm test`
 - [X] T015 Revisar quickstart.md (Test Guide) e sugerir a mensagem de commit (sem commitar)
 

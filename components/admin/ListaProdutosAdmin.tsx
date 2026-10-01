@@ -1,12 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import LinhaPrecoProduto from "./LinhaPrecoProduto";
+import { useEffect, useRef, useState } from "react";
+import ConfirmModal from "./ConfirmModal";
+import LinhaPrecoProduto, {
+  linhaAlterada,
+  type CampoPreco,
+  type EstadoLinha,
+  type PrecosLinha,
+} from "./LinhaPrecoProduto";
 import MarcarCarrosselProduto, { type CarrosselOpcao } from "./MarcarCarrosselProduto";
 import TrocarCategoriaProduto from "./TrocarCategoriaProduto";
 import type { CategoriaResumo } from "@/lib/models/categoria";
+import type { PrecosCanaisProduto, Produto } from "@/lib/models/produto";
 import { formatarPreco } from "@/lib/produtos/formato";
+import {
+  ajustarPrecoEvento,
+  centavosParaTexto,
+  erroPrecoMercadoLivre,
+  erroPrecoSite,
+  percentualAjusteValido,
+  textoParaCentavos,
+} from "@/lib/produtos/precoLista";
 import adminStyles from "./admin.module.css";
 import styles from "./listaProdutos.module.css";
 
@@ -21,14 +36,68 @@ export interface ProdutoLinha {
   precoShopeeCentavos: number | null;
   /** Custo total por peça (`calcularCustoProducao().totalCentavos`) — `null` sem custo configurado. */
   custoCentavos: number | null;
+  /** Ajuste do evento já gravado — `null` = preços normais. */
+  ajusteEvento: { percentual: number; precoAnterior: number } | null;
   mercadoLivrePermalink: string | null;
   noCatalogoFacebook: boolean;
   carrosseis: string[];
 }
 
+type Aviso = { tipo: "ok" | "erro"; texto: string } | null;
+
+function textosDe(precos: PrecosLinha): EstadoLinha["textos"] {
+  return {
+    site: centavosParaTexto(precos.site),
+    mercadoLivre: centavosParaTexto(precos.mercadoLivre),
+    shopee: centavosParaTexto(precos.shopee),
+  };
+}
+
+/** Estado da linha a partir do produto devolvido pela API depois de salvar/restaurar. */
+function estadoDoProduto(produto: Produto): Pick<EstadoLinha, "original" | "textos" | "ajusteAtivo"> {
+  const original = {
+    site: produto.preco,
+    mercadoLivre: produto.precosCanais?.mercadoLivre ?? null,
+    shopee: produto.precosCanais?.shopee ?? null,
+  };
+  return {
+    original,
+    textos: textosDe(original),
+    ajusteAtivo: produto.ajusteEvento
+      ? { percentual: produto.ajusteEvento.percentual, precoAnterior: produto.ajusteEvento.precoAnterior }
+      : null,
+  };
+}
+
+function estadoInicial(produtos: ProdutoLinha[]): Record<string, EstadoLinha> {
+  const estados: Record<string, EstadoLinha> = {};
+  for (const p of produtos) {
+    const original = { site: p.precoCentavos, mercadoLivre: p.precoMercadoLivreCentavos, shopee: p.precoShopeeCentavos };
+    estados[p.id] = {
+      original,
+      textos: textosDe(original),
+      ajustePendente: null,
+      ajusteAtivo: p.ajusteEvento,
+      salvando: false,
+      status: null,
+    };
+  }
+  return estados;
+}
+
+function mensagemErro(corpo: { erro?: string; campos?: Record<string, string> }, status: number): string {
+  const campos = corpo.campos ?? {};
+  return campos.percentual ?? campos.preco ?? campos.precosCanais ?? corpo.erro ?? `Erro ${status}.`;
+}
+
+function plural(n: number, um: string, varios: string): string {
+  return n === 1 ? um : varios;
+}
+
 /**
  * Lista de produtos do admin: seleção para a lista de preços impressa,
- * preços editáveis por linha e custo de produção (EDI-126).
+ * preços editáveis por linha, custo de produção e ajuste de preços do evento
+ * (EDI-126).
  */
 export default function ListaProdutosAdmin({
   produtos,
@@ -40,9 +109,26 @@ export default function ListaProdutosAdmin({
   carrosseis: CarrosselOpcao[];
 }) {
   const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set());
-  const [alterados, setAlterados] = useState<Set<string>>(() => new Set());
+  const [linhas, setLinhas] = useState(() => estadoInicial(produtos));
+  // As gravações em sequência leem o estado mais recente, não o do render que as disparou.
+  const linhasRef = useRef(linhas);
+  useEffect(() => {
+    linhasRef.current = linhas;
+  }, [linhas]);
+  const [percentualTexto, setPercentualTexto] = useState("30");
+  const [aviso, setAviso] = useState<Aviso>(null);
+  const [emLote, setEmLote] = useState(false);
+  const [confirmarRestauracao, setConfirmarRestauracao] = useState(false);
 
   const todosMarcados = produtos.length > 0 && produtos.every((p) => selecionados.has(p.id));
+  const idsSelecionados = produtos.filter((p) => selecionados.has(p.id)).map((p) => p.id);
+  const idsAlterados = produtos.filter((p) => linhaAlterada(linhas[p.id])).map((p) => p.id);
+  const idsAjustePendente = produtos.filter((p) => linhas[p.id].ajustePendente !== null).map((p) => p.id);
+  const idsAjusteAtivo = produtos.filter((p) => linhas[p.id].ajusteAtivo !== null).map((p) => p.id);
+  const percentuaisAtivos = [...new Set(idsAjusteAtivo.map((id) => linhas[id].ajusteAtivo!.percentual))];
+  const urlLista = `/admin/produtos/lista-precos?ids=${idsSelecionados.join(",")}`;
+  // Depois de Aplicar, só Salvar ou Descartar: evita somar dois ajustes na mesma tela.
+  const ajusteTravado = idsAjustePendente.length > 0;
 
   function alternar(id: string) {
     setSelecionados((atual) => {
@@ -57,47 +143,269 @@ export default function ListaProdutosAdmin({
     setSelecionados(todosMarcados ? new Set() : new Set(produtos.map((p) => p.id)));
   }
 
-  // Um callback estável por produto, para o efeito da linha não disparar a cada render.
-  const avisosAlteracao = useMemo(() => {
-    const mapa = new Map<string, (alterado: boolean) => void>();
-    for (const p of produtos) {
-      mapa.set(p.id, (alterado: boolean) =>
-        setAlterados((atual) => {
-          if (atual.has(p.id) === alterado) return atual;
-          const novo = new Set(atual);
-          if (alterado) novo.add(p.id);
-          else novo.delete(p.id);
-          return novo;
-        })
+  function atualizarLinha(id: string, mudanca: Partial<EstadoLinha>) {
+    setLinhas((atual) => {
+      const nova = { ...atual, [id]: { ...atual[id], ...mudanca } };
+      linhasRef.current = nova;
+      return nova;
+    });
+  }
+
+  function editar(id: string, campo: CampoPreco, valor: string) {
+    setLinhas((atual) => ({
+      ...atual,
+      [id]: { ...atual[id], textos: { ...atual[id].textos, [campo]: valor }, status: null },
+    }));
+  }
+
+  /** Grava uma linha; com ajuste pendente, usa o endpoint que guarda os preços de antes (FR-016). */
+  async function salvar(id: string): Promise<boolean> {
+    const estado = linhasRef.current[id];
+    const site = textoParaCentavos(estado.textos.site);
+    const mercadoLivre = textoParaCentavos(estado.textos.mercadoLivre);
+    const shopee = textoParaCentavos(estado.textos.shopee);
+
+    const erro =
+      erroPrecoSite(site) ??
+      erroPrecoMercadoLivre(mercadoLivre) ??
+      (shopee !== null && !(shopee > 0) ? "Preço da Shopee inválido. Use, por exemplo, 49,90." : null);
+    if (erro) {
+      atualizarLinha(id, { status: { tipo: "erro", texto: erro } });
+      return false;
+    }
+
+    // `precosCanais` vai inteiro: o servidor substitui o objeto todo.
+    const precosCanais: PrecosCanaisProduto = {};
+    if (mercadoLivre !== null) precosCanais.mercadoLivre = mercadoLivre;
+    if (shopee !== null) precosCanais.shopee = shopee;
+
+    const comAjuste = estado.ajustePendente !== null;
+    atualizarLinha(id, { salvando: true, status: null });
+    const resposta = await fetch(comAjuste ? `/api/produtos/${id}/ajuste-evento` : `/api/produtos/${id}`, {
+      method: comAjuste ? "POST" : "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        comAjuste ? { percentual: estado.ajustePendente, preco: site, precosCanais } : { preco: site, precosCanais }
+      ),
+    }).catch(() => null);
+
+    if (!resposta) {
+      atualizarLinha(id, { salvando: false, status: { tipo: "erro", texto: "Sem conexão. Tente salvar de novo." } });
+      return false;
+    }
+    const corpo = await resposta.json().catch(() => ({}));
+    if (!resposta.ok) {
+      atualizarLinha(id, { salvando: false, status: { tipo: "erro", texto: mensagemErro(corpo, resposta.status) } });
+      return false;
+    }
+
+    atualizarLinha(id, {
+      ...estadoDoProduto(corpo.produto as Produto),
+      ajustePendente: null,
+      salvando: false,
+      status: { tipo: "ok", texto: "Salvo" },
+    });
+    return true;
+  }
+
+  async function salvarTodos() {
+    setEmLote(true);
+    setAviso(null);
+    let falhas = 0;
+    // Uma por vez: cada linha mostra o próprio resultado e o Mercado Livre não recebe rajadas.
+    for (const id of idsAlterados) {
+      if (!(await salvar(id))) falhas++;
+    }
+    setEmLote(false);
+    setAviso(
+      falhas === 0
+        ? { tipo: "ok", texto: "Preços salvos." }
+        : {
+            tipo: "erro",
+            texto: `${falhas} ${plural(falhas, "linha não foi salva", "linhas não foram salvas")}. Veja o erro em cada uma.`,
+          }
+    );
+  }
+
+  /** Preenche os preços do evento nos marcados, sem gravar (FR-014/FR-015). */
+  function aplicarAjuste() {
+    const percentual = Number(percentualTexto.trim().replace(",", "."));
+    if (!percentualAjusteValido(percentual)) {
+      setAviso({ tipo: "erro", texto: "Informe um percentual de 1 a 90." });
+      return;
+    }
+
+    const alvo = produtos.filter((p) => selecionados.has(p.id));
+    const pulados = alvo.filter((p) => linhas[p.id].ajusteAtivo !== null).length;
+    const aplicar = alvo.filter((p) => linhas[p.id].ajusteAtivo === null);
+
+    setLinhas((atual) => {
+      const nova = { ...atual };
+      for (const p of aplicar) {
+        // Sempre a partir do preço gravado: é ele que o "Restaurar" devolve.
+        const { original } = atual[p.id];
+        const ajustado: PrecosLinha = {
+          site: ajustarPrecoEvento(original.site, percentual),
+          mercadoLivre: original.mercadoLivre !== null ? ajustarPrecoEvento(original.mercadoLivre, percentual) : null,
+          shopee: original.shopee !== null ? ajustarPrecoEvento(original.shopee, percentual) : null,
+        };
+        nova[p.id] = { ...atual[p.id], textos: textosDe(ajustado), ajustePendente: percentual, status: null };
+      }
+      return nova;
+    });
+
+    const partes: string[] = [];
+    if (aplicar.length > 0) {
+      partes.push(
+        `Ajuste de ${percentual}% preenchido em ${aplicar.length} ${plural(aplicar.length, "produto", "produtos")}. Confira os preços e clique em Salvar todos.`
       );
     }
-    return mapa;
-  }, [produtos]);
+    if (pulados > 0) {
+      partes.push(
+        `${pulados} ${plural(pulados, "produto já tinha ajuste e foi pulado", "produtos já tinham ajuste e foram pulados")}: restaure os preços antes de aplicar outro.`
+      );
+    }
+    setAviso({ tipo: aplicar.length > 0 ? "ok" : "erro", texto: partes.join(" ") });
+  }
+
+  function descartarAjuste() {
+    setLinhas((atual) => {
+      const nova = { ...atual };
+      for (const id of idsAjustePendente) {
+        nova[id] = { ...atual[id], textos: textosDe(atual[id].original), ajustePendente: null, status: null };
+      }
+      return nova;
+    });
+    setAviso(null);
+  }
+
+  /** Devolve os preços de antes do ajuste em todos os produtos ajustados (FR-017). */
+  async function restaurarTodos() {
+    setConfirmarRestauracao(false);
+    setEmLote(true);
+    setAviso(null);
+    let falhas = 0;
+    for (const id of idsAjusteAtivo) {
+      atualizarLinha(id, { salvando: true, status: null });
+      const resposta = await fetch(`/api/produtos/${id}/ajuste-evento`, { method: "DELETE" }).catch(() => null);
+      const corpo = resposta ? await resposta.json().catch(() => ({})) : {};
+      if (!resposta?.ok) {
+        falhas++;
+        atualizarLinha(id, {
+          salvando: false,
+          status: {
+            tipo: "erro",
+            texto: resposta ? mensagemErro(corpo, resposta.status) : "Sem conexão. Tente restaurar de novo.",
+          },
+        });
+        continue;
+      }
+      atualizarLinha(id, {
+        ...estadoDoProduto(corpo.produto as Produto),
+        ajustePendente: null,
+        salvando: false,
+        status: { tipo: "ok", texto: "Restaurado" },
+      });
+    }
+    setEmLote(false);
+    setAviso(
+      falhas === 0
+        ? { tipo: "ok", texto: "Preços de antes do evento restaurados." }
+        : {
+            tipo: "erro",
+            texto: `${falhas} ${plural(falhas, "produto não foi restaurado", "produtos não foram restaurados")}. Veja o erro em cada linha.`,
+          }
+    );
+  }
 
   // Avisa antes de sair com preços não salvos (FR-008).
+  const haAlterados = idsAlterados.length > 0;
   useEffect(() => {
-    if (alterados.size === 0) return;
+    if (!haAlterados) return;
     const avisar = (evento: BeforeUnloadEvent) => {
       evento.preventDefault();
       evento.returnValue = "";
     };
     window.addEventListener("beforeunload", avisar);
     return () => window.removeEventListener("beforeunload", avisar);
-  }, [alterados.size]);
-
-  const idsSelecionados = produtos.filter((p) => selecionados.has(p.id)).map((p) => p.id);
-  const urlLista = `/admin/produtos/lista-precos?ids=${idsSelecionados.join(",")}`;
+  }, [haAlterados]);
 
   return (
     <>
-      {alterados.size > 0 && (
-        <p className={styles.avisoPendentes} role="status">
-          {alterados.size === 1
-            ? "1 produto com preço não salvo."
-            : `${alterados.size} produtos com preço não salvo.`}{" "}
-          Clique em Salvar em cada linha.
-        </p>
-      )}
+      <section className={styles.painelAjuste} aria-labelledby="titulo-ajuste-evento">
+        <div className={styles.painelTexto}>
+          <h2 id="titulo-ajuste-evento" className={styles.painelTitulo}>
+            Ajuste do evento
+          </h2>
+          <p className={styles.painelDescricao}>
+            Comissão que o evento cobra por peça vendida. Os preços do site, Mercado Livre e Shopee dos produtos
+            marcados sobem para você receber o mesmo valor de hoje (arredondado para ,90).
+          </p>
+        </div>
+        <div className={styles.painelControles}>
+          <label className={styles.campoPercentual}>
+            <span className={styles.rotuloCampo}>Comissão</span>
+            <span className={styles.entrada}>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={percentualTexto}
+                onChange={(evento) => setPercentualTexto(evento.target.value)}
+                aria-label="Comissão do evento em %"
+                disabled={ajusteTravado || emLote}
+              />
+              <span aria-hidden="true">%</span>
+            </span>
+          </label>
+          {ajusteTravado ? (
+            <button type="button" className={adminStyles.btnGhost} onClick={descartarAjuste} disabled={emLote}>
+              Descartar ajuste
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={adminStyles.btnPrimary}
+              onClick={aplicarAjuste}
+              disabled={idsSelecionados.length === 0 || emLote}
+              title={idsSelecionados.length === 0 ? "Marque os produtos que vão para o evento" : undefined}
+            >
+              Aplicar nos marcados{idsSelecionados.length > 0 ? ` (${idsSelecionados.length})` : ""}
+            </button>
+          )}
+        </div>
+
+        {idsAjusteAtivo.length > 0 && (
+          <div className={styles.ajusteAtivo} role="status">
+            <span>
+              <strong>Ajuste do evento ativo</strong> em {idsAjusteAtivo.length}{" "}
+              {plural(idsAjusteAtivo.length, "produto", "produtos")} ({percentuaisAtivos.join("%, ")}%).
+            </span>
+            <button
+              type="button"
+              className={adminStyles.btnGhost}
+              onClick={() => setConfirmarRestauracao(true)}
+              disabled={emLote}
+            >
+              Restaurar preços anteriores
+            </button>
+          </div>
+        )}
+
+        {aviso && (
+          <p className={aviso.tipo === "ok" ? styles.avisoOk : styles.avisoErro} role="status">
+            {aviso.texto}
+          </p>
+        )}
+      </section>
+
+      <ConfirmModal
+        aberto={confirmarRestauracao}
+        titulo="Restaurar preços anteriores?"
+        mensagem={`${idsAjusteAtivo.length} ${plural(idsAjusteAtivo.length, "produto volta", "produtos voltam")} ao preço de antes do ajuste do evento, no site, no Mercado Livre e na Shopee.`}
+        textoConfirmar="Restaurar preços"
+        onConfirmar={() => void restaurarTodos()}
+        onCancelar={() => setConfirmarRestauracao(false)}
+      />
 
       <table className={styles.tabela}>
         <thead>
@@ -127,7 +435,7 @@ export default function ListaProdutosAdmin({
             const classes = [
               styles.linha,
               marcado ? styles.linhaMarcada : "",
-              alterados.has(produto.id) ? styles.linhaAlterada : "",
+              linhaAlterada(linhas[produto.id]) ? styles.linhaAlterada : "",
             ].join(" ");
             return (
               <tr key={produto.id} className={classes}>
@@ -165,13 +473,11 @@ export default function ListaProdutosAdmin({
                 </td>
                 <td className={styles.colPrecos}>
                   <LinhaPrecoProduto
-                    produtoId={produto.id}
                     produtoNome={produto.nome}
-                    precoInicial={produto.precoCentavos}
-                    precoMercadoLivreInicial={produto.precoMercadoLivreCentavos}
-                    precoShopee={produto.precoShopeeCentavos}
+                    estado={linhas[produto.id]}
                     custoCentavos={produto.custoCentavos}
-                    onAlteradoChange={avisosAlteracao.get(produto.id)!}
+                    onEditar={(campo, valor) => editar(produto.id, campo, valor)}
+                    onSalvar={() => void salvar(produto.id)}
                   />
                 </td>
                 <td className={styles.colCanais}>
@@ -245,6 +551,11 @@ export default function ListaProdutosAdmin({
               ? "1 produto marcado"
               : `${idsSelecionados.length} produtos marcados`}
         </span>
+        {idsAlterados.length > 0 && (
+          <button type="button" className={styles.btnSalvarTodos} onClick={() => void salvarTodos()} disabled={emLote}>
+            {emLote ? "Salvando…" : `Salvar todos os alterados (${idsAlterados.length})`}
+          </button>
+        )}
         {idsSelecionados.length > 0 ? (
           <a href={urlLista} target="_blank" rel="noopener" className={adminStyles.btnPrimary}>
             Gerar lista de preços ({idsSelecionados.length})

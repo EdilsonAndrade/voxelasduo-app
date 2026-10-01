@@ -18,3 +18,15 @@ Respostas:
 - `200 { produto }` → linha marca "Salvo" e os valores viram o novo original.
 - `400 { erro, campos }` → mensagem de `campos.preco` / `campos.precosCanais` na linha.
 - `404 { erro }` / outros → `erro` ou `Erro <status>.` na linha; valores digitados mantidos.
+
+## `POST /api/produtos/[id]/ajuste-evento` (novo)
+```json
+{ "percentual": 30, "preco": 7190, "precosCanais": { "mercadoLivre": 8590 } }
+```
+- Guarda `preco`/`precosCanais` atuais em `ajusteEvento` e grava os novos.
+- `200 { produto }` · `400 { erro, campos }` (percentual fora de 1–90, preço inválido) · `404` · `409 { erro }` (já tem ajuste ativo).
+- Sincroniza o anúncio do ML (best-effort).
+
+## `DELETE /api/produtos/[id]/ajuste-evento` (novo)
+- Restaura `preco`/`precosCanais` de `ajusteEvento` e remove o ajuste.
+- `200 { produto }` · `404` (produto inexistente) · `409 { erro }` (sem ajuste ativo).

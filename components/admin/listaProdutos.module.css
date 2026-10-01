@@ -77,7 +77,7 @@
 
 .precos {
   display: grid;
-  grid-template-columns: repeat(2, minmax(7.5rem, 1fr)) auto;
+  grid-template-columns: repeat(3, minmax(6.75rem, 1fr)) auto;
   gap: 0.35rem 0.75rem;
   align-items: start;
 }
@@ -215,13 +215,110 @@
   max-width: 16rem;
 }
 
-.avisoPendentes {
-  margin: 0 0 0.75rem;
+.seloEvento {
+  grid-column: 1 / -1;
+  justify-self: start;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--roxo);
+  background: color-mix(in srgb, var(--roxo) 12%, transparent);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
+
+/* Painel "Ajuste do evento" acima da lista. */
+
+.painelAjuste {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem 1.5rem;
+  align-items: end;
+  margin-bottom: 1rem;
+  padding: 1rem 1.15rem;
+  border: 2px dashed color-mix(in srgb, var(--roxo) 45%, var(--surface-line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--roxo) 5%, var(--surface));
+}
+
+.painelTitulo {
+  margin: 0 0 0.2rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.painelDescricao {
+  margin: 0;
+  max-width: 44rem;
+  font-size: 0.88rem;
+  color: var(--texto-soft);
+}
+
+.painelControles {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.campoPercentual {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 6.5rem;
+}
+
+.campoPercentual input {
+  text-align: right;
+}
+
+.ajusteAtivo,
+.avisoOk,
+.avisoErro {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.ajusteAtivo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
   padding: 0.6rem 0.9rem;
   border-radius: 12px;
   background: color-mix(in srgb, var(--amarelo) 30%, transparent);
-  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.avisoOk,
+.avisoErro {
   font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.avisoOk {
+  color: #2f8f52;
+}
+
+.avisoErro {
+  color: #c23a3a;
+}
+
+.btnSalvarTodos {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.9rem;
+  border-radius: 999px;
+  padding: 0.65rem 1.3rem;
+  border: 2px solid #111;
+  background: var(--amarelo);
+  color: #111;
+  cursor: pointer;
+}
+
+.btnSalvarTodos:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* Barra de seleção para a lista de preços — fica no rodapé da tela. */
@@ -362,7 +459,21 @@
   }
 
   .precos {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem 0.45rem;
+  }
+
+  .entrada {
+    padding: 0 0.4rem;
+  }
+
+  .painelAjuste {
+    grid-template-columns: 1fr;
+  }
+
+  .painelControles > button {
+    flex: 1;
+    min-height: 44px;
   }
 
   .acaoLinha {
@@ -402,5 +513,10 @@
   .barraSelecao a,
   .barraSelecao button {
     margin-left: auto;
+  }
+
+  .btnSalvarTodos {
+    flex-basis: 100%;
+    min-height: 44px;
   }
 }

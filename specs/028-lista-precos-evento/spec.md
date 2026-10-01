@@ -61,6 +61,25 @@ A lista de produtos mostra o custo total de produção de cada item, ao lado dos
 
 ---
 
+### User Story 4 - Ajuste de preços do evento (Priority: P2)
+
+O evento cobra uma comissão por peça vendida (ex.: 30%). O admin marca os produtos que vão ao evento, informa o percentual e aplica: site, Mercado Livre e Shopee sobem juntos, para o cliente não achar preço mais barato online. Depois do evento, um botão restaura os preços anteriores.
+
+**Why this priority**: Sem isso, o admin recebe menos que o preço normal em cada venda no evento, ou mostra preços diferentes entre o evento e o site.
+
+**Independent Test**: Marcar 3 produtos, aplicar 30%, salvar todos, conferir os preços no site; depois restaurar e conferir que voltaram ao valor exato anterior.
+
+**Acceptance Scenarios**:
+
+1. **Given** produtos marcados, **When** o admin informa 30% e aplica, **Then** cada preço preenchido (site e canais com preço próprio) vira preço ÷ 0,70, arredondado para cima terminando em ,90, e as linhas ficam "não salvo".
+2. **Given** nenhum produto marcado ou percentual fora de 1–90, **Then** "Aplicar" fica indisponível ou mostra o erro junto do campo.
+3. **Given** linhas ajustadas, **When** o admin clica em "Salvar todos os alterados", **Then** todas as linhas alteradas são gravadas, uma a uma, com o resultado em cada linha.
+4. **Given** um produto com ajuste ativo, **When** o admin tenta aplicar outro ajuste nele, **Then** ele é pulado e o admin é avisado de que precisa restaurar antes.
+5. **Given** produtos com ajuste ativo, **When** o admin clica em "Restaurar preços anteriores" e confirma, **Then** preço do site, do Mercado Livre e da Shopee voltam exatamente ao valor de antes do ajuste, e o anúncio do Mercado Livre é atualizado.
+6. **Given** um ajuste ativo, **Then** a lista mostra o aviso com a quantidade de produtos ajustados, e cada linha mostra o percentual e o preço anterior.
+
+---
+
 ### Edge Cases
 
 - Produto com nome muito longo: quebra em mais de uma linha na impressão sem empurrar o preço para fora.
@@ -86,6 +105,11 @@ A lista de produtos mostra o custo total de produção de cada item, ao lado dos
 - **FR-010**: Erros de validação ou do servidor MUST aparecer junto da linha, mantendo os valores digitados; o erro MUST continuar visível na aba Network com o status real.
 - **FR-011**: A lista de produtos MUST mostrar o custo total de produção por peça de cada produto, ou "—" quando não configurado.
 - **FR-012**: A lista de produtos (incluindo seleção e edição de preços) MUST ser utilizável no celular, sem rolagem horizontal da página.
+- **FR-014**: A lista MUST ter um campo de percentual (1 a 90) e "Aplicar", que calcula preço ÷ (1 − %), arredondado para cima terminando em ,90, só nos produtos marcados, para site, Mercado Livre e Shopee (canal sem preço próprio herda o do site).
+- **FR-015**: Aplicar MUST só preencher os campos; a gravação acontece por linha ou por "Salvar todos os alterados".
+- **FR-016**: Ao gravar um ajuste, o sistema MUST guardar os preços anteriores; produto com ajuste ativo MUST recusar um novo ajuste.
+- **FR-017**: "Restaurar preços anteriores" MUST devolver os preços guardados de todos os produtos com ajuste ativo e encerrar o ajuste, atualizando o Mercado Livre.
+- **FR-018**: A linha MUST ter também o campo de preço da Shopee (vazio = usa o do site).
 - **FR-013**: Todos os textos novos MUST seguir o padrão de idioma já existente no admin (pt-BR).
 
 ### Key Entities
@@ -109,5 +133,5 @@ A lista de produtos mostra o custo total de produção de cada item, ao lado dos
 - O preço impresso é o preço do site (preço de venda do evento); o preço do Mercado Livre não vai para a impressão.
 - O PDF é obtido pelo "Salvar como PDF" do navegador; não há download de arquivo gerado pelo servidor.
 - A seleção não precisa ser lembrada entre visitas.
-- O preço da Shopee fica fora do escopo da edição na lista.
+- O preço do evento é o próprio preço do site durante o ajuste: a lista impressa não muda.
 - O custo exibido é o custo total por peça boa (inclui depreciação, mão de obra, embalagem, acessórios e falha), igual ao da tela de edição.

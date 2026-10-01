@@ -154,6 +154,21 @@ export interface MetaCatalogoProduto {
   descricao?: string;
 }
 
+/**
+ * Ajuste temporário de preços para um evento presencial que cobra comissão por
+ * peça vendida (EDI-126). Guarda os preços de antes para restaurar depois do
+ * evento; ausente = sem ajuste ativo (e só então um novo ajuste é aceito).
+ */
+export interface AjusteEvento {
+  /** Comissão repassada, em percentual (1–90). Preço = anterior ÷ (1 − %), ,90 para cima. */
+  percentual: number;
+  /** Preço do site antes do ajuste, em centavos. */
+  precoAnterior: number;
+  /** Preços por canal antes do ajuste — ausente = nenhum canal tinha preço próprio. */
+  precosCanaisAnteriores?: PrecosCanaisProduto;
+  aplicadoEm: Date;
+}
+
 export interface Produto {
   _id?: ObjectId;
   nome: string;
@@ -178,6 +193,8 @@ export interface Produto {
   fichaTecnica?: FichaTecnicaProduto;
   /** Publicação no catálogo da Meta (Facebook/Instagram Shop) — ausente = não publicado (EDI-109). */
   metaCatalogo?: MetaCatalogoProduto;
+  /** Ajuste de preços do evento em andamento — ausente = preços normais (EDI-126). */
+  ajusteEvento?: AjusteEvento;
   criadoEm: Date;
   atualizadoEm: Date;
 }

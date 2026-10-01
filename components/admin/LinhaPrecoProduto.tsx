@@ -1,16 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { PrecosCanaisProduto, Produto } from "@/lib/models/produto";
 import { formatarPreco } from "@/lib/produtos/formato";
-import {
-  centavosParaTexto,
-  erroPrecoMercadoLivre,
-  erroPrecoSite,
-  margemPercentual,
-  textoParaCentavos,
-} from "@/lib/produtos/precoLista";
+import { centavosParaTexto, margemPercentual, textoParaCentavos } from "@/lib/produtos/precoLista";
 import styles from "./listaProdutos.module.css";
+
+export type CampoPreco = "site" | "mercadoLivre" | "shopee";
+
+export interface PrecosLinha {
+  site: number;
+  mercadoLivre: number | null;
+  shopee: number | null;
+}
+
+/** Estado de edição de uma linha — fica na lista, que também aplica o ajuste e salva todas (EDI-126). */
+export interface EstadoLinha {
+  /** Últimos preços gravados. */
+  original: PrecosLinha;
+  textos: Record<CampoPreco, string>;
+  /** Percentual aplicado nesta tela e ainda não salvo. */
+  ajustePendente: number | null;
+  /** Ajuste do evento já gravado. */
+  ajusteAtivo: { percentual: number; precoAnterior: number } | null;
+  salvando: boolean;
+  status: { tipo: "ok" | "erro"; texto: string } | null;
+}
+
+export function linhaAlterada(estado: EstadoLinha): boolean {
+  return (
+    estado.ajustePendente !== null ||
+    textoParaCentavos(estado.textos.site) !== estado.original.site ||
+    textoParaCentavos(estado.textos.mercadoLivre) !== estado.original.mercadoLivre ||
+    textoParaCentavos(estado.textos.shopee) !== estado.original.shopee
+  );
+}
+
+function valido(texto: string): number | null {
+  const centavos = textoParaCentavos(texto);
+  return centavos !== null && !Number.isNaN(centavos) ? centavos : null;
+}
 
 function Margem({ precoCentavos, custoCentavos }: { precoCentavos: number | null; custoCentavos: number | null }) {
   const margem = margemPercentual(precoCentavos, custoCentavos);
@@ -23,152 +50,90 @@ function Margem({ precoCentavos, custoCentavos }: { precoCentavos: number | null
   );
 }
 
+const CAMPOS: { campo: CampoPreco; rotulo: string; acessivel: string }[] = [
+  { campo: "site", rotulo: "Site", acessivel: "Preço do site" },
+  { campo: "mercadoLivre", rotulo: "Mercado Livre", acessivel: "Preço no Mercado Livre" },
+  { campo: "shopee", rotulo: "Shopee", acessivel: "Preço na Shopee" },
+];
+
 /**
- * Preço do site e do Mercado Livre editáveis na lista de produtos (EDI-126):
- * cada linha só grava ao clicar em "Salvar" (ou Enter). Usa o mesmo PATCH da
- * tela de edição, que também atualiza o anúncio do Mercado Livre.
+ * Preços do site, Mercado Livre e Shopee editáveis na lista de produtos
+ * (EDI-126). Só grava ao clicar em "Salvar" (ou Enter); canal vazio = usa o
+ * preço do site.
  */
 export default function LinhaPrecoProduto({
-  produtoId,
   produtoNome,
-  precoInicial,
-  precoMercadoLivreInicial,
-  precoShopee,
+  estado,
   custoCentavos,
-  onAlteradoChange,
+  onEditar,
+  onSalvar,
 }: {
-  produtoId: string;
   produtoNome: string;
-  precoInicial: number;
-  precoMercadoLivreInicial: number | null;
-  /** Reenviado no PATCH: o servidor substitui `precosCanais` inteiro e apagaria a Shopee. */
-  precoShopee: number | null;
+  estado: EstadoLinha;
   custoCentavos: number | null;
-  onAlteradoChange: (alterado: boolean) => void;
+  onEditar: (campo: CampoPreco, valor: string) => void;
+  onSalvar: () => void;
 }) {
-  const [original, setOriginal] = useState({ site: precoInicial, mercadoLivre: precoMercadoLivreInicial });
-  const [textoSite, setTextoSite] = useState(centavosParaTexto(precoInicial));
-  const [textoMercadoLivre, setTextoMercadoLivre] = useState(centavosParaTexto(precoMercadoLivreInicial));
-  const [salvando, setSalvando] = useState(false);
-  const [status, setStatus] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
-
-  const site = textoParaCentavos(textoSite);
-  const mercadoLivre = textoParaCentavos(textoMercadoLivre);
-  const alterado = site !== original.site || mercadoLivre !== original.mercadoLivre;
-
-  useEffect(() => {
-    onAlteradoChange(alterado);
-  }, [alterado, onAlteradoChange]);
-
-  async function salvar(evento: React.FormEvent) {
-    evento.preventDefault();
-    if (!alterado || salvando) return;
-
-    const erro = erroPrecoSite(site) ?? erroPrecoMercadoLivre(mercadoLivre);
-    if (erro) {
-      setStatus({ tipo: "erro", texto: erro });
-      return;
-    }
-
-    const precosCanais: PrecosCanaisProduto = {};
-    if (mercadoLivre !== null) precosCanais.mercadoLivre = mercadoLivre;
-    if (precoShopee !== null) precosCanais.shopee = precoShopee;
-
-    setSalvando(true);
-    setStatus(null);
-    const resposta = await fetch(`/api/produtos/${produtoId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ preco: site, precosCanais }),
-    }).catch(() => null);
-    setSalvando(false);
-
-    if (!resposta) {
-      setStatus({ tipo: "erro", texto: "Sem conexão. Tente salvar de novo." });
-      return;
-    }
-    const corpo = await resposta.json().catch(() => ({}));
-    if (!resposta.ok) {
-      const campos = corpo.campos ?? {};
-      setStatus({
-        tipo: "erro",
-        texto: campos.preco ?? campos.precosCanais ?? corpo.erro ?? `Erro ${resposta.status}.`,
-      });
-      return;
-    }
-
-    const produto = corpo.produto as Produto | undefined;
-    const salvoSite = produto?.preco ?? (site as number);
-    const salvoMercadoLivre = produto ? (produto.precosCanais?.mercadoLivre ?? null) : mercadoLivre;
-    setOriginal({ site: salvoSite, mercadoLivre: salvoMercadoLivre });
-    setTextoSite(centavosParaTexto(salvoSite));
-    setTextoMercadoLivre(centavosParaTexto(salvoMercadoLivre));
-    setStatus({ tipo: "ok", texto: "Salvo" });
-  }
-
-  function editar(setter: (valor: string) => void) {
-    return (evento: React.ChangeEvent<HTMLInputElement>) => {
-      setter(evento.target.value);
-      setStatus(null);
-    };
-  }
-
-  const precoValidoSite = site !== null && !Number.isNaN(site) ? site : null;
-  const precoValidoMercadoLivre = mercadoLivre !== null && !Number.isNaN(mercadoLivre) ? mercadoLivre : null;
+  const alterado = linhaAlterada(estado);
+  const site = valido(estado.textos.site);
 
   return (
-    <form className={styles.precos} onSubmit={salvar} noValidate>
-      <label className={styles.campoPreco}>
-        <span className={styles.rotuloCampo}>Site</span>
-        <span className={styles.entrada}>
-          <span aria-hidden="true">R$</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={textoSite}
-            onChange={editar(setTextoSite)}
-            aria-label={`Preço do site de ${produtoNome}`}
-            disabled={salvando}
-          />
-        </span>
-        <Margem precoCentavos={precoValidoSite} custoCentavos={custoCentavos} />
-      </label>
-
-      <label className={styles.campoPreco}>
-        <span className={styles.rotuloCampo}>Mercado Livre</span>
-        <span className={styles.entrada}>
-          <span aria-hidden="true">R$</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={textoMercadoLivre}
-            onChange={editar(setTextoMercadoLivre)}
-            placeholder={precoValidoSite !== null ? centavosParaTexto(precoValidoSite) : ""}
-            aria-label={`Preço no Mercado Livre de ${produtoNome} (vazio = mesmo do site)`}
-            title="Vazio = usa o preço do site"
-            disabled={salvando}
-          />
-        </span>
-        {precoValidoMercadoLivre === null ? (
-          <span className={styles.dica}>igual ao site</span>
-        ) : (
-          <Margem precoCentavos={precoValidoMercadoLivre} custoCentavos={custoCentavos} />
-        )}
-      </label>
+    <form
+      className={styles.precos}
+      onSubmit={(evento) => {
+        evento.preventDefault();
+        if (alterado && !estado.salvando) onSalvar();
+      }}
+      noValidate
+    >
+      {CAMPOS.map(({ campo, rotulo, acessivel }) => {
+        const valor = valido(estado.textos[campo]);
+        return (
+          <label key={campo} className={styles.campoPreco}>
+            <span className={styles.rotuloCampo}>{rotulo}</span>
+            <span className={styles.entrada}>
+              <span aria-hidden="true">R$</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={estado.textos[campo]}
+                onChange={(evento) => onEditar(campo, evento.target.value)}
+                placeholder={campo !== "site" && site !== null ? centavosParaTexto(site) : ""}
+                aria-label={`${acessivel} de ${produtoNome}${campo !== "site" ? " (vazio = mesmo do site)" : ""}`}
+                title={campo !== "site" ? "Vazio = usa o preço do site" : undefined}
+                disabled={estado.salvando}
+              />
+            </span>
+            {campo !== "site" && valor === null ? (
+              <span className={styles.dica}>igual ao site</span>
+            ) : (
+              <Margem precoCentavos={valor} custoCentavos={custoCentavos} />
+            )}
+          </label>
+        );
+      })}
 
       <div className={styles.acaoLinha}>
-        <button type="submit" className={styles.btnSalvar} disabled={!alterado || salvando}>
-          {salvando ? "Salvando…" : "Salvar"}
+        <button type="submit" className={styles.btnSalvar} disabled={!alterado || estado.salvando}>
+          {estado.salvando ? "Salvando…" : "Salvar"}
         </button>
-        {alterado && !status && !salvando && <span className={styles.seloPendente}>não salvo</span>}
-        {status && (
-          <span className={status.tipo === "ok" ? styles.statusOk : styles.statusErro} role="status">
-            {status.texto}
+        {alterado && !estado.status && !estado.salvando && <span className={styles.seloPendente}>não salvo</span>}
+        {estado.status && (
+          <span className={estado.status.tipo === "ok" ? styles.statusOk : styles.statusErro} role="status">
+            {estado.status.texto}
           </span>
         )}
       </div>
-      {alterado && original.site !== site && precoValidoSite !== null && (
-        <span className={styles.dica}>antes: {formatarPreco(original.site)}</span>
+
+      {(estado.ajustePendente !== null || estado.ajusteAtivo) && (
+        <span className={styles.seloEvento}>
+          {estado.ajustePendente !== null
+            ? `ajuste do evento +${estado.ajustePendente}% · antes ${formatarPreco(estado.original.site)}`
+            : `ajuste do evento ${estado.ajusteAtivo!.percentual}% · antes ${formatarPreco(estado.ajusteAtivo!.precoAnterior)}`}
+        </span>
+      )}
+      {estado.ajustePendente === null && alterado && site !== null && site !== estado.original.site && (
+        <span className={styles.dica}>antes: {formatarPreco(estado.original.site)}</span>
       )}
     </form>
   );

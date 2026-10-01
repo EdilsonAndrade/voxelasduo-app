@@ -55,6 +55,9 @@ export default async function AdminProdutosPage({
       precoMercadoLivreCentavos: produto.precosCanais?.mercadoLivre ?? null,
       precoShopeeCentavos: produto.precosCanais?.shopee ?? null,
       custoCentavos: custo !== null && Number.isFinite(custo) ? custo : null,
+      ajusteEvento: produto.ajusteEvento
+        ? { percentual: produto.ajusteEvento.percentual, precoAnterior: produto.ajusteEvento.precoAnterior }
+        : null,
       mercadoLivrePermalink: produto.integracoes?.mercadoLivrePermalink ?? null,
       noCatalogoFacebook: produto.metaCatalogo?.publicar === true,
       carrosseis: carrosseisPorProduto.get(id) ?? [],
