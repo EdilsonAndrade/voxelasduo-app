@@ -33,6 +33,17 @@
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/*
+ * Rascunho (EDI-126+): a linha inteira ganha um fundo arroxeado suave, para
+ * dar pra bater o olho na lista e ver o que ainda não está na loja. Declarado
+ * antes de `.linhaMarcada` de propósito: ao selecionar a linha, o retorno da
+ * seleção prevalece — o selo "Rascunho" ao lado do nome continua marcando o
+ * estado. `color-mix` com `--roxo` funciona no tema claro e no escuro.
+ */
+.linhaRascunho {
+  background: color-mix(in srgb, var(--roxo) 9%, transparent);
+}
+
 .linhaMarcada {
   background: var(--creme);
 }

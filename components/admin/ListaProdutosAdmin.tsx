@@ -436,6 +436,7 @@ export default function ListaProdutosAdmin({
             const marcado = selecionados.has(produto.id);
             const classes = [
               styles.linha,
+              produto.publicado ? "" : styles.linhaRascunho,
               marcado ? styles.linhaMarcada : "",
               linhaAlterada(linhas[produto.id]) ? styles.linhaAlterada : "",
             ].join(" ");
