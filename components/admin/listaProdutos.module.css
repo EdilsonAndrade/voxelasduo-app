@@ -53,7 +53,7 @@
 }
 
 .colSelecao {
-  width: 5rem;
+  width: 8.5rem;
   white-space: nowrap;
   padding-right: 0 !important;
 }
@@ -71,6 +71,44 @@
   color: var(--roxo);
   font-weight: 700;
   vertical-align: middle;
+}
+
+.toggle {
+  position: relative;
+  width: 2.2rem;
+  height: 1.3rem;
+  margin-right: 0.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-line);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background 0.15s ease;
+}
+
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+
+.toggleLigado {
+  background: var(--roxo);
+}
+
+.toggleLigado::after {
+  transform: translateX(0.9rem);
+}
+
+.toggle:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .caixa {

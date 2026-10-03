@@ -85,7 +85,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const produto = await atualizarProduto(id, dados);
 
-  if (enderecoMudou) {
+  if (enderecoMudou || "publicado" in payload) {
     revalidatePath("/");
     revalidatePath("/produtos", "layout");
   }

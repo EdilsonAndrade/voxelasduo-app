@@ -132,6 +132,9 @@ export default function ListaProdutosAdmin({
   const [percentualTexto, setPercentualTexto] = useState("30");
   const [aviso, setAviso] = useState<Aviso>(null);
   const [emLote, setEmLote] = useState(false);
+  // Publicação alternada direto na lista (sobrepõe o valor vindo do servidor).
+  const [publicadoLocal, setPublicadoLocal] = useState<Record<string, boolean>>({});
+  const [publicando, setPublicando] = useState<Set<string>>(() => new Set());
   const [confirmarRestauracao, setConfirmarRestauracao] = useState(false);
 
   const todosMarcados = produtos.length > 0 && produtos.every((p) => selecionados.has(p.id));
@@ -143,6 +146,34 @@ export default function ListaProdutosAdmin({
   const urlLista = `/admin/produtos/lista-precos?ids=${idsSelecionados.join(",")}`;
   // Depois de Aplicar, só Salvar ou Descartar: evita somar dois ajustes na mesma tela.
   const ajusteTravado = idsAjustePendente.length > 0;
+
+  const estaPublicado = (p: ProdutoLinha) => publicadoLocal[p.id] ?? p.publicado;
+
+  async function alternarPublicacao(produto: ProdutoLinha) {
+    const novo = !estaPublicado(produto);
+    setAviso(null);
+    setPublicando((atual) => new Set(atual).add(produto.id));
+    const resposta = await fetch(`/api/produtos/${produto.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ publicado: novo }),
+    }).catch(() => null);
+    const corpo = resposta ? await resposta.json().catch(() => ({})) : {};
+    setPublicando((atual) => {
+      const nova = new Set(atual);
+      nova.delete(produto.id);
+      return nova;
+    });
+    if (!resposta?.ok) {
+      const campos = (corpo.campos ?? {}) as Record<string, string>;
+      setAviso({
+        tipo: "erro",
+        texto: `${produto.nome}: ${resposta ? (campos.fotos ?? corpo.erro ?? `Erro ${resposta.status}.`) : "Sem conexão. Tente de novo."}`,
+      });
+      return;
+    }
+    setPublicadoLocal((atual) => ({ ...atual, [produto.id]: novo }));
+  }
 
   function alternar(id: string) {
     setSelecionados((atual) => {
@@ -483,7 +514,7 @@ export default function ListaProdutosAdmin({
             const marcado = selecionados.has(produto.id);
             const classes = [
               styles.linha,
-              produto.publicado ? "" : styles.linhaRascunho,
+              estaPublicado(produto) ? "" : styles.linhaRascunho,
               marcado ? styles.linhaMarcada : "",
               linhaAlterada(linhas[produto.id]) ? styles.linhaAlterada : "",
             ].join(" ");
@@ -501,6 +532,16 @@ export default function ListaProdutosAdmin({
                       ⬇
                     </a>
                   )}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={estaPublicado(produto)}
+                    aria-label={`${estaPublicado(produto) ? "Despublicar" : "Publicar"} ${produto.nome}`}
+                    title={estaPublicado(produto) ? "Publicado no site — clique para despublicar" : "Rascunho — clique para publicar no site"}
+                    className={`${styles.toggle} ${estaPublicado(produto) ? styles.toggleLigado : ""}`}
+                    disabled={publicando.has(produto.id)}
+                    onClick={() => void alternarPublicacao(produto)}
+                  />
                   <input
                     type="checkbox"
                     className={styles.caixa}
@@ -517,7 +558,7 @@ export default function ListaProdutosAdmin({
                 </td>
                 <td className={styles.colNome}>
                   {produto.nome}{" "}
-                  {!produto.publicado && (
+                  {!estaPublicado(produto) && (
                     <span className={adminStyles.badgeZero} title="Rascunho: fora da loja até ser publicado">
                       Rascunho
                     </span>
