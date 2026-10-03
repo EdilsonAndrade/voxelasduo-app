@@ -195,6 +195,12 @@ export interface Produto {
   metaCatalogo?: MetaCatalogoProduto;
   /** Ajuste de preços do evento em andamento — ausente = preços normais (EDI-126). */
   ajusteEvento?: AjusteEvento;
+  /**
+   * Endereço do modelo 3D que origina a peça — a página do modelo (MakerWorld,
+   * Printables…) ou o arquivo `.3mf` guardado no Drive. Só para administração:
+   * não aparece na loja. Ausente = modelo próprio ou link não registrado.
+   */
+  linkModelo3d?: string;
   criadoEm: Date;
   atualizadoEm: Date;
 }

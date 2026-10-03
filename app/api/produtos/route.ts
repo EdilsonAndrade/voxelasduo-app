@@ -59,6 +59,7 @@ export async function POST(request: Request) {
     embalagemEnvio: payload.embalagemEnvio as EmbalagemEnvio | undefined,
     fichaTecnica: payload.fichaTecnica as FichaTecnicaProduto | undefined,
     metaCatalogo: payload.metaCatalogo as MetaCatalogoProduto | undefined,
+    linkModelo3d: (payload.linkModelo3d as string | undefined)?.trim() || undefined,
   });
 
   // Uma categoria que estava vazia passa a aparecer nos filtros da vitrine.

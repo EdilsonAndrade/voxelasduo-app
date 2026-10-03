@@ -21,6 +21,32 @@ export interface ProdutoPayload {
   precosCanais?: unknown;
   /** Publicação no catálogo da Meta (EDI-109) — opcional; ausente = não publicado. */
   metaCatalogo?: unknown;
+  /** Endereço do modelo 3D de origem (página do modelo ou arquivo `.3mf`) — opcional, só para administração. */
+  linkModelo3d?: unknown;
+}
+
+/** Tamanho máximo do endereço do modelo 3D — folgado para links com parâmetros de rastreio. */
+export const LIMITE_LINK_MODELO_3D = 500;
+
+/**
+ * Valida `linkModelo3d` quando presente: string http(s) dentro do limite.
+ * String vazia é aceita — é como o formulário limpa o campo.
+ */
+function validarLinkModelo3d(valor: unknown): string | undefined {
+  if (typeof valor !== "string") return "Endereço do modelo 3D inválido.";
+
+  const link = valor.trim();
+  if (link === "") return undefined;
+
+  if (link.length > LIMITE_LINK_MODELO_3D) {
+    return `O endereço do modelo 3D deve ter no máximo ${LIMITE_LINK_MODELO_3D} caracteres.`;
+  }
+
+  if (!/^https?:\/\/\S+$/.test(link)) {
+    return "Informe um endereço começando com http:// ou https://.";
+  }
+
+  return undefined;
 }
 
 /** Campos monetários/numéricos obrigatórios de `custoProducao`, todos exigidos > 0 quando o objeto está presente (EDI-92). */
@@ -302,6 +328,13 @@ export function validarProduto(
     const fotos = payload.fotos;
     if (!Array.isArray(fotos) || fotos.length === 0 || !fotos.every((f) => typeof f === "string" && f.length > 0)) {
       erros.fotos = "Envie ao menos uma foto do produto.";
+    }
+  }
+
+  if (payload.linkModelo3d !== undefined) {
+    const erro = validarLinkModelo3d(payload.linkModelo3d);
+    if (erro) {
+      erros.linkModelo3d = erro;
     }
   }
 

@@ -166,6 +166,8 @@ export interface ProdutoFormValores {
   metaTitulo: string;
   /** Descrição própria para Facebook/Instagram — vazio = usa a descrição do produto. */
   metaDescricao: string;
+  /** Endereço do modelo 3D de origem (página do modelo ou arquivo `.3mf`) — vazio = modelo próprio ou não registrado. */
+  linkModelo3d: string;
 }
 
 const VAZIO: ProdutoFormValores = {
@@ -190,6 +192,7 @@ const VAZIO: ProdutoFormValores = {
   metaPublicar: false,
   metaTitulo: "",
   metaDescricao: "",
+  linkModelo3d: "",
 };
 
 /** Produto listado na ação "copiar custos de outro produto" — só o necessário para copiar (EDI-106). */
@@ -589,6 +592,7 @@ export default function ProdutoForm({
         titulo: valores.metaTitulo.trim() || undefined,
         descricao: valores.metaDescricao.trim() || undefined,
       },
+      linkModelo3d: valores.linkModelo3d.trim(),
     };
 
     try {
@@ -1129,6 +1133,38 @@ export default function ProdutoForm({
             impreciso para o comprador (mais caro e/ou mais lento que o necessário).
           </span>
         )}
+      </fieldset>
+
+      <fieldset className={styles.field}>
+        <legend>Modelo 3D de origem (opcional)</legend>
+        <span className={styles.mlLinkAviso}>
+          Endereço da página do modelo (MakerWorld, Printables…) ou do arquivo .3mf no Drive. Serve
+          só para a administração: não aparece na loja nem nos anúncios.
+        </span>
+        <div className={styles.field}>
+          <label htmlFor="linkModelo3d">Link do modelo / arquivo .3mf</label>
+          <input
+            id="linkModelo3d"
+            type="url"
+            inputMode="url"
+            placeholder="https://makerworld.com/pt/models/..."
+            value={valores.linkModelo3d}
+            onChange={(e) => atualizarCampo("linkModelo3d", e.target.value)}
+          />
+          {camposErro.linkModelo3d && (
+            <span className={styles.fieldError}>{camposErro.linkModelo3d}</span>
+          )}
+          {valores.linkModelo3d.trim() !== "" && (
+            <a
+              className={styles.mlLink}
+              href={valores.linkModelo3d.trim()}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Abrir o modelo em outra aba
+            </a>
+          )}
+        </div>
       </fieldset>
 
       <fieldset className={styles.field}>

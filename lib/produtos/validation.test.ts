@@ -357,4 +357,36 @@ describe("validarProduto", () => {
       ).toHaveProperty("metaCatalogo");
     });
   });
+
+  describe("link do modelo 3D de origem", () => {
+    it("aceita um endereço http(s) e o campo vazio", () => {
+      expect(
+        validarProduto({
+          ...payloadValido,
+          linkModelo3d: "https://makerworld.com/pt/models/1670898-dragao",
+        })
+      ).toEqual({});
+      expect(validarProduto({ ...payloadValido, linkModelo3d: "" })).toEqual({});
+    });
+
+    it("rejeita endereço sem http(s), com espaço ou que não seja texto", () => {
+      expect(
+        validarProduto({ ...payloadValido, linkModelo3d: "makerworld.com/modelo" })
+      ).toHaveProperty("linkModelo3d");
+      expect(
+        validarProduto({ ...payloadValido, linkModelo3d: "https://exemplo.com/a b" })
+      ).toHaveProperty("linkModelo3d");
+      expect(validarProduto({ ...payloadValido, linkModelo3d: 42 })).toHaveProperty("linkModelo3d");
+    });
+
+    it("rejeita endereço acima de 500 caracteres", () => {
+      const base = "https://makerworld.com/";
+      expect(
+        validarProduto({ ...payloadValido, linkModelo3d: base + "a".repeat(501 - base.length) })
+      ).toHaveProperty("linkModelo3d");
+      expect(
+        validarProduto({ ...payloadValido, linkModelo3d: base + "a".repeat(500 - base.length) })
+      ).toEqual({});
+    });
+  });
 });

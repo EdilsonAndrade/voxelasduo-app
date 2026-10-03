@@ -31,6 +31,7 @@ export function produtoParaFormulario(produto: Produto, id: string): ProdutoForm
     metaPublicar: produto.metaCatalogo?.publicar ?? false,
     metaTitulo: produto.metaCatalogo?.titulo ?? "",
     metaDescricao: produto.metaCatalogo?.descricao ?? "",
+    linkModelo3d: produto.linkModelo3d ?? "",
   };
 }
 
