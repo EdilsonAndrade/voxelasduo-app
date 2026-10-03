@@ -109,6 +109,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Custo por peça ao lado do preço: discreto, para a equipe conferir a margem
+   sem competir com o preço de venda que o cliente lê. */
+.custo {
+  flex: none;
+  min-width: 5.5ch;
+  text-align: right;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: #8a8075;
+}
+
 @media (max-width: 640px) {
   .folha {
     padding: 1.25rem 1rem;

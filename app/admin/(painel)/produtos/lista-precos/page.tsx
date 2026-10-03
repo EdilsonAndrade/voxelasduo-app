@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import ImprimirButton from "@/components/admin/ImprimirButton";
 import { listarProdutosPorIds } from "@/lib/produtos/repository";
 import { formatarPreco } from "@/lib/produtos/formato";
+import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import { letraIndice, ordenarPorNome } from "@/lib/produtos/precoLista";
 import adminStyles from "@/components/admin/admin.module.css";
 import styles from "./listaPrecos.module.css";
@@ -29,6 +30,15 @@ export default async function ListaPrecosPage({
     .map((id) => new ObjectId(id));
 
   const produtos = ordenarPorNome(await listarProdutosPorIds(objectIds));
+
+  // Custo de produção por peça, igual ao da tela de edição — fica ao lado do
+  // preço para a equipe saber a margem na hora de negociar no evento.
+  const custoPorProduto = new Map<string, number>();
+  for (const produto of produtos) {
+    if (!produto.custoProducao) continue;
+    const total = calcularCustoProducao(produto.custoProducao).totalCentavos;
+    if (Number.isFinite(total)) custoPorProduto.set(produto._id!.toString(), total);
+  }
 
   const grupos: { letra: string; itens: typeof produtos }[] = [];
   for (const produto of produtos) {
@@ -72,13 +82,21 @@ export default async function ListaPrecosPage({
               <section key={grupo.letra} className={styles.grupo} aria-label={`Produtos com ${grupo.letra}`}>
                 <h2 className={styles.letra}>{grupo.letra}</h2>
                 <ul className={styles.itens}>
-                  {grupo.itens.map((produto) => (
-                    <li key={produto._id!.toString()} className={styles.item}>
-                      <span className={styles.nome}>{produto.nome}</span>
-                      <span className={styles.pontilhado} aria-hidden="true" />
-                      <span className={styles.preco}>{formatarPreco(produto.preco)}</span>
-                    </li>
-                  ))}
+                  {grupo.itens.map((produto) => {
+                    const custo = custoPorProduto.get(produto._id!.toString()) ?? null;
+                    return (
+                      <li key={produto._id!.toString()} className={styles.item}>
+                        <span className={styles.nome}>{produto.nome}</span>
+                        <span className={styles.pontilhado} aria-hidden="true" />
+                        <span className={styles.preco}>{formatarPreco(produto.preco)}</span>
+                        {custo !== null && (
+                          <span className={styles.custo} title="Custo de produção por peça">
+                            custo {formatarPreco(custo)}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ))}
