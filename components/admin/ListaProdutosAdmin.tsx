@@ -490,6 +490,17 @@ export default function ListaProdutosAdmin({
             return (
               <tr key={produto.id} className={classes}>
                 <td className={styles.colSelecao}>
+                  {produto.foto && (
+                    <a
+                      href={`${produto.foto}${produto.foto.includes("?") ? "&" : "?"}download=1`}
+                      download
+                      className={styles.btnBaixarFoto}
+                      title="Baixar foto para postar"
+                      aria-label={`Baixar foto de ${produto.nome}`}
+                    >
+                      ⬇
+                    </a>
+                  )}
                   <input
                     type="checkbox"
                     className={styles.caixa}

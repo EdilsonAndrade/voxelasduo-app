@@ -53,8 +53,24 @@
 }
 
 .colSelecao {
-  width: 2.5rem;
+  width: 5rem;
+  white-space: nowrap;
   padding-right: 0 !important;
+}
+
+.btnBaixarFoto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  margin-right: 0.4rem;
+  border: 1px solid var(--surface-line);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--roxo);
+  font-weight: 700;
+  vertical-align: middle;
 }
 
 .caixa {
