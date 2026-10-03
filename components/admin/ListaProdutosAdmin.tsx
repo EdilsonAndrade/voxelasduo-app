@@ -422,10 +422,10 @@ export default function ListaProdutosAdmin({
             <th>Produto</th>
             <th>Categoria</th>
             <th>Estoque</th>
-            <th className={styles.colCusto}>Custo</th>
             <th>Preços</th>
             <th>Canais</th>
             <th>Destaques</th>
+            <th className={styles.colCusto}>Custo</th>
             <th></th>
           </tr>
         </thead>
@@ -461,15 +461,6 @@ export default function ListaProdutosAdmin({
                   <span className={produto.estoque === 0 ? adminStyles.badgeZero : adminStyles.badge}>
                     {produto.estoque} un.
                   </span>
-                </td>
-                <td className={styles.colCusto} data-rotulo="Custo">
-                  {produto.custoCentavos === null ? (
-                    <span className={styles.semCusto} title="Custo de produção não configurado">
-                      —
-                    </span>
-                  ) : (
-                    <span className={styles.custo}>{formatarPreco(produto.custoCentavos)}</span>
-                  )}
                 </td>
                 <td className={styles.colPrecos}>
                   <LinhaPrecoProduto
@@ -520,6 +511,15 @@ export default function ListaProdutosAdmin({
                     carrosseis={carrosseis}
                     marcadosIniciais={produto.carrosseis}
                   />
+                </td>
+                <td className={styles.colCusto} data-rotulo="Custo">
+                  {produto.custoCentavos === null ? (
+                    <span className={styles.semCusto} title="Custo de produção não configurado">
+                      —
+                    </span>
+                  ) : (
+                    <span className={styles.custo}>{formatarPreco(produto.custoCentavos)}</span>
+                  )}
                 </td>
                 <td className={styles.colAcoes}>
                   <Link href={`/admin/produtos/${produto.id}/editar`} className={adminStyles.btnGhost}>

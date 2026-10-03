@@ -18,12 +18,12 @@
   letter-spacing: 0.05em;
   color: var(--texto-soft);
   font-weight: 700;
-  padding: 0.6rem 0.75rem;
+  padding: 0.6rem 1.15rem;
   border-bottom: 2px solid var(--surface-line);
 }
 
 .tabela td {
-  padding: 0.7rem 0.75rem;
+  padding: 0.7rem 1.15rem;
   border-bottom: 1px solid var(--surface-line);
   vertical-align: middle;
 }
@@ -61,6 +61,7 @@
 .colCusto {
   text-align: right;
   white-space: nowrap;
+  border-left: 1px solid var(--surface-line);
 }
 
 .custo {
