@@ -64,6 +64,10 @@ export default async function ListaPrecosPage({
         {produtos.length > 0 && <ImprimirButton className={adminStyles.btnPrimary} />}
       </div>
 
+      {produtos.length > 0 && (
+        <p className={`${styles.aviso} nao-imprimir`}>O custo aparece só aqui na tela — não sai na impressão.</p>
+      )}
+
       {produtos.length === 0 ? (
         <p className={adminStyles.empty}>
           Nenhum produto selecionado. Volte à lista de produtos e marque os que vão para o evento.
