@@ -49,6 +49,7 @@ export default async function AdminProdutosPage({
     return {
       id,
       nome: produto.nome,
+      foto: produto.fotos?.[0] ?? null,
       categoria: produto.categoria,
       estoque: produto.estoque,
       precoCentavos: produto.preco,

@@ -64,6 +64,20 @@
   cursor: pointer;
 }
 
+.colFoto {
+  width: 4.5rem;
+  padding-right: 0 !important;
+}
+
+.miniatura {
+  display: block;
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--surface-line);
+}
+
 .colNome {
   font-weight: 700;
   min-width: 10rem;
@@ -428,6 +442,11 @@
   .colSelecao {
     width: auto;
     grid-area: 1 / 1;
+  }
+
+  /* Celular: sem coluna de foto, para não quebrar a grade do cartão. */
+  .tabela .colFoto {
+    display: none;
   }
 
   .colNome {

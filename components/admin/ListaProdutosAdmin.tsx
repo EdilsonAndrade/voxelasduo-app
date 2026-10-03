@@ -31,6 +31,8 @@ import styles from "./listaProdutos.module.css";
 export interface ProdutoLinha {
   id: string;
   nome: string;
+  /** Primeira foto do produto (miniatura) — `null` sem fotos. */
+  foto: string | null;
   categoria: string;
   estoque: number;
   precoCentavos: number;
@@ -465,6 +467,7 @@ export default function ListaProdutosAdmin({
                 aria-label="Marcar todos para a lista de preços"
               />
             </th>
+            <th className={styles.colFoto}>Foto</th>
             <th>Produto</th>
             <th>Categoria</th>
             <th>Estoque</th>
@@ -494,6 +497,12 @@ export default function ListaProdutosAdmin({
                     onChange={() => alternar(produto.id)}
                     aria-label={`Incluir ${produto.nome} na lista de preços`}
                   />
+                </td>
+                <td className={styles.colFoto}>
+                  {produto.foto && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={produto.foto} alt={produto.nome} className={styles.miniatura} loading="lazy" />
+                  )}
                 </td>
                 <td className={styles.colNome}>
                   {produto.nome}{" "}
