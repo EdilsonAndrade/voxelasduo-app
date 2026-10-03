@@ -60,6 +60,7 @@ export default async function AdminProdutosPage({
         : null,
       mercadoLivrePermalink: produto.integracoes?.mercadoLivrePermalink ?? null,
       noCatalogoFacebook: produto.metaCatalogo?.publicar === true,
+      publicado: produto.publicado !== false,
       carrosseis: carrosseisPorProduto.get(id) ?? [],
     };
   });

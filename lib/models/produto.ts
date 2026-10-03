@@ -201,6 +201,13 @@ export interface Produto {
    * não aparece na loja. Ausente = modelo próprio ou link não registrado.
    */
   linkModelo3d?: string;
+  /**
+   * `false` = rascunho: o produto existe no admin mas não aparece na loja, na
+   * home nem no feed da Meta. **Ausente = publicado**, para que os produtos
+   * cadastrados antes deste campo continuem no ar sem migração; produtos novos
+   * nascem com `false` e só vão ao ar depois da revisão.
+   */
+  publicado?: boolean;
   criadoEm: Date;
   atualizadoEm: Date;
 }

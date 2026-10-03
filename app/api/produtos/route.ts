@@ -5,6 +5,7 @@ import { slugCategoriaValido } from "@/lib/categorias/repository";
 import { SLUG_CATEGORIA_PADRAO } from "@/lib/models/categoria";
 import { gerarSlug } from "@/lib/produtos/slug";
 import { validarProduto, type ProdutoPayload } from "@/lib/produtos/validation";
+import { faltaFotoParaPublicar } from "@/lib/produtos/publicacao";
 import type {
   CustoProducao,
   EmbalagemEnvio,
@@ -42,6 +43,17 @@ export async function POST(request: Request) {
     );
   }
 
+  // Produto novo nasce rascunho: é revisado no admin e só então vai à loja.
+  const publicado = payload.publicado === true;
+  const fotos = (payload.fotos as string[] | undefined) ?? [];
+
+  if (faltaFotoParaPublicar({ publicado, fotos })) {
+    return NextResponse.json(
+      { erro: "Payload inválido.", campos: { fotos: "Envie ao menos uma foto para publicar o produto." } },
+      { status: 400 }
+    );
+  }
+
   const slug = await slugLivreNaCategoria(categoria, gerarSlug(nome));
 
   const produto = await criarProduto({
@@ -51,7 +63,7 @@ export async function POST(request: Request) {
     preco: payload.preco as number,
     estoque: payload.estoque as number,
     categoria,
-    fotos: payload.fotos as string[],
+    fotos,
     integracoes: payload.integracoes as IntegracoesCanal | undefined,
     custoProducao: payload.custoProducao as CustoProducao | undefined,
     taxasCanais: payload.taxasCanais as TaxasCanaisProduto | undefined,
@@ -60,6 +72,7 @@ export async function POST(request: Request) {
     fichaTecnica: payload.fichaTecnica as FichaTecnicaProduto | undefined,
     metaCatalogo: payload.metaCatalogo as MetaCatalogoProduto | undefined,
     linkModelo3d: (payload.linkModelo3d as string | undefined)?.trim() || undefined,
+    publicado,
   });
 
   // Uma categoria que estava vazia passa a aparecer nos filtros da vitrine.

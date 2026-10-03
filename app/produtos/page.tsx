@@ -17,7 +17,7 @@ export default async function ProdutosPage({
 }) {
   const { q, categoria } = await searchParams;
   const [produtos, categorias, nomes] = await Promise.all([
-    listarProdutos({ q, categoria }),
+    listarProdutos({ q, categoria, somentePublicados: true }),
     listarCategoriasComProdutos(),
     mapaNomesCategorias(),
   ]);

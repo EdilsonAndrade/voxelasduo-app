@@ -168,6 +168,8 @@ export interface ProdutoFormValores {
   metaDescricao: string;
   /** Endereço do modelo 3D de origem (página do modelo ou arquivo `.3mf`) — vazio = modelo próprio ou não registrado. */
   linkModelo3d: string;
+  /** `true` = o produto aparece na loja. Produto novo começa desmarcado: nasce rascunho para ser revisado. */
+  publicado: boolean;
 }
 
 const VAZIO: ProdutoFormValores = {
@@ -193,6 +195,7 @@ const VAZIO: ProdutoFormValores = {
   metaTitulo: "",
   metaDescricao: "",
   linkModelo3d: "",
+  publicado: false,
 };
 
 /** Produto listado na ação "copiar custos de outro produto" — só o necessário para copiar (EDI-106). */
@@ -593,6 +596,7 @@ export default function ProdutoForm({
         descricao: valores.metaDescricao.trim() || undefined,
       },
       linkModelo3d: valores.linkModelo3d.trim(),
+      publicado: valores.publicado,
     };
 
     try {
@@ -796,6 +800,24 @@ export default function ProdutoForm({
         </span>
         {camposErro.nome && <span className={styles.fieldError}>{camposErro.nome}</span>}
       </div>
+
+      <fieldset className={styles.field}>
+        <legend>Publicação na loja</legend>
+        <label className={styles.channelToggle}>
+          <input
+            type="checkbox"
+            checked={valores.publicado}
+            onChange={(e) => atualizarCampo("publicado", e.target.checked)}
+          />
+          Publicado no site
+        </label>
+        <span className={styles.mlLinkAviso}>
+          {valores.publicado
+            ? "O produto aparece na vitrine, nos filtros de categoria e nos carrosséis da home."
+            : "Rascunho: o produto fica só aqui no admin — fora da vitrine, da home e do feed do Facebook. Para publicar é preciso ao menos uma foto."}
+        </span>
+        {camposErro.publicado && <span className={styles.fieldError}>{camposErro.publicado}</span>}
+      </fieldset>
 
       <div className={styles.field}>
         <label htmlFor="descricao">Descrição {selo("auto")}</label>

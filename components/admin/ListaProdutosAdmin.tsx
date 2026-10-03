@@ -40,6 +40,8 @@ export interface ProdutoLinha {
   ajusteEvento: { percentual: number; precoAnterior: number } | null;
   mercadoLivrePermalink: string | null;
   noCatalogoFacebook: boolean;
+  /** `false` = rascunho: cadastrado, mas ainda fora da loja. */
+  publicado: boolean;
   carrosseis: string[];
 }
 
@@ -448,7 +450,14 @@ export default function ListaProdutosAdmin({
                     aria-label={`Incluir ${produto.nome} na lista de preços`}
                   />
                 </td>
-                <td className={styles.colNome}>{produto.nome}</td>
+                <td className={styles.colNome}>
+                  {produto.nome}{" "}
+                  {!produto.publicado && (
+                    <span className={adminStyles.badgeZero} title="Rascunho: fora da loja até ser publicado">
+                      Rascunho
+                    </span>
+                  )}
+                </td>
                 <td className={styles.colCategoria} data-rotulo="Categoria">
                   <TrocarCategoriaProduto
                     produtoId={produto.id}

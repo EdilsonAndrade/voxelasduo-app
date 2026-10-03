@@ -11,6 +11,7 @@ import { SLUG_CATEGORIA_PADRAO } from "@/lib/models/categoria";
 import { gerarSlug } from "@/lib/produtos/slug";
 import { removerFotoProduto } from "@/lib/storage/blob";
 import { validarProduto, type ProdutoPayload } from "@/lib/produtos/validation";
+import { faltaFotoParaPublicar } from "@/lib/produtos/publicacao";
 import { sincronizarAnuncioProduto } from "@/lib/estoque/sincronizacao";
 import { despublicarAnuncio } from "@/lib/estoque/canais/mercadoLivre/anuncios";
 
@@ -43,6 +44,21 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const { categoria: categoriaPayload, ...dados } = payload as Record<string, unknown>;
+
+  // Publicar é o momento em que a foto passa a ser obrigatória: o card da
+  // vitrine renderiza `fotos[0]` e ficaria quebrado sem ela. Só vale quando a
+  // edição mexe em `publicado` ou em `fotos` — editar o preço de um produto
+  // antigo que esteja sem foto continua liberado.
+  const mexeNaPublicacao = "publicado" in payload || "fotos" in payload;
+  const publicadoFinal =
+    typeof payload.publicado === "boolean" ? payload.publicado : produtoAtual.publicado;
+  const fotosFinais = Array.isArray(payload.fotos) ? payload.fotos : produtoAtual.fotos;
+  if (mexeNaPublicacao && faltaFotoParaPublicar({ publicado: publicadoFinal, fotos: fotosFinais })) {
+    return NextResponse.json(
+      { erro: "Payload inválido.", campos: { fotos: "Envie ao menos uma foto para publicar o produto." } },
+      { status: 400 }
+    );
+  }
 
   // Categoria vazia = "Diversos"; só categorias cadastradas são aceitas (EDI-123).
   let categoriaDestino = produtoAtual.categoria;

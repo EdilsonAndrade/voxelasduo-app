@@ -32,6 +32,8 @@ export function produtoParaFormulario(produto: Produto, id: string): ProdutoForm
     metaTitulo: produto.metaCatalogo?.titulo ?? "",
     metaDescricao: produto.metaCatalogo?.descricao ?? "",
     linkModelo3d: produto.linkModelo3d ?? "",
+    // Ausente = publicado: é o estado dos produtos cadastrados antes do campo existir.
+    publicado: produto.publicado !== false,
   };
 }
 
@@ -55,5 +57,7 @@ export function produtoParaDuplicar(produto: Produto): ProdutoFormValores {
     shopeeItemId: "",
     // A cópia nasce sem fotos: o vendedor decide publicar no Facebook depois (EDI-109).
     metaPublicar: false,
+    // E nasce como rascunho — sem foto ela nem poderia ir ao ar.
+    publicado: false,
   };
 }

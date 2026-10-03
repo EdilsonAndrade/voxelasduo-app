@@ -1,6 +1,7 @@
 import type { ObjectId } from "mongodb";
 import { listarSecoesAtivas } from "@/lib/home/repository";
 import { listarProdutosPorIds } from "@/lib/produtos/repository";
+import { estaPublicado } from "@/lib/produtos/publicacao";
 import type { Produto } from "@/lib/models/produto";
 import type { SecaoBanner, SecaoCarrossel, SecaoTextoDestaque } from "@/lib/models/secaoHome";
 
@@ -46,7 +47,8 @@ export async function secoesPublicas(): Promise<SecaoPublica[]> {
 
   const carrosseis = secoes.filter((s): s is SecaoCarrossel => s.tipo === "carrossel");
   const todosIds = carrosseis.flatMap((c) => c.produtoIds ?? []);
-  const produtos = await listarProdutosPorIds(dedup(todosIds));
+  // Rascunho marcado num carrossel fica de fora da home até ser publicado.
+  const produtos = (await listarProdutosPorIds(dedup(todosIds))).filter(estaPublicado);
   const porId = new Map(produtos.map((p) => [p._id!.toString(), p]));
 
   const resultado: SecaoPublica[] = [];

@@ -30,7 +30,7 @@ export default async function ProdutosPorCategoriaPage({
   }
 
   const [produtos, categorias] = await Promise.all([
-    listarProdutos({ categoria: categoria.slug, q }),
+    listarProdutos({ categoria: categoria.slug, q, somentePublicados: true }),
     listarCategoriasComProdutos(),
   ]);
 

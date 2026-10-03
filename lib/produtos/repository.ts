@@ -7,6 +7,7 @@ import {
   removerRedirecionamentosDoProduto,
 } from "@/lib/categorias/redirecionamentos";
 import { PRODUTOS_COLLECTION, type PrecosCanaisProduto, type Produto } from "@/lib/models/produto";
+import { FILTRO_PUBLICADO } from "./publicacao";
 
 const garantirIndices = criarGarantiaDeIndices();
 
@@ -28,6 +29,8 @@ async function colecaoProdutos() {
 export interface FiltroListagem {
   q?: string;
   categoria?: string;
+  /** `true` = só o que está no ar (a loja); o admin lista tudo, inclusive rascunhos. */
+  somentePublicados?: boolean;
 }
 
 function escapeRegex(valor: string): string {
@@ -40,6 +43,10 @@ export async function listarProdutos(filtro: FiltroListagem = {}) {
 
   if (filtro.categoria) {
     query.categoria = filtro.categoria;
+  }
+
+  if (filtro.somentePublicados) {
+    Object.assign(query, FILTRO_PUBLICADO);
   }
 
   if (filtro.q) {
@@ -88,7 +95,10 @@ export async function listarProdutosComIntegracaoExterna(): Promise<Produto[]> {
 /** Produtos marcados para o catálogo da Meta (Facebook/Instagram Shop), usada pelo feed `/api/feeds/meta` (EDI-109). */
 export async function listarProdutosPublicadosMeta(): Promise<Produto[]> {
   const colecao = await colecaoProdutos();
-  return colecao.find({ "metaCatalogo.publicar": true }).sort({ criadoEm: -1 }).toArray();
+  return colecao
+    .find({ "metaCatalogo.publicar": true, ...FILTRO_PUBLICADO })
+    .sort({ criadoEm: -1 })
+    .toArray();
 }
 
 export async function buscarProdutoPorCategoriaESlug(

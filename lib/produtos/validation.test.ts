@@ -30,8 +30,20 @@ describe("validarProduto", () => {
     expect(validarProduto(semNome)).toHaveProperty("nome");
   });
 
-  it("rejeita fotos vazio", () => {
-    expect(validarProduto({ ...payloadValido, fotos: [] })).toHaveProperty("fotos");
+  it("aceita fotos vazio — rascunho pode ficar sem foto; a cobrança é na hora de publicar", () => {
+    expect(validarProduto({ ...payloadValido, fotos: [] })).toEqual({});
+  });
+
+  it("rejeita fotos que não sejam uma lista de textos", () => {
+    expect(validarProduto({ ...payloadValido, fotos: "foto.jpg" })).toHaveProperty("fotos");
+    expect(validarProduto({ ...payloadValido, fotos: [""] })).toHaveProperty("fotos");
+    expect(validarProduto({ ...payloadValido, fotos: [1] })).toHaveProperty("fotos");
+  });
+
+  it("aceita publicado booleano e rejeita qualquer outro tipo", () => {
+    expect(validarProduto({ ...payloadValido, publicado: false })).toEqual({});
+    expect(validarProduto({ ...payloadValido, publicado: true })).toEqual({});
+    expect(validarProduto({ ...payloadValido, publicado: "sim" })).toHaveProperty("publicado");
   });
 
   it("no modo parcial, ignora campos ausentes e valida só os presentes", () => {

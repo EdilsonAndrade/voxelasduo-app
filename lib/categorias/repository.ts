@@ -10,6 +10,7 @@ import {
 } from "@/lib/models/categoria";
 import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
 import { moverProdutoDeCategoria } from "@/lib/produtos/repository";
+import { FILTRO_PUBLICADO } from "@/lib/produtos/publicacao";
 import { gerarSlug } from "@/lib/produtos/slug";
 
 const garantirIndices = criarGarantiaDeIndices();
@@ -97,10 +98,14 @@ export function nomeDaCategoria(mapa: Map<string, string>, slug: string): string
   return mapa.get(slug) ?? slug;
 }
 
-/** Categorias com ao menos um produto, na ordem cadastrada — filtros da vitrine (FR-012). */
+/**
+ * Categorias com ao menos um produto **publicado**, na ordem cadastrada —
+ * filtros da vitrine (FR-012). Categoria que só tem rascunho não vira filtro,
+ * senão o visitante clicaria nela e cairia numa lista vazia.
+ */
 export async function listarCategoriasComProdutos(): Promise<CategoriaResumo[]> {
   const [categorias, produtos] = await Promise.all([listarCategoriasCadastradas(), colecaoProdutos()]);
-  const emUso = new Set(await produtos.distinct("categoria"));
+  const emUso = new Set(await produtos.distinct("categoria", FILTRO_PUBLICADO));
   return categorias.filter((c) => emUso.has(c.slug)).map(({ slug, nome }) => ({ slug, nome }));
 }
 

@@ -13,7 +13,8 @@
     "seed:equipe": "tsx scripts/seed-equipe.ts",
     "migrar:categorias": "tsx scripts/migrar-categorias.ts",
     "corrigir:atributos-ml": "tsx scripts/corrigir-atributos-mercado-livre.ts",
-    "inspecionar:item-ml": "tsx scripts/inspecionar-item-mercado-livre.ts"
+    "inspecionar:item-ml": "tsx scripts/inspecionar-item-mercado-livre.ts",
+    "produtos:rascunho": "tsx scripts/criar-produto-rascunho.ts"
   },
   "dependencies": {
     "@mercadopago/sdk-react": "^1.0.7",

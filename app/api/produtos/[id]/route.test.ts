@@ -233,4 +233,45 @@ describe("DELETE /api/produtos/[id]", () => {
     expect(corpo.erro).toContain("HTTP 500");
     expect(removerProduto).not.toHaveBeenCalled();
   });
+
+  describe("publicação na loja", () => {
+    it("400 ao publicar um produto que ficaria sem foto", async () => {
+      const resposta = await PATCH(
+        requisicao({ publicado: true }),
+        params(produtoBase._id!.toString())
+      );
+
+      expect(resposta.status).toBe(400);
+      expect(atualizarProduto).not.toHaveBeenCalled();
+    });
+
+    it("aceita publicar quando o próprio PATCH traz a foto", async () => {
+      const resposta = await PATCH(
+        requisicao({ publicado: true, fotos: ["https://blob/x.jpg"] }),
+        params(produtoBase._id!.toString())
+      );
+
+      expect(resposta.status).toBe(200);
+      expect(atualizarProduto).toHaveBeenCalledWith(
+        produtoBase._id!.toString(),
+        expect.objectContaining({ publicado: true })
+      );
+    });
+
+    it("aceita voltar para rascunho sem foto", async () => {
+      const resposta = await PATCH(
+        requisicao({ publicado: false }),
+        params(produtoBase._id!.toString())
+      );
+
+      expect(resposta.status).toBe(200);
+    });
+
+    it("não bloqueia uma edição que não mexe em publicado nem em fotos", async () => {
+      const resposta = await PATCH(requisicao({ preco: 6000 }), params(produtoBase._id!.toString()));
+
+      expect(resposta.status).toBe(200);
+    });
+  });
+
 });

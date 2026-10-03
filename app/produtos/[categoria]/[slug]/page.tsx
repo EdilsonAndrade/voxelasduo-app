@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { buscarProdutoPorCategoriaESlug, buscarProdutoPorId } from "@/lib/produtos/repository";
+import { estaPublicado } from "@/lib/produtos/publicacao";
 import {
   mapaNomesCategorias,
   nomeDaCategoria,
@@ -33,16 +34,20 @@ export default async function ProdutoDetalhePage({
   const { categoria: categoriaParam, slug: slugParam } = await params;
   const categoria = decodificarSegmentoRota(categoriaParam);
   const slug = decodificarSegmentoRota(slugParam);
-  const produto = await buscarProdutoPorCategoriaESlug(categoria, slug);
+  const encontrado = await buscarProdutoPorCategoriaESlug(categoria, slug);
+  // Rascunho responde como se não existisse: o endereço só passa a valer quando o produto é publicado.
+  const produto = encontrado && estaPublicado(encontrado) ? encontrado : null;
 
   if (!produto) {
     // Endereço antigo (troca de categoria, renomeação do produto, migração) → endereço atual (EDI-123).
     const produtoId = await buscarRedirecionamentoProduto(categoria, slug);
     let destino = produtoId ? await buscarProdutoPorId(produtoId.toString()) : null;
+    if (destino && !estaPublicado(destino)) destino = null;
     if (!destino) {
       // Sem registro: tenta a categoria equivalente (alias/variação) com o mesmo slug do produto.
       const categoriaAtual = await resolverRedirecionamentoCategoria(categoria);
       destino = categoriaAtual ? await buscarProdutoPorCategoriaESlug(categoriaAtual, slug) : null;
+      if (destino && !estaPublicado(destino)) destino = null;
     }
     if (destino) permanentRedirect(`/produtos/${destino.categoria}/${destino.slug}`);
     notFound();

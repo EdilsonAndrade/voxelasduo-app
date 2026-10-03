@@ -23,6 +23,8 @@ export interface ProdutoPayload {
   metaCatalogo?: unknown;
   /** Endereço do modelo 3D de origem (página do modelo ou arquivo `.3mf`) — opcional, só para administração. */
   linkModelo3d?: unknown;
+  /** `false` = rascunho, fora da loja; ausente num produto antigo = publicado. */
+  publicado?: unknown;
 }
 
 /** Tamanho máximo do endereço do modelo 3D — folgado para links com parâmetros de rastreio. */
@@ -324,11 +326,17 @@ export function validarProduto(
     }
   }
 
+  // Lista vazia é aceita aqui: rascunho pode ficar sem foto. Quem cobra a foto
+  // é a rota, na hora de publicar (ver `faltaFotoParaPublicar`).
   if (presente("fotos")) {
     const fotos = payload.fotos;
-    if (!Array.isArray(fotos) || fotos.length === 0 || !fotos.every((f) => typeof f === "string" && f.length > 0)) {
-      erros.fotos = "Envie ao menos uma foto do produto.";
+    if (!Array.isArray(fotos) || !fotos.every((f) => typeof f === "string" && f.length > 0)) {
+      erros.fotos = "Formato das fotos inválido.";
     }
+  }
+
+  if (payload.publicado !== undefined && typeof payload.publicado !== "boolean") {
+    erros.publicado = "Informe se o produto está publicado.";
   }
 
   if (payload.linkModelo3d !== undefined) {
