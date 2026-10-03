@@ -101,8 +101,8 @@
    fixa para os números formarem um trilho vertical à direita. */
 .item {
   display: grid;
-  grid-template-columns: 1fr 7.5ch 8ch;
-  align-items: baseline;
+  grid-template-columns: 3.75rem 1fr 7.5ch 8ch;
+  align-items: center;
   gap: 0 1rem;
   padding: 0.4rem 0.6rem;
   break-inside: avoid;
@@ -115,6 +115,28 @@
 
 .nome {
   font-weight: 700;
+}
+
+.miniatura {
+  display: block;
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #d9d3c7;
+}
+
+.semFoto {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+@media (max-width: 640px) {
+  .miniatura,
+  .semFoto {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
 }
 
 .preco {
@@ -152,7 +174,7 @@
   }
 
   .item {
-    grid-template-columns: 1fr 7ch 7.5ch;
+    grid-template-columns: 3rem 1fr 7ch 7.5ch;
     gap: 0 0.5rem;
     padding: 0.4rem 0.35rem;
     font-size: 0.95rem;
@@ -185,6 +207,6 @@
   }
 
   .item {
-    grid-template-columns: 1fr 8ch;
+    grid-template-columns: 3.75rem 1fr 8ch;
   }
 }

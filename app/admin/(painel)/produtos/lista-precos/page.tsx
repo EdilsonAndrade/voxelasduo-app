@@ -90,6 +90,12 @@ export default async function ListaPrecosPage({
                     const custo = custoPorProduto.get(produto._id!.toString()) ?? null;
                     return (
                       <li key={produto._id!.toString()} className={styles.item}>
+                        {produto.fotos?.[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={produto.fotos[0]} alt="" className={styles.miniatura} loading="eager" />
+                        ) : (
+                          <span className={styles.semFoto} />
+                        )}
                         <span className={styles.nome}>{produto.nome}</span>
                         <span className={styles.custo} title="Custo de produção por peça">
                           {custo === null ? "" : `custo ${formatarPreco(custo)}`}
