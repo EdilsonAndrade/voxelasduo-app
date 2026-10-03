@@ -9,6 +9,7 @@ import {
   listarPedidos,
   type ItemPedidoDetalhado,
 } from "@/lib/pedidos/repository";
+import { enviarPedidoCriadoCliente, notificarAdminPedidoCriado } from "@/lib/email/resend";
 import { paraPedidoResumo } from "@/lib/pedidos/apresentacao";
 import { ErroEstoque } from "@/lib/pedidos/estoque";
 import { validarCheckout, type CheckoutPayload } from "@/lib/pedidos/validation";
@@ -94,6 +95,9 @@ export async function POST(request: Request) {
       precoUnitario: item.precoUnitario,
     }));
   }
+
+  // Pedido novo (não reenvio idempotente): avisa a loja e o comprador que aguarda pagamento.
+  if (!duplicado) await Promise.all([notificarAdminPedidoCriado(pedido), enviarPedidoCriadoCliente(pedido)]);
 
   return NextResponse.json(
     {

@@ -306,6 +306,120 @@ export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
 }
 
 /**
+ * Avisa o comprador que o pedido foi criado e aguarda pagamento, com o link
+ * para pagar. O e-mail de pagamento confirmado é `enviarConfirmacaoPedido`.
+ * Best-effort: falha de envio é logada e nunca lança.
+ */
+export async function enviarPedidoCriadoCliente(pedido: Pedido): Promise<void> {
+  const numeroPedido = pedido._id?.toString() ?? "";
+  const produtos = await buscarProdutosPorIds(pedido.itens.map((item) => item.produtoId.toString()));
+  const itens = pedido.itens.map((item) => ({
+    nome: produtos.get(item.produtoId.toString())?.nome ?? "Produto",
+    quantidade: item.quantidade,
+    subtotal: formatarValorEmReais(item.precoUnitario * item.quantidade),
+  }));
+  const valorTotalTexto = formatarValorEmReais(pedido.valorTotal);
+  const linkPagamento = `${urlBaseSite()}/pedido/${numeroPedido}`;
+
+  const text = [
+    `Recebemos seu pedido #${numeroPedido}, mas o pagamento ainda está pendente.`,
+    "",
+    "Itens:",
+    ...itens.map((item) => `${item.quantidade}x ${item.nome} — ${item.subtotal}`),
+    "",
+    `Valor total: ${valorTotalTexto}`,
+    "",
+    `Para pagar: ${linkPagamento}`,
+  ].join("\n");
+
+  const html = renderEmailLayout({
+    titulo: "Pedido criado — pagamento pendente",
+    corpoHtml: `
+      <p>Recebemos seu pedido <strong>#${numeroPedido}</strong>, mas o <strong>pagamento ainda está pendente</strong>.</p>
+      <p style="margin:20px 0 8px;font-weight:700;">Itens</p>
+      <ul style="margin:0 0 12px;padding-left:20px;">${itens
+        .map((item) => `<li>${item.quantidade}x ${escaparHtml(item.nome)} — ${item.subtotal}</li>`)
+        .join("")}</ul>
+      <p style="font-weight:700;">Valor total: ${valorTotalTexto}</p>
+      <p style="margin:20px 0 0;"><a href="${linkPagamento}">Pagar meu pedido</a></p>
+    `,
+  });
+
+  try {
+    await obterClienteResend().emails.send({
+      from: remetente(),
+      to: pedido.cliente.email,
+      subject: `Pedido criado — pagamento pendente — #${numeroPedido}`,
+      text,
+      html,
+    });
+  } catch (erro) {
+    console.error("Falha ao enviar e-mail de pedido criado ao cliente:", erro);
+  }
+}
+
+/**
+ * Avisa a loja que um pedido do site foi criado e aguarda pagamento. O aviso de
+ * pagamento aprovado é outro (`notificarAdminVendaSite`). Best-effort: falha de
+ * envio é logada e nunca lança.
+ */
+export async function notificarAdminPedidoCriado(pedido: Pedido): Promise<void> {
+  const numeroPedido = pedido._id?.toString() ?? "";
+  const { cliente } = pedido;
+  const produtos = await buscarProdutosPorIds(pedido.itens.map((item) => item.produtoId.toString()));
+  const itens = pedido.itens.map((item) => ({
+    nome: produtos.get(item.produtoId.toString())?.nome ?? "Produto",
+    quantidade: item.quantidade,
+    subtotal: formatarValorEmReais(item.precoUnitario * item.quantidade),
+  }));
+  const valorTotalTexto = formatarValorEmReais(pedido.valorTotal);
+  const digitosTelefone = cliente.telefone?.replace(/\D/g, "") ?? "";
+  const telefone = digitosTelefone ? formatarTelefone(digitosTelefone) : "Não informado";
+  const linkAdmin = `${urlBaseSite()}/admin/pedidos`;
+
+  const text = [
+    `Novo pedido no site aguardando pagamento — #${numeroPedido}`,
+    "",
+    "Itens:",
+    ...itens.map((item) => `${item.quantidade}x ${item.nome} — ${item.subtotal}`),
+    "",
+    `Valor total: ${valorTotalTexto}`,
+    `Comprador: ${cliente.nome} — ${cliente.email} — ${telefone}`,
+    "",
+    `Ver pedidos: ${linkAdmin}`,
+  ].join("\n");
+
+  const html = renderEmailLayout({
+    titulo: "Novo pedido aguardando pagamento",
+    corpoHtml: `
+      <p>O pedido <strong>#${numeroPedido}</strong> foi criado e ainda <strong>não foi pago</strong>. Você receberá outro e-mail quando o pagamento for aprovado.</p>
+      <p style="margin:20px 0 8px;font-weight:700;">Itens</p>
+      <ul style="margin:0 0 12px;padding-left:20px;">${itens
+        .map((item) => `<li>${item.quantidade}x ${escaparHtml(item.nome)} — ${item.subtotal}</li>`)
+        .join("")}</ul>
+      <p style="margin:0 0 16px;font-weight:700;">Valor total: ${valorTotalTexto}</p>
+      <p style="margin:0;">${escaparHtml(cliente.nome)}</p>
+      <p style="margin:0;">E-mail: <a href="mailto:${escaparHtml(cliente.email)}">${escaparHtml(cliente.email)}</a></p>
+      <p style="margin:0 0 16px;">Telefone: ${escaparHtml(telefone)}</p>
+      <p style="margin:20px 0 0;"><a href="${linkAdmin}">Ver pedidos no admin</a></p>
+    `,
+  });
+
+  try {
+    await obterClienteResend().emails.send({
+      from: remetente(),
+      to: destinatariosLoja(),
+      replyTo: cliente.email,
+      subject: `Novo pedido aguardando pagamento — #${numeroPedido} — ${valorTotalTexto}`,
+      text,
+      html,
+    });
+  } catch (erro) {
+    console.error("Falha ao enviar e-mail de pedido criado:", erro);
+  }
+}
+
+/**
  * Avisa o admin de uma nova encomenda sob medida (formulário de /encomendas).
  * `replyTo` aponta para o cliente, para responder direto do e-mail. Best-effort:
  * a encomenda já foi gravada no banco antes desta chamada, então falha de

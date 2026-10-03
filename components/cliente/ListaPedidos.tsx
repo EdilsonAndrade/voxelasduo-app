@@ -81,6 +81,15 @@ export default function ListaPedidos({ pedidos }: { pedidos: PedidoDetalhado[] }
             <span className={styles.badgeStatus}>{LABEL_STATUS[pedido.status]}</span>
           </div>
 
+          {pedido.status === "pendente" && (
+            <p className={styles.rastreio}>
+              Pagamento pendente.{" "}
+              <Link href={`/pedido/${pedido.id}`}>
+                <strong>Pagar agora →</strong>
+              </Link>
+            </p>
+          )}
+
           <Trilha status={pedido.status} />
 
           {pedido.rastreio && (
