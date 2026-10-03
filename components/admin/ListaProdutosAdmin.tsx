@@ -152,6 +152,11 @@ export default function ListaProdutosAdmin({
   async function alternarPublicacao(produto: ProdutoLinha) {
     const novo = !estaPublicado(produto);
     setAviso(null);
+    // Só publica com estoque salvo (o valor digitado e ainda não salvo não conta).
+    if (novo && linhasRef.current[produto.id].estoqueOriginal <= 0) {
+      setAviso({ tipo: "erro", texto: `${produto.nome}: sem estoque. Informe o estoque, salve e depois publique.` });
+      return;
+    }
     setPublicando((atual) => new Set(atual).add(produto.id));
     const resposta = await fetch(`/api/produtos/${produto.id}`, {
       method: "PATCH",
