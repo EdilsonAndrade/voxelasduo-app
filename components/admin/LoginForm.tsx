@@ -11,26 +11,40 @@ export default function LoginForm({ callbackUrl }: { callbackUrl: string }) {
   const [senha, setSenha] = useState("");
   const [entrando, setEntrando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [detalheErro, setDetalheErro] = useState<string | null>(null);
 
   async function handleSubmit(evento: React.FormEvent) {
     evento.preventDefault();
     setEntrando(true);
     setErro(null);
+    setDetalheErro(null);
 
-    const resultado = await signIn("credentials", {
-      email,
-      senha,
-      redirect: false,
-    });
+    try {
+      const resultado = await signIn("credentials", {
+        email,
+        senha,
+        redirect: false,
+      });
 
-    if (!resultado || resultado.error) {
-      setErro("E-mail ou senha inválidos.");
+      if (!resultado || resultado.error) {
+        setErro("E-mail ou senha inválidos.");
+        setDetalheErro(
+          resultado
+            ? `error: ${resultado.error} | status: ${resultado.status} | ok: ${resultado.ok} | url: ${resultado.url}`
+            : "signIn não retornou resposta."
+        );
+        return;
+      }
+
+      router.push(callbackUrl);
+      router.refresh();
+    } catch (e) {
+      setErro("Não foi possível entrar. Tente novamente.");
+      setDetalheErro(e instanceof Error ? `${e.name}: ${e.message}
+${e.stack ?? ""}` : String(e));
+    } finally {
       setEntrando(false);
-      return;
     }
-
-    router.push(callbackUrl);
-    router.refresh();
   }
 
   return (
@@ -72,6 +86,14 @@ export default function LoginForm({ callbackUrl }: { callbackUrl: string }) {
         </div>
 
         {erro && <span className={styles.formError}>{erro}</span>}
+        {detalheErro && (
+          <details>
+            <summary>Detalhes técnicos</summary>
+            <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: "0.75rem" }}>
+              {detalheErro}
+            </pre>
+          </details>
+        )}
 
         <div className={styles.actions}>
           <button type="submit" className={styles.btnPrimary} disabled={entrando}>
