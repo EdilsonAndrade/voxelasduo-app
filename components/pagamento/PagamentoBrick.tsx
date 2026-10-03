@@ -59,9 +59,20 @@ export default function PagamentoBrick({ pedidoId, valorTotalCentavos }: Pagamen
   const aguardandoPix = resultado?.status === "pendente" && !!resultado.qrCode;
   useEffect(() => {
     if (!aguardandoPix) return;
-    const timer = setInterval(() => router.refresh(), 5000);
+    const timer = setInterval(() => {
+      fetch("/api/pagamentos/verificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pedidoId }),
+      })
+        .then((r) => r.json())
+        .then((dados) => {
+          if (dados.pago || dados.status === "recusado" || dados.status === "expirado") router.refresh();
+        })
+        .catch(() => undefined);
+    }, 5000);
     return () => clearInterval(timer);
-  }, [aguardandoPix, router]);
+  }, [aguardandoPix, pedidoId, router]);
 
   function tentarNovamente() {
     setResultado(null);

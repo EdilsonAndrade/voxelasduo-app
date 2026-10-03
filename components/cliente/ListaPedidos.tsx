@@ -22,6 +22,14 @@ const LABEL_CANAL: Record<PedidoDetalhado["canalOrigem"], string> = {
 // depois que o pedido foi pago; "pendente" e "cancelado" não entram na trilha.
 const ETAPAS_TRILHA: PedidoDetalhado["status"][] = ["pago", "em_producao", "enviado", "entregue"];
 
+/** Rótulo do pedido pendente: tentativa em andamento (cartão em análise / Pix gerado) ou sem tentativa. */
+function rotuloStatus(pedido: PedidoDetalhado): string {
+  if (pedido.status === "pendente" && pedido.pagamento.status === "pendente") {
+    return pedido.pagamento.metodo === "pix" ? "Aguardando o Pix" : "Processando pagamento";
+  }
+  return LABEL_STATUS[pedido.status];
+}
+
 function formatarData(data: Date | string): string {
   return new Date(data).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
@@ -78,7 +86,7 @@ export default function ListaPedidos({ pedidos }: { pedidos: PedidoDetalhado[] }
 
           <div className={styles.pedidoRodape}>
             <span className={styles.pedidoValor}>{formatarPreco(pedido.valorTotal)}</span>
-            <span className={styles.badgeStatus}>{LABEL_STATUS[pedido.status]}</span>
+            <span className={styles.badgeStatus}>{rotuloStatus(pedido)}</span>
           </div>
 
           {pedido.status === "pendente" && (
