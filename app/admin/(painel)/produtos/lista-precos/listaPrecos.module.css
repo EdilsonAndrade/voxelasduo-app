@@ -1,7 +1,8 @@
 /*
- * Tabela de preços impressa (EDI-126): índice alfabético com a inicial
- * grande e pontilhado ligando o nome ao preço, para achar um preço de relance
- * no balcão do evento. Duas colunas na folha A4.
+ * Tabela de preços impressa (EDI-126): uma linha por produto na largura toda
+ * da folha A4, para achar um preço de relance no balcão do evento. A inicial
+ * fica num trilho à esquerda, alinhada à primeira linha do grupo, e a faixa
+ * zebrada guia o olho do nome até o preço — por isso não há pontilhado.
  */
 
 .pagina {
@@ -54,23 +55,30 @@
 }
 
 .colunas {
-  column-count: 2;
-  column-gap: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
+/* Trilho da inicial à esquerda + linhas do grupo à direita, como o indexador
+   lateral de um dicionário: a letra ancora a primeira linha do seu grupo.
+   Fluxo de bloco (e não grid) porque um grupo longo precisa quebrar entre
+   páginas na impressão sem estourar a folha. */
 .grupo {
-  break-inside: avoid-column;
-  margin-bottom: 0.9rem;
+  position: relative;
+  padding-left: 2.6rem;
 }
 
 .letra {
-  margin: 0 0 0.15rem;
+  position: absolute;
+  top: 0.18rem;
+  left: 0;
+  margin: 0;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.6rem;
+  font-size: 1.75rem;
   line-height: 1;
   color: #7b5cf6;
-  border-bottom: 2px solid #7b5cf6;
   break-after: avoid;
 }
 
@@ -78,44 +86,43 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  border-top: 2px solid #7b5cf6;
 }
 
+/* Uma linha por produto: nome à esquerda, custo e preço em colunas de largura
+   fixa para os números formarem um trilho vertical à direita. */
 .item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 7.5ch 8ch;
   align-items: baseline;
-  gap: 0.35rem;
-  padding: 0.32rem 0;
+  gap: 0 1rem;
+  padding: 0.4rem 0.6rem;
   break-inside: avoid;
   font-size: 1.05rem;
+}
+
+.item:nth-child(even) {
+  background: #f4f1ea;
 }
 
 .nome {
   font-weight: 700;
 }
 
-/* O pontilhado estica entre o nome e o preço; com nome longo, o nome quebra e o preço fica na última linha. */
-.pontilhado {
-  flex: 1;
-  min-width: 1.25rem;
-  border-bottom: 2px dotted #b9ad9c;
-  transform: translateY(-0.25em);
-}
-
 .preco {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
+  text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-/* Custo por peça ao lado do preço: discreto, para a equipe conferir a margem
+/* Custo por peça antes do preço: discreto, para a equipe conferir a margem
    sem competir com o preço de venda que o cliente lê. */
 .custo {
-  flex: none;
-  min-width: 5.5ch;
   text-align: right;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -132,8 +139,15 @@
     font-size: 1.6rem;
   }
 
-  .colunas {
-    column-count: 1;
+  .grupo {
+    padding-left: 1.9rem;
+  }
+
+  .item {
+    grid-template-columns: 1fr 7ch 7.5ch;
+    gap: 0 0.5rem;
+    padding: 0.4rem 0.35rem;
+    font-size: 0.95rem;
   }
 }
 
@@ -150,11 +164,9 @@
     box-shadow: none;
   }
 
-  .colunas {
-    column-count: 2;
-  }
-
-  .letra {
+  .letra,
+  .itens,
+  .item {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }

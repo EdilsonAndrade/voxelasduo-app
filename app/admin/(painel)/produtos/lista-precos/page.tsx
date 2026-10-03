@@ -87,13 +87,10 @@ export default async function ListaPrecosPage({
                     return (
                       <li key={produto._id!.toString()} className={styles.item}>
                         <span className={styles.nome}>{produto.nome}</span>
-                        <span className={styles.pontilhado} aria-hidden="true" />
+                        <span className={styles.custo} title="Custo de produção por peça">
+                          {custo === null ? "" : `custo ${formatarPreco(custo)}`}
+                        </span>
                         <span className={styles.preco}>{formatarPreco(produto.preco)}</span>
-                        {custo !== null && (
-                          <span className={styles.custo} title="Custo de produção por peça">
-                            custo {formatarPreco(custo)}
-                          </span>
-                        )}
                       </li>
                     );
                   })}
