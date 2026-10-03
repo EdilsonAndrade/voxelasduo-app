@@ -121,6 +121,27 @@
   font-size: 0.85rem;
 }
 
+/* Estoque editável na própria lista: caixa estreita, só dígitos, com "un." fixo à direita. */
+.entradaEstoque {
+  max-width: 6.5rem;
+}
+
+.entradaEstoque input {
+  text-align: right;
+}
+
+/* Esgotado continua gritando na lista, como fazia o selo antes de o campo virar editável. */
+.entradaEsgotado {
+  border-color: var(--rosa);
+  color: var(--rosa);
+}
+
+.unidade {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--texto-soft);
+}
+
 .entrada:focus-within {
   border-color: var(--roxo);
 }

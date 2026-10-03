@@ -39,6 +39,26 @@ export function erroPrecoMercadoLivre(centavos: number | null): string | null {
   return null;
 }
 
+/**
+ * Converte o texto digitado no campo de estoque em unidades inteiras.
+ * Vazio = `null` (o campo é obrigatório, quem decide é `erroEstoque`);
+ * texto que não é um inteiro = `NaN`.
+ */
+export function textoParaEstoque(texto: string): number | null {
+  const limpo = texto.replace(/\s/g, "");
+  if (limpo === "") return null;
+  if (!/^\d+$/.test(limpo)) return Number.NaN;
+  return Number(limpo);
+}
+
+/** Erro do estoque (obrigatório, inteiro ≥ 0) — `null` quando válido. */
+export function erroEstoque(unidades: number | null): string | null {
+  if (unidades === null) return "Informe o estoque.";
+  if (Number.isNaN(unidades)) return "Estoque inválido. Use um número inteiro de unidades.";
+  if (unidades < 0) return "O estoque não pode ser negativo.";
+  return null;
+}
+
 /** Margem sobre o preço, em % inteiro: (preço − custo) ÷ preço. `null` sem custo ou preço válido. */
 export function margemPercentual(precoCentavos: number | null, custoCentavos: number | null): number | null {
   if (custoCentavos === null || precoCentavos === null || !(precoCentavos > 0)) return null;

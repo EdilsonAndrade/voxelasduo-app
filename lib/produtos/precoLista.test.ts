@@ -4,6 +4,8 @@ import {
   arredondarPara90Acima,
   percentualAjusteValido,
   centavosParaTexto,
+  textoParaEstoque,
+  erroEstoque,
   erroPrecoMercadoLivre,
   erroPrecoSite,
   letraIndice,
@@ -101,5 +103,38 @@ describe("ajuste do evento", () => {
     expect(percentualAjusteValido(0)).toBe(false);
     expect(percentualAjusteValido(91)).toBe(false);
     expect(percentualAjusteValido(Number.NaN)).toBe(false);
+  });
+});
+
+describe("textoParaEstoque", () => {
+  it("converte inteiros e ignora espaços", () => {
+    expect(textoParaEstoque("5")).toBe(5);
+    expect(textoParaEstoque(" 12 ")).toBe(12);
+    expect(textoParaEstoque("0")).toBe(0);
+  });
+
+  it("vazio devolve null", () => {
+    expect(textoParaEstoque("")).toBeNull();
+    expect(textoParaEstoque("   ")).toBeNull();
+  });
+
+  it("recusa o que não é inteiro — estoque é peça contada, não fração", () => {
+    expect(textoParaEstoque("2,5")).toBeNaN();
+    expect(textoParaEstoque("2.5")).toBeNaN();
+    expect(textoParaEstoque("-1")).toBeNaN();
+    expect(textoParaEstoque("abc")).toBeNaN();
+  });
+});
+
+describe("erroEstoque", () => {
+  it("aceita zero e positivos", () => {
+    expect(erroEstoque(0)).toBeNull();
+    expect(erroEstoque(7)).toBeNull();
+  });
+
+  it("cobra o campo vazio e recusa valor inválido", () => {
+    expect(erroEstoque(null)).toMatch(/Informe o estoque/);
+    expect(erroEstoque(Number.NaN)).toMatch(/inválido/);
+    expect(erroEstoque(-2)).toMatch(/negativo/);
   });
 });

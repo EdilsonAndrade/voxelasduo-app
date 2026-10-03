@@ -1,7 +1,12 @@
 "use client";
 
 import { formatarPreco } from "@/lib/produtos/formato";
-import { centavosParaTexto, margemPercentual, textoParaCentavos } from "@/lib/produtos/precoLista";
+import {
+  centavosParaTexto,
+  margemPercentual,
+  textoParaCentavos,
+  textoParaEstoque,
+} from "@/lib/produtos/precoLista";
 import styles from "./listaProdutos.module.css";
 
 export type CampoPreco = "site" | "mercadoLivre" | "shopee";
@@ -17,6 +22,10 @@ export interface EstadoLinha {
   /** Últimos preços gravados. */
   original: PrecosLinha;
   textos: Record<CampoPreco, string>;
+  /** Último estoque gravado, em unidades. */
+  estoqueOriginal: number;
+  /** Texto do campo de estoque da linha — editado junto com os preços e salvo pelo mesmo botão. */
+  estoqueTexto: string;
   /** Percentual aplicado nesta tela e ainda não salvo. */
   ajustePendente: number | null;
   /** Ajuste do evento já gravado. */
@@ -28,6 +37,7 @@ export interface EstadoLinha {
 export function linhaAlterada(estado: EstadoLinha): boolean {
   return (
     estado.ajustePendente !== null ||
+    textoParaEstoque(estado.estoqueTexto) !== estado.estoqueOriginal ||
     textoParaCentavos(estado.textos.site) !== estado.original.site ||
     textoParaCentavos(estado.textos.mercadoLivre) !== estado.original.mercadoLivre ||
     textoParaCentavos(estado.textos.shopee) !== estado.original.shopee

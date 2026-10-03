@@ -17,10 +17,12 @@ import { formatarPreco } from "@/lib/produtos/formato";
 import {
   ajustarPrecoEvento,
   centavosParaTexto,
+  erroEstoque,
   erroPrecoMercadoLivre,
   erroPrecoSite,
   percentualAjusteValido,
   textoParaCentavos,
+  textoParaEstoque,
 } from "@/lib/produtos/precoLista";
 import adminStyles from "./admin.module.css";
 import styles from "./listaProdutos.module.css";
@@ -56,7 +58,9 @@ function textosDe(precos: PrecosLinha): EstadoLinha["textos"] {
 }
 
 /** Estado da linha a partir do produto devolvido pela API depois de salvar/restaurar. */
-function estadoDoProduto(produto: Produto): Pick<EstadoLinha, "original" | "textos" | "ajusteAtivo"> {
+function estadoDoProduto(
+  produto: Produto
+): Pick<EstadoLinha, "original" | "textos" | "ajusteAtivo" | "estoqueOriginal" | "estoqueTexto"> {
   const original = {
     site: produto.preco,
     mercadoLivre: produto.precosCanais?.mercadoLivre ?? null,
@@ -65,6 +69,8 @@ function estadoDoProduto(produto: Produto): Pick<EstadoLinha, "original" | "text
   return {
     original,
     textos: textosDe(original),
+    estoqueOriginal: produto.estoque,
+    estoqueTexto: String(produto.estoque),
     ajusteAtivo: produto.ajusteEvento
       ? { percentual: produto.ajusteEvento.percentual, precoAnterior: produto.ajusteEvento.precoAnterior }
       : null,
@@ -78,6 +84,8 @@ function estadoInicial(produtos: ProdutoLinha[]): Record<string, EstadoLinha> {
     estados[p.id] = {
       original,
       textos: textosDe(original),
+      estoqueOriginal: p.estoque,
+      estoqueTexto: String(p.estoque),
       ajustePendente: null,
       ajusteAtivo: p.ajusteEvento,
       salvando: false,
@@ -89,7 +97,9 @@ function estadoInicial(produtos: ProdutoLinha[]): Record<string, EstadoLinha> {
 
 function mensagemErro(corpo: { erro?: string; campos?: Record<string, string> }, status: number): string {
   const campos = corpo.campos ?? {};
-  return campos.percentual ?? campos.preco ?? campos.precosCanais ?? corpo.erro ?? `Erro ${status}.`;
+  return (
+    campos.percentual ?? campos.preco ?? campos.estoque ?? campos.precosCanais ?? corpo.erro ?? `Erro ${status}.`
+  );
 }
 
 function plural(n: number, um: string, varios: string): string {
@@ -160,17 +170,23 @@ export default function ListaProdutosAdmin({
     }));
   }
 
+  function editarEstoque(id: string, valor: string) {
+    setLinhas((atual) => ({ ...atual, [id]: { ...atual[id], estoqueTexto: valor, status: null } }));
+  }
+
   /** Grava uma linha; com ajuste pendente, usa o endpoint que guarda os preços de antes (FR-016). */
   async function salvar(id: string): Promise<boolean> {
     const estado = linhasRef.current[id];
     const site = textoParaCentavos(estado.textos.site);
     const mercadoLivre = textoParaCentavos(estado.textos.mercadoLivre);
     const shopee = textoParaCentavos(estado.textos.shopee);
+    const estoque = textoParaEstoque(estado.estoqueTexto);
 
     const erro =
       erroPrecoSite(site) ??
       erroPrecoMercadoLivre(mercadoLivre) ??
-      (shopee !== null && !(shopee > 0) ? "Preço da Shopee inválido. Use, por exemplo, 49,90." : null);
+      (shopee !== null && !(shopee > 0) ? "Preço da Shopee inválido. Use, por exemplo, 49,90." : null) ??
+      erroEstoque(estoque);
     if (erro) {
       atualizarLinha(id, { status: { tipo: "erro", texto: erro } });
       return false;
@@ -182,27 +198,55 @@ export default function ListaProdutosAdmin({
     if (shopee !== null) precosCanais.shopee = shopee;
 
     const comAjuste = estado.ajustePendente !== null;
+    const estoqueMudou = estoque !== estado.estoqueOriginal;
     atualizarLinha(id, { salvando: true, status: null });
-    const resposta = await fetch(comAjuste ? `/api/produtos/${id}/ajuste-evento` : `/api/produtos/${id}`, {
-      method: comAjuste ? "POST" : "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        comAjuste ? { percentual: estado.ajustePendente, preco: site, precosCanais } : { preco: site, precosCanais }
-      ),
-    }).catch(() => null);
 
-    if (!resposta) {
-      atualizarLinha(id, { salvando: false, status: { tipo: "erro", texto: "Sem conexão. Tente salvar de novo." } });
+    async function enviar(url: string, method: string, corpoEnvio: unknown) {
+      const r = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpoEnvio),
+      }).catch(() => null);
+      if (!r) return { ok: false as const, texto: "Sem conexão. Tente salvar de novo." };
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) return { ok: false as const, texto: mensagemErro(json, r.status) };
+      return { ok: true as const, produto: json.produto as Produto };
+    }
+
+    // O ajuste do evento tem endpoint próprio, que só mexe em preço. Quando a
+    // linha também mudou de estoque, o estoque vai num PATCH logo depois — é a
+    // única forma de salvar as duas coisas pelo mesmo botão.
+    const primeiro = comAjuste
+      ? await enviar(`/api/produtos/${id}/ajuste-evento`, "POST", {
+          percentual: estado.ajustePendente,
+          preco: site,
+          precosCanais,
+        })
+      : await enviar(`/api/produtos/${id}`, "PATCH", { preco: site, precosCanais, estoque });
+
+    if (!primeiro.ok) {
+      atualizarLinha(id, { salvando: false, status: { tipo: "erro", texto: primeiro.texto } });
       return false;
     }
-    const corpo = await resposta.json().catch(() => ({}));
-    if (!resposta.ok) {
-      atualizarLinha(id, { salvando: false, status: { tipo: "erro", texto: mensagemErro(corpo, resposta.status) } });
-      return false;
+
+    let produtoFinal = primeiro.produto;
+    if (comAjuste && estoqueMudou) {
+      const segundo = await enviar(`/api/produtos/${id}`, "PATCH", { estoque });
+      if (!segundo.ok) {
+        // O preço do evento já foi gravado; só o estoque falhou — a linha precisa dizer isso.
+        atualizarLinha(id, {
+          ...estadoDoProduto(produtoFinal),
+          ajustePendente: null,
+          salvando: false,
+          status: { tipo: "erro", texto: `Preço salvo, estoque não: ${segundo.texto}` },
+        });
+        return false;
+      }
+      produtoFinal = segundo.produto;
     }
 
     atualizarLinha(id, {
-      ...estadoDoProduto(corpo.produto as Produto),
+      ...estadoDoProduto(produtoFinal),
       ajustePendente: null,
       salvando: false,
       status: { tipo: "ok", texto: "Salvo" },
@@ -221,7 +265,7 @@ export default function ListaProdutosAdmin({
     setEmLote(false);
     setAviso(
       falhas === 0
-        ? { tipo: "ok", texto: "Preços salvos." }
+        ? { tipo: "ok", texto: "Alterações salvas." }
         : {
             tipo: "erro",
             texto: `${falhas} ${plural(falhas, "linha não foi salva", "linhas não foram salvas")}. Veja o erro em cada uma.`,
@@ -468,9 +512,24 @@ export default function ListaProdutosAdmin({
                   />
                 </td>
                 <td className={styles.colEstoque} data-rotulo="Estoque">
-                  <span className={produto.estoque === 0 ? adminStyles.badgeZero : adminStyles.badge}>
-                    {produto.estoque} un.
-                  </span>
+                  <div
+                    className={
+                      textoParaEstoque(linhas[produto.id].estoqueTexto) === 0
+                        ? `${styles.entrada} ${styles.entradaEstoque} ${styles.entradaEsgotado}`
+                        : `${styles.entrada} ${styles.entradaEstoque}`
+                    }
+                  >
+                    <input
+                      inputMode="numeric"
+                      value={linhas[produto.id].estoqueTexto}
+                      onChange={(e) => editarEstoque(produto.id, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void salvar(produto.id);
+                      }}
+                      aria-label={`Estoque de ${produto.nome}`}
+                    />
+                    <span className={styles.unidade}>un.</span>
+                  </div>
                 </td>
                 <td className={styles.colPrecos}>
                   <LinhaPrecoProduto
