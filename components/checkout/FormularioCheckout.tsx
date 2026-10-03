@@ -22,7 +22,7 @@ interface FormularioCheckoutProps {
 }
 
 export default function FormularioCheckout({ aoConcluir }: FormularioCheckoutProps) {
-  const { itens, limpar } = useCarrinho();
+  const { itens } = useCarrinho();
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroEstoque, setErroEstoque] = useState<ItemSemEstoque[] | null>(null);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -130,7 +130,7 @@ export default function FormularioCheckout({ aoConcluir }: FormularioCheckoutPro
       return;
     }
 
-    limpar();
+    // O carrinho só é esvaziado depois do pagamento confirmado (página do pedido).
     aoConcluir(dados.pedido.id);
   }
 

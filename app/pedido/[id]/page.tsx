@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buscarPedidoPorId, buscarProdutosPorIds } from "@/lib/pedidos/repository";
 import ResumoPedido from "@/components/checkout/ResumoPedido";
+import LimparCarrinhoPago from "@/components/carrinho/LimparCarrinhoPago";
 import PagamentoBrick from "@/components/pagamento/PagamentoBrick";
 import styles from "@/components/checkout/checkout.module.css";
 
@@ -33,6 +34,7 @@ export default async function PedidoConfirmacaoPage({
     <div className="container">
       <div className={styles.pagina}>
         <div className={styles.confirmacao}>
+          {pago && <LimparCarrinhoPago />}
           <span className={styles.confirmacaoBadge}>
             {pago ? "pagamento confirmado" : "pedido pendente de pagamento"}
           </span>

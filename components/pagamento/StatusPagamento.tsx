@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { StatusTentativaPagamento } from "@/lib/models/pedido";
 import styles from "./pagamento.module.css";
 
@@ -56,11 +59,44 @@ export default function StatusPagamento({ resultado, onTentarNovamente }: Status
         />
       )}
 
+      {resultado.status === "pendente" && resultado.qrCode && <PixCopiaECola codigo={resultado.qrCode} />}
+
       {onTentarNovamente && (resultado.status === "recusado" || resultado.status === "expirado") && (
         <button className={styles.botaoTentarNovamente} onClick={onTentarNovamente}>
           tentar novamente
         </button>
       )}
+    </div>
+  );
+}
+
+function PixCopiaECola({ codigo }: { codigo: string }) {
+  const [copiado, setCopiado] = useState(false);
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(codigo);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 3000);
+    } catch {
+      setCopiado(false);
+    }
+  }
+
+  return (
+    <div>
+      <p className={styles.statusTexto}>ou copie o código Pix e cole no app do seu banco:</p>
+      <textarea
+        readOnly
+        value={codigo}
+        rows={4}
+        style={{ width: "100%", wordBreak: "break-all", fontSize: "0.8rem" }}
+        onFocus={(e) => e.currentTarget.select()}
+        aria-label="Código Pix copia e cola"
+      />
+      <button type="button" className={styles.botaoTentarNovamente} onClick={() => void copiar()}>
+        {copiado ? "código copiado!" : "copiar código Pix"}
+      </button>
     </div>
   );
 }

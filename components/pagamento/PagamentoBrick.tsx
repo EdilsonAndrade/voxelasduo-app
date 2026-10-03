@@ -55,6 +55,14 @@ export default function PagamentoBrick({ pedidoId, valorTotalCentavos }: Pagamen
     }
   }
 
+  // Pix pendente: confere a cada 5s se o webhook já confirmou o pagamento.
+  const aguardandoPix = resultado?.status === "pendente" && !!resultado.qrCode;
+  useEffect(() => {
+    if (!aguardandoPix) return;
+    const timer = setInterval(() => router.refresh(), 5000);
+    return () => clearInterval(timer);
+  }, [aguardandoPix, router]);
+
   function tentarNovamente() {
     setResultado(null);
     setErroEnvio(null);
