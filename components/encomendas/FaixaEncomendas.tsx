@@ -24,7 +24,7 @@ export default function FaixaEncomendas() {
         alt=""
         width={1254}
         height={1254}
-        sizes="190px"
+        sizes="(max-width: 1100px) 32vw, 380px"
         className={styles.faixaMiniatura}
       />
     </section>
