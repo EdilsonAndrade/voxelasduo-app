@@ -491,188 +491,191 @@ export default function ListaProdutosAdmin({
         onCancelar={() => setConfirmarRestauracao(false)}
       />
 
-      <table className={styles.tabela}>
-        <thead>
-          <tr>
-            <th className={styles.colSelecao}>
-              <input
-                type="checkbox"
-                className={styles.caixa}
-                checked={todosMarcados}
-                onChange={alternarTodos}
-                aria-label="Marcar todos para a lista de preços"
-              />
-            </th>
-            <th className={styles.colFoto}>Foto</th>
-            <th>Produto</th>
-            <th>Categoria</th>
-            <th>Estoque</th>
-            <th>Preços</th>
-            <th>Canais</th>
-            <th>Destaques</th>
-            <th className={styles.colCusto}>Custo</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {produtos.map((produto) => {
-            const marcado = selecionados.has(produto.id);
-            const classes = [
-              styles.linha,
-              estaPublicado(produto) ? "" : styles.linhaRascunho,
-              marcado ? styles.linhaMarcada : "",
-              linhaAlterada(linhas[produto.id]) ? styles.linhaAlterada : "",
-            ].join(" ");
-            return (
-              <tr key={produto.id} className={classes}>
-                <td className={styles.colSelecao}>
-                  {produto.foto && (
-                    <a
-                      href={`${produto.foto}${produto.foto.includes("?") ? "&" : "?"}download=1`}
-                      download
-                      className={styles.btnBaixarFoto}
-                      title="Baixar foto para postar"
-                      aria-label={`Baixar foto de ${produto.nome}`}
-                    >
-                      ⬇
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={estaPublicado(produto)}
-                    aria-label={`${estaPublicado(produto) ? "Despublicar" : "Publicar"} ${produto.nome}`}
-                    title={estaPublicado(produto) ? "Publicado no site — clique para despublicar" : "Rascunho — clique para publicar no site"}
-                    className={`${styles.toggle} ${estaPublicado(produto) ? styles.toggleLigado : ""}`}
-                    disabled={publicando.has(produto.id)}
-                    onClick={() => void alternarPublicacao(produto)}
-                  />
-                  <input
-                    type="checkbox"
-                    className={styles.caixa}
-                    checked={marcado}
-                    onChange={() => alternar(produto.id)}
-                    aria-label={`Incluir ${produto.nome} na lista de preços`}
-                  />
-                </td>
-                <td className={styles.colFoto}>
-                  {produto.foto && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={produto.foto} alt={produto.nome} className={styles.miniatura} loading="lazy" />
-                  )}
-                </td>
-                <td className={styles.colNome}>
-                  {produto.nome}{" "}
-                  {!estaPublicado(produto) && (
-                    <span className={adminStyles.badgeZero} title="Rascunho: fora da loja até ser publicado">
-                      Rascunho
-                    </span>
-                  )}
-                </td>
-                <td className={styles.colCategoria} data-rotulo="Categoria">
-                  <TrocarCategoriaProduto
-                    produtoId={produto.id}
-                    produtoNome={produto.nome}
-                    categoriaInicial={produto.categoria}
-                    categorias={categorias}
-                  />
-                </td>
-                <td className={styles.colEstoque} data-rotulo="Estoque">
-                  <div
-                    className={
-                      textoParaEstoque(linhas[produto.id].estoqueTexto) === 0
-                        ? `${styles.entrada} ${styles.entradaEstoque} ${styles.entradaEsgotado}`
-                        : `${styles.entrada} ${styles.entradaEstoque}`
-                    }
-                  >
-                    <input
-                      inputMode="numeric"
-                      value={linhas[produto.id].estoqueTexto}
-                      onChange={(e) => editarEstoque(produto.id, e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") void salvar(produto.id);
-                      }}
-                      aria-label={`Estoque de ${produto.nome}`}
+      {/* A rolagem lateral, quando a janela é estreita, fica na tabela — nunca na página. */}
+      <div className={styles.rolagem}>
+        <table className={styles.tabela}>
+          <thead>
+            <tr>
+              <th className={styles.colSelecao}>
+                <input
+                  type="checkbox"
+                  className={styles.caixa}
+                  checked={todosMarcados}
+                  onChange={alternarTodos}
+                  aria-label="Marcar todos para a lista de preços"
+                />
+              </th>
+              <th className={styles.colFoto}>Foto</th>
+              <th>Produto</th>
+              <th>Categoria</th>
+              <th>Estoque</th>
+              <th>Preços</th>
+              <th>Canais</th>
+              <th>Destaques</th>
+              <th className={styles.colCusto}>Custo</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {produtos.map((produto) => {
+              const marcado = selecionados.has(produto.id);
+              const classes = [
+                styles.linha,
+                estaPublicado(produto) ? "" : styles.linhaRascunho,
+                marcado ? styles.linhaMarcada : "",
+                linhaAlterada(linhas[produto.id]) ? styles.linhaAlterada : "",
+              ].join(" ");
+              return (
+                <tr key={produto.id} className={classes}>
+                  <td className={styles.colSelecao}>
+                    {produto.foto && (
+                      <a
+                        href={`${produto.foto}${produto.foto.includes("?") ? "&" : "?"}download=1`}
+                        download
+                        className={styles.btnBaixarFoto}
+                        title="Baixar foto para postar"
+                        aria-label={`Baixar foto de ${produto.nome}`}
+                      >
+                        ⬇
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={estaPublicado(produto)}
+                      aria-label={`${estaPublicado(produto) ? "Despublicar" : "Publicar"} ${produto.nome}`}
+                      title={estaPublicado(produto) ? "Publicado no site — clique para despublicar" : "Rascunho — clique para publicar no site"}
+                      className={`${styles.toggle} ${estaPublicado(produto) ? styles.toggleLigado : ""}`}
+                      disabled={publicando.has(produto.id)}
+                      onClick={() => void alternarPublicacao(produto)}
                     />
-                    <span className={styles.unidade}>un.</span>
-                  </div>
-                </td>
-                <td className={styles.colPrecos}>
-                  <LinhaPrecoProduto
-                    produtoNome={produto.nome}
-                    estado={linhas[produto.id]}
-                    custoCentavos={produto.custoCentavos}
-                    onEditar={(campo, valor) => editar(produto.id, campo, valor)}
-                    onSalvar={() => void salvar(produto.id)}
-                  />
-                </td>
-                <td className={styles.colCanais}>
-                  {produto.mercadoLivrePermalink ? (
-                    <a
-                      href={produto.mercadoLivrePermalink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={adminStyles.badgeCanalMercadoLivre}
-                      title="Abrir anúncio no Mercado Livre"
+                    <input
+                      type="checkbox"
+                      className={styles.caixa}
+                      checked={marcado}
+                      onChange={() => alternar(produto.id)}
+                      aria-label={`Incluir ${produto.nome} na lista de preços`}
+                    />
+                  </td>
+                  <td className={styles.colFoto}>
+                    {produto.foto && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={produto.foto} alt={produto.nome} className={styles.miniatura} loading="lazy" />
+                    )}
+                  </td>
+                  <td className={styles.colNome}>
+                    {produto.nome}{" "}
+                    {!estaPublicado(produto) && (
+                      <span className={adminStyles.badgeZero} title="Rascunho: fora da loja até ser publicado">
+                        Rascunho
+                      </span>
+                    )}
+                  </td>
+                  <td className={styles.colCategoria} data-rotulo="Categoria">
+                    <TrocarCategoriaProduto
+                      produtoId={produto.id}
+                      produtoNome={produto.nome}
+                      categoriaInicial={produto.categoria}
+                      categorias={categorias}
+                    />
+                  </td>
+                  <td className={styles.colEstoque} data-rotulo="Estoque">
+                    <div
+                      className={
+                        textoParaEstoque(linhas[produto.id].estoqueTexto) === 0
+                          ? `${styles.entrada} ${styles.entradaEstoque} ${styles.entradaEsgotado}`
+                          : `${styles.entrada} ${styles.entradaEstoque}`
+                      }
                     >
-                      Mercado Livre ↗
-                    </a>
-                  ) : (
-                    <span className={adminStyles.badgeCanalShopeeEmBreve} title="Sem anúncio no Mercado Livre">
-                      Mercado Livre
-                    </span>
-                  )}{" "}
-                  {/* Sem link: a loja da Shopee ainda depende de vendas manuais para ser liberada. */}
-                  <span className={adminStyles.badgeCanalShopeeEmBreve} title="Loja da Shopee ainda sem link">
-                    Shopee
-                  </span>{" "}
-                  {produto.noCatalogoFacebook ? (
-                    <span className={adminStyles.badgeCanalFacebook} title="No catálogo do Facebook/Instagram">
-                      Facebook
-                    </span>
-                  ) : (
-                    <span
-                      className={adminStyles.badgeCanalShopeeEmBreve}
-                      title="Fora do catálogo do Facebook/Instagram"
+                      <input
+                        inputMode="numeric"
+                        value={linhas[produto.id].estoqueTexto}
+                        onChange={(e) => editarEstoque(produto.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void salvar(produto.id);
+                        }}
+                        aria-label={`Estoque de ${produto.nome}`}
+                      />
+                      <span className={styles.unidade}>un.</span>
+                    </div>
+                  </td>
+                  <td className={styles.colPrecos}>
+                    <LinhaPrecoProduto
+                      produtoNome={produto.nome}
+                      estado={linhas[produto.id]}
+                      custoCentavos={produto.custoCentavos}
+                      onEditar={(campo, valor) => editar(produto.id, campo, valor)}
+                      onSalvar={() => void salvar(produto.id)}
+                    />
+                  </td>
+                  <td className={styles.colCanais}>
+                    {produto.mercadoLivrePermalink ? (
+                      <a
+                        href={produto.mercadoLivrePermalink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={adminStyles.badgeCanalMercadoLivre}
+                        title="Abrir anúncio no Mercado Livre"
+                      >
+                        Mercado Livre ↗
+                      </a>
+                    ) : (
+                      <span className={adminStyles.badgeCanalShopeeEmBreve} title="Sem anúncio no Mercado Livre">
+                        Mercado Livre
+                      </span>
+                    )}{" "}
+                    {/* Sem link: a loja da Shopee ainda depende de vendas manuais para ser liberada. */}
+                    <span className={adminStyles.badgeCanalShopeeEmBreve} title="Loja da Shopee ainda sem link">
+                      Shopee
+                    </span>{" "}
+                    {produto.noCatalogoFacebook ? (
+                      <span className={adminStyles.badgeCanalFacebook} title="No catálogo do Facebook/Instagram">
+                        Facebook
+                      </span>
+                    ) : (
+                      <span
+                        className={adminStyles.badgeCanalShopeeEmBreve}
+                        title="Fora do catálogo do Facebook/Instagram"
+                      >
+                        Facebook
+                      </span>
+                    )}
+                  </td>
+                  <td className={styles.colDestaques}>
+                    <MarcarCarrosselProduto
+                      produtoId={produto.id}
+                      produtoNome={produto.nome}
+                      carrosseis={carrosseis}
+                      marcadosIniciais={produto.carrosseis}
+                    />
+                  </td>
+                  <td className={styles.colCusto} data-rotulo="Custo">
+                    {produto.custoCentavos === null ? (
+                      <span className={styles.semCusto} title="Custo de produção não configurado">
+                        —
+                      </span>
+                    ) : (
+                      <span className={styles.custo}>{formatarPreco(produto.custoCentavos)}</span>
+                    )}
+                  </td>
+                  <td className={styles.colAcoes}>
+                    <Link href={`/admin/produtos/${produto.id}/editar`} className={adminStyles.btnGhost}>
+                      editar
+                    </Link>{" "}
+                    <Link
+                      href={`/admin/produtos/novo?duplicarDe=${produto.id}`}
+                      className={adminStyles.btnGhost}
+                      title="Cria um novo produto com os mesmos dados e preços (sem fotos, estoque e anúncios)"
                     >
-                      Facebook
-                    </span>
-                  )}
-                </td>
-                <td className={styles.colDestaques}>
-                  <MarcarCarrosselProduto
-                    produtoId={produto.id}
-                    produtoNome={produto.nome}
-                    carrosseis={carrosseis}
-                    marcadosIniciais={produto.carrosseis}
-                  />
-                </td>
-                <td className={styles.colCusto} data-rotulo="Custo">
-                  {produto.custoCentavos === null ? (
-                    <span className={styles.semCusto} title="Custo de produção não configurado">
-                      —
-                    </span>
-                  ) : (
-                    <span className={styles.custo}>{formatarPreco(produto.custoCentavos)}</span>
-                  )}
-                </td>
-                <td className={styles.colAcoes}>
-                  <Link href={`/admin/produtos/${produto.id}/editar`} className={adminStyles.btnGhost}>
-                    editar
-                  </Link>{" "}
-                  <Link
-                    href={`/admin/produtos/novo?duplicarDe=${produto.id}`}
-                    className={adminStyles.btnGhost}
-                    title="Cria um novo produto com os mesmos dados e preços (sem fotos, estoque e anúncios)"
-                  >
-                    duplicar
-                  </Link>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                      duplicar
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <div className={styles.barraSelecao}>
         <label className={styles.marcarTodos}>

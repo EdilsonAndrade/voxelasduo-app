@@ -1,3 +1,15 @@
+/*
+ * Telas de lista do admin (produtos): a tabela tem dez colunas e não cabe nos
+ * 1180px do `.container` do site — nessas páginas o conteúdo usa quase toda a
+ * largura da janela, em vez de empurrar uma barra de rolagem na página inteira.
+ */
+.paginaLarga {
+  width: 100%;
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 0 1.75rem;
+}
+
 .bar {
   display: flex;
   justify-content: space-between;

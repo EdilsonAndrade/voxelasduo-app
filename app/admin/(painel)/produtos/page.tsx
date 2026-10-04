@@ -67,7 +67,7 @@ export default async function AdminProdutosPage({
   });
 
   return (
-    <div className="container">
+    <div className={styles.paginaLarga}>
       <div className={styles.bar}>
         <h1>Produtos cadastrados</h1>
         <Link href="/admin/produtos/novo" className={styles.btnPrimary}>

@@ -4,8 +4,26 @@
  * preço não salvo = faixa amarela à esquerda.
  */
 
+/*
+ * A tabela tem dez colunas: em janela estreita ela não cabe. A rolagem lateral
+ * fica aqui dentro, para a página não ganhar uma barra horizontal própria nem
+ * arrastar o cabeçalho e o painel do evento junto.
+ */
+.rolagem {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /*
+   * Só o eixo horizontal rola. No vertical, `clip` com margem larga deixa a
+   * miniatura ampliada no hover e o painel de carrosséis passarem por cima da
+   * tabela, como antes, sem criar uma segunda barra de rolagem.
+   */
+  overflow-y: clip;
+  overflow-clip-margin: 18rem;
+}
+
 .tabela {
   width: 100%;
+  min-width: 72rem;
   border-collapse: collapse;
   font-size: 0.92rem;
 }
@@ -18,12 +36,12 @@
   letter-spacing: 0.05em;
   color: var(--texto-soft);
   font-weight: 700;
-  padding: 0.6rem 1.15rem;
+  padding: 0.6rem 0.65rem;
   border-bottom: 2px solid var(--surface-line);
 }
 
 .tabela td {
-  padding: 0.7rem 1.15rem;
+  padding: 0.7rem 0.65rem;
   border-bottom: 1px solid var(--surface-line);
   vertical-align: middle;
 }
@@ -53,7 +71,7 @@
 }
 
 .colSelecao {
-  width: 8.5rem;
+  width: 7rem;
   white-space: nowrap;
   padding-right: 0 !important;
 }
@@ -152,6 +170,22 @@
   border-left: 1px solid var(--surface-line);
 }
 
+/*
+ * Canais e ações: cada selo/link em uma linha, inteiro. Sem isso a coluna fica
+ * estreita e quebra "Mercado Livre" no meio, como se fosse dois canais.
+ */
+.colAcoes {
+  white-space: nowrap;
+}
+
+.colCanais > a,
+.colCanais > span {
+  display: block;
+  width: fit-content;
+  white-space: nowrap;
+  margin-bottom: 0.2rem;
+}
+
 .custo {
   font-variant-numeric: tabular-nums;
   color: var(--texto-soft);
@@ -166,8 +200,8 @@
 
 .precos {
   display: grid;
-  grid-template-columns: repeat(3, minmax(6.75rem, 1fr)) auto;
-  gap: 0.35rem 0.75rem;
+  grid-template-columns: repeat(3, minmax(5.6rem, 1fr)) auto;
+  gap: 0.35rem 0.5rem;
   align-items: start;
 }
 
@@ -474,6 +508,16 @@
  * nome, e os preços ocupam a largura toda com Salvar embaixo.
  */
 @media (max-width: 768px) {
+  /* Em cartões nada estoura a largura: a rolagem lateral some (nos dois eixos,
+     senão `visible` em um só volta a virar `auto`). */
+  .rolagem {
+    overflow: visible;
+  }
+
+  .tabela {
+    min-width: 0;
+  }
+
   .tabela,
   .tabela tbody,
   .tabela tr,
