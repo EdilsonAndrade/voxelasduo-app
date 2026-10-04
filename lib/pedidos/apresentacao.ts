@@ -1,8 +1,11 @@
 import type { CanalOrigem, Pedido, StatusPedido } from "@/lib/models/pedido";
 import type { Produto } from "@/lib/models/produto";
+import { codigoPedido } from "./numero";
 
 export interface PedidoResumo {
   id: string;
+  /** Código amigável para exibir (ex.: 1042). */
+  codigo: string;
   canalOrigem: CanalOrigem;
   status: StatusPedido;
   cliente: { nome: string; email: string };
@@ -23,6 +26,8 @@ export interface ItemPedidoDetalhe {
 
 export interface PedidoDetalhado {
   id: string;
+  /** Código amigável para exibir (ex.: 1042). */
+  codigo: string;
   canalOrigem: CanalOrigem;
   status: StatusPedido;
   cliente: Pedido["cliente"];
@@ -57,6 +62,7 @@ export function paraPedidoResumo(pedido: Pedido, produtos: Map<string, Produto>)
 
   return {
     id: pedido._id!.toString(),
+    codigo: codigoPedido(pedido),
     canalOrigem: pedido.canalOrigem,
     status: pedido.status,
     cliente: { nome: pedido.cliente.nome, email: pedido.cliente.email },
@@ -74,6 +80,7 @@ export function paraPedidoDetalhado(
 ): PedidoDetalhado {
   return {
     id: pedido._id!.toString(),
+    codigo: codigoPedido(pedido),
     canalOrigem: pedido.canalOrigem,
     status: pedido.status,
     cliente: pedido.cliente,

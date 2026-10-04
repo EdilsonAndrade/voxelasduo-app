@@ -9,6 +9,7 @@ import {
   type StatusPedido,
 } from "@/lib/models/pedido";
 import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
+import { proximoNumeroPedido } from "./numero";
 import { ErroEstoque, validarEstoque } from "./estoque";
 
 export const PEDIDOS_POR_PAGINA = 20;
@@ -182,6 +183,7 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
 
   const agora = new Date();
   const pedido: Omit<Pedido, "_id"> = {
+    numero: await proximoNumeroPedido(),
     itens: itensDetalhados.map((item) => ({
       produtoId: new ObjectId(item.produtoId),
       quantidade: item.quantidade,

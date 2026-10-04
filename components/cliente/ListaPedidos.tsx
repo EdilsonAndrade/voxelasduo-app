@@ -73,6 +73,7 @@ export default function ListaPedidos({ pedidos }: { pedidos: PedidoDetalhado[] }
         <li key={pedido.id} className={styles.pedidoCard}>
           <div className={styles.pedidoTopo}>
             <span className={styles.badgeCanal}>{LABEL_CANAL[pedido.canalOrigem]}</span>
+            <span className={styles.pedidoData}>Pedido #{pedido.codigo}</span>
             <span className={styles.pedidoData}>{formatarData(pedido.criadoEm)}</span>
           </div>
 

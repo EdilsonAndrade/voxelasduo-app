@@ -68,6 +68,8 @@ export interface RastreioPedido {
 
 export interface Pedido {
   _id?: ObjectId;
+  /** Número sequencial amigável (ex.: 1042). Ausente em pedidos antigos. */
+  numero?: number;
   itens: ItemPedido[];
   cliente: ClientePedido;
   status: StatusPedido;

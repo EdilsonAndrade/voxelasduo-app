@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pedido } from "@/lib/models/pedido";
+import { codigoPedido } from "@/lib/pedidos/numero";
 
 const { send } = vi.hoisted(() => ({ send: vi.fn() }));
 
@@ -162,7 +163,7 @@ describe("enviarConfirmacaoPedido", () => {
     expect(send).toHaveBeenCalledWith(
       expect.objectContaining({
         to: pedidoBase.cliente.email,
-        subject: expect.stringContaining(pedidoBase._id!.toString()),
+        subject: expect.stringContaining("#" + codigoPedido(pedidoBase)),
         html: expect.stringContaining("Voxel Rosa P"),
         text: expect.stringContaining("Voxel Rosa P"),
       })
@@ -239,7 +240,7 @@ describe("notificarAdminVendaSite", () => {
         from: "Voxelas Duo <naoresponda@voxelasduo.com.br>",
         to: ["admin@voxelasduo.com", "voxelasduo@gmail.com"],
         replyTo: "joao@exemplo.com",
-        subject: expect.stringContaining(pedidoSite._id!.toString()),
+        subject: expect.stringContaining("#" + codigoPedido(pedidoSite)),
       })
     );
     const { text } = send.mock.calls[0][0] as { text: string };

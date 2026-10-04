@@ -209,6 +209,7 @@ export default function PedidosLista({
       <thead>
         <tr>
           <th>Canal</th>
+          <th>Pedido</th>
           <th>Cliente</th>
           <th>Valor</th>
           <th>Status</th>
@@ -224,6 +225,13 @@ export default function PedidosLista({
                 <span className={CLASSE_BADGE_CANAL[pedido.canalOrigem]}>
                   {LABEL_CANAL[pedido.canalOrigem]}
                 </span>
+              </td>
+              <td>
+                <strong>#{pedido.codigo}</strong>
+                <br />
+                <small title="Código interno (hash) do pedido" style={{ wordBreak: "break-all" }}>
+                  {pedido.id}
+                </small>
               </td>
               <td>
                 {pedido.cliente.nome}
@@ -272,7 +280,7 @@ export default function PedidosLista({
             </tr>
             {pedidoExpandidoId === pedido.id && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   {carregandoDetalhe && <p>Carregando...</p>}
                   {detalhe && (
                     <div>

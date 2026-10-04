@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import type { Encomenda } from "@/lib/models/encomenda";
 import type { Pedido } from "@/lib/models/pedido";
 import { buscarProdutosPorIds } from "@/lib/pedidos/repository";
+import { codigoPedido } from "@/lib/pedidos/numero";
 import { renderEmailLayout } from "@/lib/email/templates";
 import { urlBaseSite } from "@/lib/site/url";
 
@@ -168,7 +169,7 @@ export async function notificarAdminVendaExterna(pedido: Pedido): Promise<void> 
  * pedido — best-effort, mesmo tratamento das demais funções deste módulo.
  */
 export async function enviarConfirmacaoPedido(pedido: Pedido): Promise<void> {
-  const numeroPedido = pedido._id?.toString() ?? "";
+  const numeroPedido = codigoPedido(pedido);
 
   const produtos = await buscarProdutosPorIds(pedido.itens.map((item) => item.produtoId.toString()));
   const itensTexto = pedido.itens
@@ -221,7 +222,7 @@ export async function enviarConfirmacaoPedido(pedido: Pedido): Promise<void> {
  * Best-effort: falha de envio é logada e nunca lança.
  */
 export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
-  const numeroPedido = pedido._id?.toString() ?? "";
+  const numeroPedido = codigoPedido(pedido);
   const { cliente } = pedido;
   const { endereco } = cliente;
 
@@ -311,7 +312,7 @@ export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
  * Best-effort: falha de envio é logada e nunca lança.
  */
 export async function enviarPedidoCriadoCliente(pedido: Pedido): Promise<void> {
-  const numeroPedido = pedido._id?.toString() ?? "";
+  const numeroPedido = codigoPedido(pedido);
   const produtos = await buscarProdutosPorIds(pedido.itens.map((item) => item.produtoId.toString()));
   const itens = pedido.itens.map((item) => ({
     nome: produtos.get(item.produtoId.toString())?.nome ?? "Produto",
@@ -319,7 +320,7 @@ export async function enviarPedidoCriadoCliente(pedido: Pedido): Promise<void> {
     subtotal: formatarValorEmReais(item.precoUnitario * item.quantidade),
   }));
   const valorTotalTexto = formatarValorEmReais(pedido.valorTotal);
-  const linkPagamento = `${urlBaseSite()}/pedido/${numeroPedido}`;
+  const linkPagamento = `${urlBaseSite()}/pedido/${pedido._id?.toString() ?? ""}`;
 
   const text = [
     `Recebemos seu pedido #${numeroPedido}, mas o pagamento ainda está pendente.`,
@@ -364,7 +365,7 @@ export async function enviarPedidoCriadoCliente(pedido: Pedido): Promise<void> {
  * envio é logada e nunca lança.
  */
 export async function notificarAdminPedidoCriado(pedido: Pedido): Promise<void> {
-  const numeroPedido = pedido._id?.toString() ?? "";
+  const numeroPedido = codigoPedido(pedido);
   const { cliente } = pedido;
   const produtos = await buscarProdutosPorIds(pedido.itens.map((item) => item.produtoId.toString()));
   const itens = pedido.itens.map((item) => ({

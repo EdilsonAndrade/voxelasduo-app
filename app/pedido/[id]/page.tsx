@@ -4,6 +4,7 @@ import { buscarPedidoPorId, buscarProdutosPorIds } from "@/lib/pedidos/repositor
 import ResumoPedido from "@/components/checkout/ResumoPedido";
 import LimparCarrinhoPago from "@/components/carrinho/LimparCarrinhoPago";
 import PagamentoBrick from "@/components/pagamento/PagamentoBrick";
+import { codigoPedido } from "@/lib/pedidos/numero";
 import styles from "@/components/checkout/checkout.module.css";
 
 export default async function PedidoConfirmacaoPage({
@@ -38,7 +39,7 @@ export default async function PedidoConfirmacaoPage({
           <span className={styles.confirmacaoBadge}>
             {pago ? "pagamento confirmado" : "pedido pendente de pagamento"}
           </span>
-          <h1 className={styles.titulo}>{pago ? "Pagamento aprovado!" : "Pedido criado!"}</h1>
+          <h1 className={styles.titulo}>{pago ? "Pagamento aprovado!" : "Pedido criado!"} <small>#{codigoPedido(pedido)}</small></h1>
           <p className={styles.confirmacaoTexto}>
             {pago
               ? "recebemos a confirmação do seu pagamento. seu pedido já está sendo preparado."
