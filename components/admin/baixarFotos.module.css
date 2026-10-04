@@ -1,0 +1,164 @@
+/*
+ * Botão "baixar fotos" da lista de produtos e a janela com as miniaturas.
+ * O botão fica do tamanho do toggle de publicação ao lado — alvo de clique
+ * confortável, com a quantidade de fotos escrita nele.
+ */
+
+.gatilho {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  height: 2.2rem;
+  padding: 0 0.5rem;
+  margin-right: 0.35rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--roxo);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.gatilho:hover {
+  border-color: var(--roxo);
+  background: color-mix(in srgb, var(--roxo) 8%, var(--surface));
+}
+
+.contagem {
+  font-size: 0.78rem;
+  color: var(--texto-soft);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(17, 17, 17, 0.45);
+}
+
+.card {
+  width: 100%;
+  max-width: 920px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 20px;
+  box-shadow: 0 20px 45px rgba(17, 17, 17, 0.18);
+}
+
+.topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.titulo {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--preto);
+}
+
+.ajuda {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--texto-soft);
+}
+
+.btnFechar {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.88rem;
+  border-radius: 999px;
+  padding: 0.55rem 1.2rem;
+  border: 2px solid var(--surface-line);
+  background: transparent;
+  color: var(--preto);
+  cursor: pointer;
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.9rem;
+}
+
+.item {
+  display: block;
+  border: 2px solid var(--surface-line);
+  border-radius: 14px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  background: var(--surface);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.item:hover {
+  border-color: var(--roxo);
+  transform: translateY(-2px);
+}
+
+.item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: var(--creme);
+}
+
+.rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ordem {
+  color: var(--texto-soft);
+}
+
+.acao {
+  color: var(--roxo);
+}
+
+.itemBaixado {
+  border-color: var(--roxo);
+}
+
+.itemBaixado .acao {
+  color: #2f8f52;
+}
+
+@media (max-width: 768px) {
+  .grade {
+    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  }
+
+  .card {
+    padding: 1.1rem;
+    max-height: 90vh;
+  }
+
+  .gatilho {
+    height: 2.6rem;
+    padding: 0 0.7rem;
+  }
+}

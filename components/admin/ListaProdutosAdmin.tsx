@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import BaixarFotosProduto from "./BaixarFotosProduto";
 import ConfirmModal from "./ConfirmModal";
 import LinhaPrecoProduto, {
   linhaAlterada,
@@ -548,9 +549,9 @@ export default function ListaProdutosAdmin({
                     />
                   </td>
                   <td className={styles.colFoto}>
-                    {produto.foto && (
+                    {produto.fotos[0] && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={produto.foto} alt={produto.nome} className={styles.miniatura} loading="lazy" />
+                      <img src={produto.fotos[0]} alt={produto.nome} className={styles.miniatura} loading="lazy" />
                     )}
                   </td>
                   <td className={styles.colNome}>
