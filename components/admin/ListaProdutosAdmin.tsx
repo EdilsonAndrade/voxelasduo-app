@@ -31,8 +31,8 @@ import styles from "./listaProdutos.module.css";
 export interface ProdutoLinha {
   id: string;
   nome: string;
-  /** Primeira foto do produto (miniatura) — `null` sem fotos. */
-  foto: string | null;
+  /** Fotos do produto, na ordem do cadastro — a primeira é a miniatura/capa. */
+  fotos: string[];
   categoria: string;
   estoque: number;
   precoCentavos: number;
@@ -528,17 +528,7 @@ export default function ListaProdutosAdmin({
               return (
                 <tr key={produto.id} className={classes}>
                   <td className={styles.colSelecao}>
-                    {produto.foto && (
-                      <a
-                        href={`${produto.foto}${produto.foto.includes("?") ? "&" : "?"}download=1`}
-                        download
-                        className={styles.btnBaixarFoto}
-                        title="Baixar foto para postar"
-                        aria-label={`Baixar foto de ${produto.nome}`}
-                      >
-                        ⬇
-                      </a>
-                    )}
+                    <BaixarFotosProduto produtoNome={produto.nome} fotos={produto.fotos} />
                     <button
                       type="button"
                       role="switch"
