@@ -40,6 +40,18 @@ export function rotaExigeAutenticacao(pathname: string, method: string): Veredic
     return { protegida: true, tipoResposta: "json" };
   }
 
+  // Importação do histórico da Bambu Lab pelo Vercel Cron (EDI-127): validada
+  // pelo `CRON_SECRET` dentro da própria rota, nunca por sessão — exigir
+  // sessão aqui mataria o cron. O disparo manual do painel é outra rota
+  // (`/api/producao/importar-agora`), essa sim protegida.
+  if (pathname === "/api/producao/importar") {
+    return { protegida: false };
+  }
+
+  if (pathname.startsWith("/api/producao/")) {
+    return { protegida: true, tipoResposta: "json" };
+  }
+
   // Ações do admin sobre perguntas/reclamações/mensagens do Mercado Livre (EDI-98)
   // — nunca chamadas pelo Mercado Livre, diferente de /api/webhooks/mercado-livre/*.
   if (pathname.startsWith("/api/admin/")) {

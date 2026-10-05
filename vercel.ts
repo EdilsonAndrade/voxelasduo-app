@@ -14,5 +14,10 @@ export const config: VercelConfig = {
   crons: [
     { path: "/api/estoque/sincronizar", schedule: "0 3 * * *" },
     { path: "/api/avaliacoes/importar", schedule: "0 4 * * *" },
+    // Importa o histórico de impressão da Bambu Lab (EDI-127). Às 05:00 para
+    // não concorrer com os dois jobs acima — o plano Hobby só permite cron
+    // diário, e a importação é incremental: ela para na primeira página cujas
+    // impressões já estão no banco.
+    { path: "/api/producao/importar", schedule: "0 5 * * *" },
   ],
 };

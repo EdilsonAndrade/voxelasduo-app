@@ -87,6 +87,7 @@ export const config = {
     "/api/produtos/:path*",
     "/api/pedidos/:path*",
     "/api/admin/:path*",
+    "/api/producao/:path*",
     "/minha-conta/:path*",
     "/api/clientes/:path*",
   ],

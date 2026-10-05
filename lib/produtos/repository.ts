@@ -258,6 +258,25 @@ export async function removerProduto(id: string): Promise<Produto | null> {
   return resultado ?? null;
 }
 
+/**
+ * Soma `quantidade` ao estoque — entrada de produção (EDI-127). Separada de
+ * `abaterEstoqueAtomico` porque a entrada não tem condição de suficiência: a
+ * idempotência de quem chama é garantida no saldo da impressão, não aqui.
+ */
+export async function incrementarEstoque(
+  id: string,
+  quantidade: number
+): Promise<Produto | null> {
+  if (!ObjectId.isValid(id)) return null;
+
+  const colecao = await colecaoProdutos();
+  return colecao.findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $inc: { estoque: quantidade }, $set: { atualizadoEm: new Date() } },
+    { returnDocument: "after" }
+  );
+}
+
 export interface ResultadoAbatimentoEstoque {
   sucesso: boolean;
   motivoFalha?: "estoque_insuficiente" | "produto_removido";

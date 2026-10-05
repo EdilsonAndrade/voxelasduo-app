@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/028-lista-precos-evento/plan.md
+at specs/029-producao-bambu/plan.md
 
 ## RULES
 

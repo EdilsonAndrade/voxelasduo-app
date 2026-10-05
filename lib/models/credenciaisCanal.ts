@@ -12,3 +12,30 @@ export interface CredencialCanal {
   expiraEm: Date;
   atualizadoEm: Date;
 }
+
+export const CREDENCIAL_BAMBU_ID = "bambu_lab";
+
+/**
+ * Acesso à nuvem da Bambu Lab (EDI-127), na mesma coleção de credenciais de
+ * serviço externo. Não há `refreshToken` útil: a API não oficial responde 401
+ * no endpoint de renovação, então o token vale ~3 meses e a reconexão é
+ * manual, feita pelo vendedor no painel (research.md #1).
+ */
+export interface CredencialBambuLab {
+  _id: typeof CREDENCIAL_BAMBU_ID;
+  accessToken: string;
+  /** Identificador do usuário na nuvem — guardado para a fase de tempo real (MQTT). */
+  userId?: string;
+  /** Estimado em emissão + 90 dias, já que a origem não informa a validade. */
+  expiraEm: Date;
+  /**
+   * Primeira conexão. Impressão que terminou antes disso é histórico e nunca
+   * oferece lançamento de estoque — preservado nas reconexões seguintes
+   * (research.md #6).
+   */
+  ativadoEm: Date;
+  atualizadoEm: Date;
+}
+
+/** Estado derivado da credencial, nunca persistido. */
+export type EstadoConexao = "ausente" | "ativa" | "expirada";

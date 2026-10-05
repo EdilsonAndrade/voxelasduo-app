@@ -1,0 +1,589 @@
+/*
+ * Área de produção do admin (EDI-127). Três decisões de layout que valem
+ * explicação:
+ *
+ * 1. A ordem dos blocos é por urgência, não pela ordem lógica: estado da
+ *    conexão (uma linha fina quando está tudo bem), fila de mapeamento (só
+ *    aparece quando há pendência), apuração de custo (o objetivo) e, por
+ *    último, o histórico de impressões (consulta).
+ * 2. A comparação apurado × cadastrado usa uma régua com duas marcas em vez
+ *    de dois números soltos — ver `.regua`.
+ * 3. Avisos são selos (`.selo*`) com significado fixo, nunca cor solta.
+ */
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  padding-bottom: 3rem;
+}
+
+.bloco {
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  border-radius: 14px;
+  padding: 1.1rem 1.2rem;
+}
+
+.tituloBloco {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  margin: 0 0 0.2rem;
+}
+
+.subtituloBloco {
+  color: var(--texto-soft);
+  font-size: 0.86rem;
+  margin: 0 0 1rem;
+}
+
+/* ----------------------------------------------------------- conexão */
+
+/*
+ * Conexão ativa é só uma linha: ela importa quando quebra. O ponto à esquerda
+ * é o estado, e o bloco só ganha corpo (formulário) quando há o que resolver.
+ */
+.barraConexao {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font-size: 0.9rem;
+}
+
+.ponto {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+.pontoAtiva {
+  background: var(--turquesa);
+}
+
+.pontoExpirada {
+  background: var(--amarelo);
+}
+
+.pontoAusente {
+  background: var(--texto-soft);
+}
+
+.conexaoInfo {
+  color: var(--texto-soft);
+  font-size: 0.82rem;
+}
+
+.formConexao {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: flex-end;
+  margin-top: 0.9rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 11rem;
+  flex: 1 1 11rem;
+}
+
+.campoCurto {
+  flex: 0 0 9rem;
+  min-width: 9rem;
+}
+
+.rotulo {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: var(--texto-soft);
+}
+
+.entrada {
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--surface-line);
+  border-radius: 9px;
+  background: var(--creme);
+  color: var(--preto);
+  min-width: 0;
+}
+
+.entrada:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------ botões */
+
+.botao {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.52rem 1rem;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: var(--roxo);
+  color: #fff;
+  cursor: pointer;
+}
+
+.botao:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+
+.botao:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.botaoSecundario {
+  background: transparent;
+  color: var(--preto);
+  border-color: var(--surface-line);
+}
+
+.botaoTexto {
+  background: none;
+  border: none;
+  color: var(--roxo);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.84rem;
+  padding: 0.2rem 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ------------------------------------------------------------- avisos */
+
+/*
+ * Erro mostra sempre a mensagem real da origem, com o status HTTP — nada de
+ * "algo deu errado" (regra do projeto).
+ */
+.erro {
+  margin-top: 0.8rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 9px;
+  border-left: 4px solid var(--rosa);
+  background: color-mix(in srgb, var(--rosa) 10%, transparent);
+  font-size: 0.88rem;
+}
+
+.ok {
+  margin-top: 0.8rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 9px;
+  border-left: 4px solid var(--turquesa);
+  background: color-mix(in srgb, var(--turquesa) 12%, transparent);
+  font-size: 0.88rem;
+}
+
+.vazio {
+  color: var(--texto-soft);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------- selos */
+
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.seloParcial {
+  background: color-mix(in srgb, var(--amarelo) 35%, transparent);
+  color: var(--preto);
+}
+
+/* Amostra pequena: contorno tracejado = "ainda não é conclusão". */
+.seloAmostra {
+  border: 1px dashed var(--texto-soft);
+  color: var(--texto-soft);
+}
+
+.seloHistorico {
+  background: color-mix(in srgb, var(--texto-soft) 18%, transparent);
+  color: var(--texto-soft);
+}
+
+.seloFalha {
+  background: color-mix(in srgb, var(--rosa) 18%, transparent);
+  color: var(--preto);
+}
+
+.seloConcluida {
+  background: color-mix(in srgb, var(--turquesa) 20%, transparent);
+  color: var(--preto);
+}
+
+.seloSemVinculo {
+  background: color-mix(in srgb, var(--laranja) 18%, transparent);
+  color: var(--preto);
+}
+
+/* ------------------------------------------- fila de mapeamento */
+
+/*
+ * Bloco de ação: é a fila de trabalho do vendedor. Fundo creme e borda
+ * amarela o separam dos blocos de consulta. Não é renderizado quando a fila
+ * está vazia.
+ */
+.blocoPendentes {
+  background: var(--creme);
+  border: 1px solid color-mix(in srgb, var(--amarelo) 55%, var(--surface-line));
+  border-radius: 14px;
+  padding: 1.1rem 1.2rem;
+}
+
+.pendente {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--surface-line);
+}
+
+.pendente:first-of-type {
+  border-top: none;
+}
+
+.pendenteNome {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.nomeArquivo {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  word-break: break-word;
+}
+
+.pendenteDados {
+  color: var(--texto-soft);
+  font-size: 0.8rem;
+}
+
+/* --------------------------------------------------------- apuração */
+
+.produto {
+  padding: 1rem 0;
+  border-top: 1px solid var(--surface-line);
+}
+
+.produto:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.produtoTopo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.8rem;
+}
+
+.produtoNome {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.unidades {
+  color: var(--texto-soft);
+  font-size: 0.85rem;
+}
+
+/*
+ * A régua: o apurado é o número grande; o cadastrado fica abaixo como
+ * referência; a barra mostra a distância entre os dois. É o único elemento
+ * expressivo da tela, por isso tudo em volta é discreto.
+ */
+.regua {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 0.4rem 1.2rem;
+  margin: 0.8rem 0 0.6rem;
+}
+
+.valorApurado {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.valorApuradoRotulo,
+.valorCadastradoRotulo {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-soft);
+  font-weight: 700;
+}
+
+.valorCadastrado {
+  font-size: 1.05rem;
+  color: var(--texto-soft);
+}
+
+.chipDiferenca {
+  justify-self: start;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+/* Apurado abaixo do cadastrado: o custo real é menor do que você pensava. */
+.chipAbaixo {
+  background: color-mix(in srgb, var(--turquesa) 22%, transparent);
+}
+
+/* Apurado acima: o cadastro está subestimando o custo. */
+.chipAcima {
+  background: color-mix(in srgb, var(--rosa) 20%, transparent);
+}
+
+.metricas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.4rem;
+  font-size: 0.86rem;
+  color: var(--texto-soft);
+}
+
+.metricaValor {
+  color: var(--preto);
+  font-weight: 700;
+}
+
+.partes {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.parte {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.8rem;
+  color: var(--texto-soft);
+}
+
+.parteNome {
+  color: var(--preto);
+  font-weight: 700;
+  min-width: 7rem;
+}
+
+.acoesProduto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+/* --------------------------------------------------- lista de impressões */
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+/* A tabela tem oito colunas: a rolagem lateral fica contida aqui, para a
+ * página não ganhar uma barra horizontal própria (mesma decisão da EDI-126). */
+.rolagem {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.tabela {
+  width: 100%;
+  min-width: 60rem;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabela th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texto-soft);
+  font-weight: 700;
+  padding: 0.55rem 0.6rem;
+  border-bottom: 2px solid var(--surface-line);
+}
+
+.tabela td {
+  padding: 0.6rem;
+  border-bottom: 1px solid var(--surface-line);
+  vertical-align: middle;
+}
+
+/* Histórico: esmaecido porque não há ação possível — o estoque já o reflete. */
+.linhaHistorico td {
+  opacity: 0.68;
+}
+
+.miniatura {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 7px;
+  object-fit: cover;
+  background: var(--creme);
+  border: 1px solid var(--surface-line);
+}
+
+.semMiniatura {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 7px;
+  background: var(--creme);
+  border: 1px dashed var(--surface-line);
+}
+
+.celulaNome {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.produtoVinculado {
+  font-size: 0.8rem;
+  color: var(--texto-soft);
+}
+
+.formLancar {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.entradaQuantidade {
+  font: inherit;
+  width: 3.6rem;
+  font-size: 0.86rem;
+  padding: 0.35rem 0.4rem;
+  border: 1px solid var(--surface-line);
+  border-radius: 7px;
+  background: var(--creme);
+  color: var(--preto);
+}
+
+.botaoLancar {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.38rem 0.7rem;
+  border-radius: 7px;
+  border: 1px solid var(--turquesa);
+  background: color-mix(in srgb, var(--turquesa) 16%, transparent);
+  color: var(--preto);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.botaoLancar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  font-size: 0.86rem;
+  color: var(--texto-soft);
+}
+
+/* ------------------------------------------------------------- mobile */
+
+/*
+ * No celular a tabela vira cartões: cada linha é um cartão com rótulo à
+ * esquerda e valor à direita, sem rolagem horizontal.
+ */
+@media (max-width: 768px) {
+  .rolagem {
+    overflow-x: visible;
+  }
+
+  .tabela,
+  .tabela tbody,
+  .tabela tr,
+  .tabela td {
+    display: block;
+    min-width: 0;
+    width: auto;
+  }
+
+  .tabela thead {
+    display: none;
+  }
+
+  .tabela tr {
+    background: var(--surface);
+    border: 1px solid var(--surface-line);
+    border-radius: 12px;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .tabela td {
+    border: none;
+    padding: 0.25rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .tabela td::before {
+    content: attr(data-rotulo);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    color: var(--texto-soft);
+  }
+
+  .regua {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .campo,
+  .campoCurto {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
