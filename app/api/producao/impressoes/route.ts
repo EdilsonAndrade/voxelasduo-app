@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     produtoId: searchParams.get("produtoId") ?? undefined,
     impressoraId: searchParams.get("impressoraId") ?? undefined,
     resultado:
-      resultado === "concluida" || resultado === "interrompida"
+      resultado === "concluida" || resultado === "interrompida" || resultado === "em_andamento"
         ? (resultado as ResultadoImpressao)
         : undefined,
     vinculo: vinculo === "comVinculo" || vinculo === "semVinculo" ? vinculo : undefined,

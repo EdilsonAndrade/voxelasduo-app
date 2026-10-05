@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import FotoPlaca from "./FotoPlaca";
 import styles from "./producao.module.css";
 
 export interface ProdutoOpcao {
@@ -106,22 +107,13 @@ function LinhaPendente({
       {/*
         A miniatura da impressão mais recente deste nome: muitos títulos vêm
         do perfil de fatiamento ("0.2mm layer, 2 walls...") e não dizem nada
-        sobre a peça — a foto da placa é o que permite reconhecê-la. Abre em
-        tamanho cheio numa aba nova.
+        sobre a peça — a foto da placa é o que permite reconhecê-la.
       */}
-      {pendente.coverUrl ? (
-        <a
-          href={pendente.coverUrl}
-          target="_blank"
-          rel="noreferrer"
-          title="Abrir a foto da placa"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={styles.miniaturaPendente} src={pendente.coverUrl} alt="" loading="lazy" />
-        </a>
-      ) : (
-        <span className={styles.miniaturaPendente} aria-hidden="true" />
-      )}
+      <FotoPlaca
+        url={pendente.coverUrl}
+        nome={pendente.nomeArquivo}
+        className={styles.miniaturaPendente}
+      />
 
       <div className={styles.pendenteNome}>
         <div className={styles.nomeArquivo}>{pendente.nomeArquivo}</div>

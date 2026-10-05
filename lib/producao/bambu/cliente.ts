@@ -46,7 +46,8 @@ export interface TaskBambu {
   weight?: number;
   length?: number;
   costTime?: number;
-  material?: string;
+  /** Em algumas respostas vem como objeto, não como texto — ver `textoDeMaterial`. */
+  material?: unknown;
   deviceId?: string;
   deviceName?: string;
   amsDetailMapping?: {
@@ -56,8 +57,8 @@ export interface TaskBambu {
     sourceColor?: string;
     targetColor?: string;
     filamentId?: string;
-    filamentType?: string;
-    targetFilamentType?: string;
+    filamentType?: unknown;
+    targetFilamentType?: unknown;
     weight?: number;
   }[];
 }

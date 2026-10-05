@@ -218,6 +218,19 @@ describe("impressões que não contam como peça", () => {
     expect(a.unidadesAcabadas).toBe(12); // continua contando como produção
   });
 
+  it("impressão em andamento não conta como peça nem como falha", () => {
+    const a = apurarProduto(
+      produto(),
+      [vinculo()],
+      [impressao(), impressao({ resultado: "em_andamento", gramas: 400 })]
+    );
+
+    expect(a.unidadesAcabadas).toBe(6); // só a concluída
+    expect(a.amostra).toBe(1); // a que ainda roda fica fora da amostra
+    expect(a.taxaFalhaObservada).toBe(0);
+    expect(a.gramasPerdidosEmFalhas).toBe(0);
+  });
+
   it("produto sem custo cadastrado não tem custo apurado, mas tem produção", () => {
     const semCusto = { ...produto(), custoProducao: undefined } as Produto;
     const a = apurarProduto(semCusto, [vinculo()], [impressao()]);

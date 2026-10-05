@@ -46,9 +46,34 @@ describe("mapearTask", () => {
     expect(impressao.quantidadePerdida).toBe(0);
   });
 
-  it("trata status diferente de 2 como interrompida", () => {
+  it("trata status 3 como interrompida", () => {
     const impressao = mapearTask({ ...taskConcluida, status: 3 }, ATIVADO_EM)!;
     expect(impressao.resultado).toBe("interrompida");
+  });
+
+  it("trata status desconhecido como em andamento, nunca como falha", () => {
+    for (const status of [1, 4, undefined]) {
+      const impressao = mapearTask({ ...taskConcluida, status }, ATIVADO_EM)!;
+      expect(impressao.resultado).toBe("em_andamento");
+    }
+  });
+
+  it("converte material em objeto para texto, em vez de [object Object]", () => {
+    const impressao = mapearTask(
+      { ...taskConcluida, material: { name: "PLA Basic" } as unknown },
+      ATIVADO_EM
+    )!;
+
+    expect(impressao.material).toBe("PLA Basic");
+  });
+
+  it("ignora material em formato que não dá para ler", () => {
+    const impressao = mapearTask(
+      { ...taskConcluida, material: { id: 7 } as unknown, amsDetailMapping: [] },
+      ATIVADO_EM
+    )!;
+
+    expect(impressao.material).toBeUndefined();
   });
 
   it("sem endTime não calcula duração, mas ainda grava a impressão", () => {

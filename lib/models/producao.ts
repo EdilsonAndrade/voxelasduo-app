@@ -5,8 +5,12 @@ export const VINCULOS_PRODUCAO_COLLECTION = "vinculosProducao";
 export const LANCAMENTOS_PRODUCAO_COLLECTION = "lancamentosProducao";
 export const IMPORTACOES_PRODUCAO_COLLECTION = "importacoesProducao";
 
-/** Resultado de um trabalho de impressão — `status` 2/3 da origem (EDI-127). */
-export type ResultadoImpressao = "concluida" | "interrompida";
+/**
+ * Resultado de um trabalho de impressão (EDI-127). A origem usa `status` 2
+ * para concluída e 3 para interrompida; qualquer outro valor é trabalho ainda
+ * em curso — que **não** é falha e não pode ser contado como tal.
+ */
+export type ResultadoImpressao = "concluida" | "interrompida" | "em_andamento";
 
 /** Consumo relatado por slot do AMS — guardado para a futura fase de consumo por carretel. */
 export interface ConsumoSlot {

@@ -56,9 +56,15 @@ async function colecaoImportacoes() {
 // ---------------------------------------------------------------- impressões
 
 /**
- * Grava as impressões novas, ignorando as que já existem. O `upsert` com
- * `$setOnInsert` é o que torna a importação repetível sem duplicar nem
- * sobrescrever `quantidadeLancada` de uma impressão já lançada no estoque.
+ * Grava as impressões, criando as novas e **atualizando** os dados vindos da
+ * origem nas que já existem.
+ *
+ * A separação importa: uma impressão importada enquanto ainda rodava chega
+ * como `em_andamento`, sem hora de término; quando ela acaba, a origem passa
+ * a informar resultado, fim e consumo reais, e esses campos precisam ser
+ * atualizados. Já o que é **nosso** — quanto foi lançado no estoque, quanto
+ * virou perda, se é histórico — vai em `$setOnInsert` e nunca é sobrescrito,
+ * senão uma reimportação zeraria lançamentos já feitos.
  */
 export async function inserirImpressoesNovas(
   impressoes: Impressao[]
@@ -67,13 +73,21 @@ export async function inserirImpressoesNovas(
 
   const colecao = await colecaoImpressoes();
   const resultado = await colecao.bulkWrite(
-    impressoes.map((impressao) => ({
-      updateOne: {
-        filter: { taskId: impressao.taskId },
-        update: { $setOnInsert: impressao },
-        upsert: true,
-      },
-    })),
+    impressoes.map((impressao) => {
+      const { quantidadeLancada, quantidadePerdida, historico, importadoEm, ...daOrigem } =
+        impressao;
+
+      return {
+        updateOne: {
+          filter: { taskId: impressao.taskId },
+          update: {
+            $set: daOrigem,
+            $setOnInsert: { quantidadeLancada, quantidadePerdida, historico, importadoEm },
+          },
+          upsert: true,
+        },
+      };
+    }),
     { ordered: false }
   );
 

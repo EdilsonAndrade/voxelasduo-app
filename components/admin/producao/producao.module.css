@@ -247,6 +247,12 @@
   color: var(--preto);
 }
 
+/* Em curso: ainda não é peça nem é falha. */
+.seloAndamento {
+  background: color-mix(in srgb, var(--roxo) 16%, transparent);
+  color: var(--preto);
+}
+
 .seloSemVinculo {
   background: color-mix(in srgb, var(--laranja) 18%, transparent);
   color: var(--preto);
@@ -289,6 +295,62 @@
   background: var(--surface);
   border: 1px solid var(--surface-line);
   flex: none;
+}
+
+.botaoFoto {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: zoom-in;
+  flex: none;
+  line-height: 0;
+}
+
+/*
+ * Visualizador da placa. Existe porque abrir a URL numa aba baixaria o
+ * arquivo: o CDN do fabricante serve a imagem como anexo.
+ */
+.sobreposicao {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  padding: 2rem 1rem;
+  cursor: zoom-out;
+}
+
+.fotoAmpliada {
+  max-width: min(90vw, 70rem);
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.legendaAmpliada {
+  color: #fff;
+  font-size: 0.9rem;
+  margin: 0;
+  text-align: center;
+  max-width: 90vw;
+  word-break: break-word;
+}
+
+.fecharFoto {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
 }
 
 .pendenteNome {

@@ -83,16 +83,17 @@ export async function importarHistorico(
 
     const impressoes = mapearTasks(pagina.hits, deps.ativadoEm);
     const existentes = await deps.taskIdsExistentes(impressoes.map((i) => i.taskId));
-    const inexistentes = impressoes.filter((i) => !existentes.has(i.taskId));
 
-    if (inexistentes.length > 0) {
-      const resultado = await deps.inserirImpressoesNovas(inexistentes);
+    // Grava a página inteira, não só o que é novo: uma impressão importada
+    // enquanto rodava precisa receber o resultado e o consumo finais quando
+    // termina. O que já foi lançado no estoque é preservado na gravação.
+    if (impressoes.length > 0) {
+      const resultado = await deps.inserirImpressoesNovas(impressoes);
       novas += resultado.novas;
       ignoradas += resultado.ignoradas;
     }
-    ignoradas += existentes.size;
 
-    const paginaInteiraConhecida = impressoes.length > 0 && inexistentes.length === 0;
+    const paginaInteiraConhecida = impressoes.length > 0 && existentes.size === impressoes.length;
     if (!deps.cargaCompleta && paginaInteiraConhecida) break;
 
     const proximo = proximoCursor(pagina);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import FotoPlaca from "./FotoPlaca";
 import styles from "./producao.module.css";
 import type { ProdutoOpcao } from "./MapearArquivo";
 
@@ -8,7 +9,7 @@ export interface ImpressaoLista {
   id: string;
   nomeArquivo: string;
   coverUrl?: string;
-  resultado: "concluida" | "interrompida";
+  resultado: "concluida" | "interrompida" | "em_andamento";
   inicio: string;
   duracaoSegundos?: number;
   gramas?: number;
@@ -80,6 +81,7 @@ export default function ListaImpressoes({
             <option value="">todos</option>
             <option value="concluida">concluídas</option>
             <option value="interrompida">falhas</option>
+            <option value="em_andamento">imprimindo</option>
           </select>
         </label>
 
@@ -185,17 +187,11 @@ function Linha({
   return (
     <tr className={impressao.historico ? styles.linhaHistorico : undefined}>
       <td data-rotulo="Peça">
-        {/*
-          `img` e não `next/image`: a miniatura vem do CDN do fabricante, cujo
-          hostname pode mudar, e o projeto não declara `remotePatterns`. Mesmo
-          padrão das miniaturas da lista de produtos.
-        */}
-        {impressao.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className={styles.miniatura} src={impressao.coverUrl} alt="" loading="lazy" />
-        ) : (
-          <span className={styles.semMiniatura} aria-hidden="true" />
-        )}
+        <FotoPlaca
+          url={impressao.coverUrl}
+          nome={impressao.nomeArquivo}
+          className={impressao.coverUrl ? styles.miniatura : styles.semMiniatura}
+        />
       </td>
 
       <td data-rotulo="Arquivo">
@@ -215,10 +211,18 @@ function Linha({
       <td data-rotulo="Resultado">
         <span
           className={`${styles.selo} ${
-            impressao.resultado === "concluida" ? styles.seloConcluida : styles.seloFalha
+            impressao.resultado === "concluida"
+              ? styles.seloConcluida
+              : impressao.resultado === "interrompida"
+                ? styles.seloFalha
+                : styles.seloAndamento
           }`}
         >
-          {impressao.resultado === "concluida" ? "concluída" : "falhou"}
+          {impressao.resultado === "concluida"
+            ? "concluída"
+            : impressao.resultado === "interrompida"
+              ? "falhou"
+              : "imprimindo"}
         </span>
         {impressao.historico && (
           <>

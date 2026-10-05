@@ -26,10 +26,12 @@ function deps(
   );
   listarTasks.mockResolvedValue({ total: paginas.flat().length, hits: [] });
 
-  const inserirImpressoesNovas = vi.fn(async (impressoes: { taskId: string }[]) => ({
-    novas: impressoes.length,
-    ignoradas: 0,
-  }));
+  // Espelha o repositório real: recebe a página inteira e só conta como nova
+  // a impressão que ainda não existe; as demais são atualizadas em silêncio.
+  const inserirImpressoesNovas = vi.fn(async (impressoes: { taskId: string }[]) => {
+    const novas = impressoes.filter((i) => !conhecidos.includes(i.taskId)).length;
+    return { novas, ignoradas: impressoes.length - novas };
+  });
 
   return {
     listarTasks,

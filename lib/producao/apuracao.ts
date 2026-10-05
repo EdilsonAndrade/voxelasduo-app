@@ -229,8 +229,13 @@ export function apurarProduto(
     ? calcularCustoProducao(cadastro).totalCentavos
     : undefined;
 
-  const totalImpressoes = impressoes.length;
-  const interrompidasTotal = impressoes.filter((i) => i.resultado === "interrompida").length;
+  /*
+   * Trabalho ainda em curso não é peça produzida nem falha: contá-lo na
+   * amostra afundaria a taxa de falha observada enquanto a impressora roda.
+   */
+  const finalizadas = impressoes.filter((i) => i.resultado !== "em_andamento");
+  const totalImpressoes = finalizadas.length;
+  const interrompidasTotal = finalizadas.filter((i) => i.resultado === "interrompida").length;
   const gramasPerdidosEmFalhas = somar(
     impressoes.filter((i) => i.resultado === "interrompida").map((i) => i.gramas ?? 0)
   );

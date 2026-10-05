@@ -78,6 +78,10 @@ describe("conjuntosDisponiveis", () => {
     expect(conjuntosDisponiveis([vinculo()], [impressao({ resultado: "interrompida" })])).toBe(0);
   });
 
+  it("é zero enquanto a impressão ainda está rodando", () => {
+    expect(conjuntosDisponiveis([vinculo()], [impressao({ resultado: "em_andamento" })])).toBe(0);
+  });
+
   it("é zero sem vínculo", () => {
     expect(conjuntosDisponiveis([], [impressao()])).toBe(0);
   });
