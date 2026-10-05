@@ -1,11 +1,14 @@
 import { criarClienteBambu, ErroBambu } from "./bambu/cliente";
 import { buscarCredencialBambu, estadoDaConexao } from "./credencial";
 import { importarHistorico, type ResultadoImportacao } from "./importacao";
+import { copiarMiniatura } from "./miniaturas";
 import {
+  definirMiniaturaPropria,
   finalizarImportacao,
   iniciarImportacao,
   inserirImpressoesNovas,
   listarImpressoes,
+  listarSemMiniaturaPropria,
   taskIdsExistentes,
 } from "./repository";
 import type { OrigemImportacao } from "@/lib/models/producao";
@@ -54,6 +57,7 @@ export async function executarImportacao(
     });
 
     await finalizarImportacao(registroId, resultado);
+    await copiarMiniaturasPendentes();
     return resultado;
   } catch (erro) {
     const mensagem =
@@ -69,6 +73,24 @@ export async function executarImportacao(
       erro: mensagem,
     });
     throw erro;
+  }
+}
+
+/**
+ * Copia para o nosso storage as miniaturas que ainda vivem só no CDN da
+ * origem, cuja URL expira. Roda depois de importar e nunca falha a
+ * importação: miniatura é apoio ao reconhecimento da peça, não dado de custo.
+ */
+async function copiarMiniaturasPendentes(): Promise<void> {
+  try {
+    const pendentes = await listarSemMiniaturaPropria();
+
+    for (const impressao of pendentes) {
+      const url = await copiarMiniatura(impressao.coverUrl!, impressao.taskId);
+      if (url) await definirMiniaturaPropria(impressao.taskId, url);
+    }
+  } catch {
+    // Storage indisponível não pode derrubar a importação já concluída.
   }
 }
 

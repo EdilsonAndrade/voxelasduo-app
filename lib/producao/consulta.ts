@@ -99,7 +99,8 @@ function montar(
     id: impressao._id!.toString(),
     taskId: impressao.taskId,
     nomeArquivo: impressao.nomeArquivo,
-    coverUrl: impressao.coverUrl,
+    // A cópia nossa não expira; a da origem é só o fallback de quem ainda não copiou.
+    coverUrl: impressao.miniaturaUrl ?? impressao.coverUrl,
     resultado: impressao.resultado,
     inicio: impressao.inicio,
     fim: impressao.fim,

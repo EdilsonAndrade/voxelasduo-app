@@ -122,9 +122,16 @@ Custo apurado do produto = Σ (componentes de cada parte × unidades da parte po
 
 ## #9 — Imagem de pré-visualização
 
-**Decisão**: guardar a URL devolvida em `cover` e exibi-la direto, sem copiar para o Blob.
+**Decisão (revista em campo)**: copiar a miniatura para o nosso Blob na importação, em `producao/<taskId>.<ext>`, e exibir a cópia. A URL da origem fica guardada só como fonte da cópia.
 
-**Rationale**: a URL é servida pelo CDN do fabricante e pode expirar; copiar centenas de miniaturas para o Blob custa armazenamento e tempo de importação sem necessidade — a miniatura é conveniência visual, não dado de custo. A tela trata imagem indisponível com um espaço neutro.
+**Decisão original, e por que estava errada**: a primeira versão exibia direto a URL de `cover`, no raciocínio de que a miniatura era conveniência visual e não valia o custo de armazenamento. Duas coisas derrubaram isso no uso real:
+
+1. A URL do CDN é **assinada e expira** — poucas horas depois as imagens passaram a responder "não autorizado" e sumiram da tela.
+2. A miniatura virou **dado de trabalho**, não enfeite: boa parte dos títulos vem do perfil de fatiamento ("0.2mm layer, 2 walls, 15% infill") e não identifica a peça. Sem a foto, não há como mapear o arquivo ao produto.
+
+**Implementação**: `copiarMiniatura` (`lib/producao/miniaturas.ts`) roda ao fim de cada importação, em lotes de 40, sobre as impressões que ainda não têm cópia. Valida tipo e tamanho e devolve `undefined` em qualquer falha — perder uma miniatura nunca interrompe a importação nem esconde a impressão.
+
+**Limite conhecido**: miniatura cuja URL já expirou antes da primeira cópia é irrecuperável; aquela impressão fica sem foto.
 
 ---
 

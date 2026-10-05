@@ -104,6 +104,28 @@ export async function taskIdsExistentes(taskIds: string[]): Promise<Set<string>>
   return new Set(encontradas.map((i) => i.taskId));
 }
 
+/**
+ * Impressões que têm miniatura na origem mas ainda não têm cópia nossa. O
+ * limite existe porque cada uma custa um download e um upload: a importação
+ * copia um lote por execução e as demais entram na seguinte.
+ */
+export async function listarSemMiniaturaPropria(limite = 40): Promise<Impressao[]> {
+  const colecao = await colecaoImpressoes();
+  return colecao
+    .find({ coverUrl: { $exists: true, $ne: "" }, miniaturaUrl: { $exists: false } })
+    .sort({ inicio: -1 })
+    .limit(limite)
+    .toArray();
+}
+
+export async function definirMiniaturaPropria(
+  taskId: string,
+  miniaturaUrl: string
+): Promise<void> {
+  const colecao = await colecaoImpressoes();
+  await colecao.updateOne({ taskId }, { $set: { miniaturaUrl } });
+}
+
 export interface FiltroImpressoes {
   de?: Date;
   ate?: Date;
@@ -203,7 +225,7 @@ export async function agruparPendentes(): Promise<
           impressoes: { $sum: 1 },
           gramasTotal: { $sum: { $ifNull: ["$gramas", 0] } },
           ultimaEm: { $max: "$inicio" },
-          coverUrl: { $last: "$coverUrl" },
+          coverUrl: { $last: { $ifNull: ["$miniaturaUrl", "$coverUrl"] } },
         },
       },
       {
