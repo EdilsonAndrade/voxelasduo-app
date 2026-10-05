@@ -152,9 +152,15 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
 
       <div className={styles.bloco}>
         <div className={styles.acoesProduto} style={{ marginTop: 0 }}>
-          {impressoras.length > 1 && (
+          {/*
+            Mostrado a partir de uma impressora, não de duas: com uma só, o
+            seletor é a prova visível de que o vínculo com a conta existe.
+          */}
+          {impressoras.length > 0 && (
             <label className={styles.campo}>
-              <span className={styles.rotulo}>Impressora</span>
+              <span className={styles.rotulo}>
+                Impressora ({impressoras.length} na conta)
+              </span>
               <select
                 className={styles.entrada}
                 value={impressoraEscolhida}
@@ -181,6 +187,12 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
             {importando ? "Importando…" : "Importar agora"}
           </button>
 
+          {conexao.estado === "ativa" && impressoras.length === 0 && (
+            <span className={styles.pendenteDados}>
+              Nenhuma impressora vinculada a esta conta
+            </span>
+          )}
+
           {ultimaImportacao && (
             <span className={styles.pendenteDados}>
               Última importação{" "}
@@ -201,15 +213,25 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
         {ultimaImportacao?.erro && (
           <p className={styles.erro}>Última importação falhou: {ultimaImportacao.erro}</p>
         )}
-        {ultimaImportacao &&
-          !ultimaImportacao.erro &&
-          ultimaImportacao.totalNaOrigem === 0 && (
-            <p className={styles.ok}>
-              A conta conectada não tem nenhuma impressão no histórico da nuvem. Só entram aqui
-              as impressões enviadas pela nuvem (Bambu Studio ou Handy conectados) — o que você
-              imprime direto do cartão SD ou em modo LAN não é registrado lá.
-            </p>
-          )}
+        {ultimaImportacao && !ultimaImportacao.erro && ultimaImportacao.totalNaOrigem === 0 && (
+          <p className={styles.ok}>
+            {impressoras.length === 0 ? (
+              <>
+                Nenhuma impressora vinculada a esta conta na nuvem. Se a sua A1 está em
+                LAN-only mode, o Bambu Studio fala com ela direto pela rede e nada chega aos
+                servidores da Bambu — por isso não há histórico para importar. Vincule a
+                impressora à conta para que as próximas impressões sejam registradas.
+              </>
+            ) : (
+              <>
+                A conta tem {impressoras.length}{" "}
+                {impressoras.length === 1 ? "impressora vinculada" : "impressoras vinculadas"},
+                mas nenhuma impressão no histórico da nuvem. Só é registrado o que você manda
+                imprimir pela nuvem — trabalho iniciado do cartão SD ou em LAN não aparece lá.
+              </>
+            )}
+          </p>
+        )}
         {erro && <p className={styles.erro}>{erro}</p>}
       </div>
 

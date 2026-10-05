@@ -41,7 +41,15 @@ export default function ConexaoBambu({
   conexao: ConexaoAtual;
   onAlterada: () => void;
 }) {
-  const [aberto, setAberto] = useState(conexao.estado !== "ativa");
+  /*
+   * `null` = ninguém mexeu, então o formulário segue o estado real da conexão.
+   * Guardar um booleano direto aqui congelaria a decisão tomada no primeiro
+   * render — quando o estado ainda é "ausente", porque a resposta do servidor
+   * não chegou — e o formulário ficaria aberto mesmo com a conexão ativa,
+   * parecendo que é preciso reconectar a cada visita.
+   */
+  const [abertoManual, setAbertoManual] = useState<boolean | null>(null);
+  const aberto = abertoManual ?? conexao.estado !== "ativa";
   const [modoToken, setModoToken] = useState(false);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -88,7 +96,7 @@ export default function ConexaoBambu({
       setToken("");
       setPrecisaCodigo(null);
       setTfaKey(null);
-      setAberto(false);
+      setAbertoManual(false);
       onAlterada();
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : "Falha de rede ao conectar.");
@@ -102,7 +110,7 @@ export default function ConexaoBambu({
     try {
       await fetch("/api/producao/conexao", { method: "DELETE" });
       onAlterada();
-      setAberto(true);
+      setAbertoManual(true);
     } finally {
       setEnviando(false);
     }
@@ -128,7 +136,7 @@ export default function ConexaoBambu({
         <button
           type="button"
           className={styles.botaoTexto}
-          onClick={() => setAberto((valor) => !valor)}
+          onClick={() => setAbertoManual(!aberto)}
         >
           {aberto ? "Fechar" : conexao.estado === "ativa" ? "Reconectar" : "Conectar conta"}
         </button>
