@@ -105,7 +105,7 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
 
     try {
       const resposta = await fetch("/api/producao/importar-agora", { method: "POST" });
-      const dados = await resposta.json();
+      const dados = await resposta.json().catch(() => ({}) as Record<string, string>);
 
       if (!resposta.ok) {
         // Status real da origem (401 de token vencido, 502 de falha deles).

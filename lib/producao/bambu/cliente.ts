@@ -74,16 +74,35 @@ export interface DispositivoBambu {
   dev_model_name?: string;
 }
 
-async function lerErro(resposta: Response): Promise<never> {
-  let detalhe = "";
+/** Marca um corpo que veio, mas não era JSON (HTML de bloqueio, texto solto). */
+const TEXTO_CRU = Symbol("textoCru");
+
+/**
+ * Lê o corpo tolerando o que esta API não oficial realmente faz: responder
+ * 200 sem corpo nenhum (é o caso do envio do código por e-mail) ou devolver
+ * HTML quando bloqueia a requisição. `resposta.json()` direto quebraria com
+ * "Unexpected end of JSON input", escondendo o status real.
+ */
+async function lerCorpo(resposta: Response): Promise<Record<string, unknown>> {
+  const texto = (await resposta.text()).trim();
+  if (!texto) return {};
+
   try {
-    const corpo = (await resposta.json()) as { message?: string; error?: string };
-    detalhe = corpo.message || corpo.error || "";
+    const corpo = JSON.parse(texto) as unknown;
+    return corpo && typeof corpo === "object" ? (corpo as Record<string, unknown>) : {};
   } catch {
-    // Resposta sem JSON (HTML de bloqueio, corpo vazio) — o status já informa.
+    return { [TEXTO_CRU]: texto.slice(0, 200) } as Record<string, unknown>;
   }
+}
+
+function lancarErro(status: number, corpo: Record<string, unknown>): never {
+  const detalhe =
+    (corpo.message as string) ||
+    (corpo.error as string) ||
+    ((corpo as Record<symbol, string>)[TEXTO_CRU] ?? "");
+
   const sufixo = detalhe ? `: ${detalhe}` : ".";
-  throw new ErroBambu(resposta.status, `Bambu Lab respondeu HTTP ${resposta.status}${sufixo}`);
+  throw new ErroBambu(status, `Bambu Lab respondeu HTTP ${status}${sufixo}`);
 }
 
 export function criarClienteBambu(opcoes: OpcoesCliente = {}) {
@@ -99,8 +118,17 @@ export function criarClienteBambu(opcoes: OpcoesCliente = {}) {
       },
     });
 
-    if (!resposta.ok) await lerErro(resposta);
-    return (await resposta.json()) as T;
+    const corpo = await lerCorpo(resposta);
+    if (!resposta.ok) lancarErro(resposta.status, corpo);
+
+    // 2xx com corpo que não é JSON: provavelmente uma página de bloqueio
+    // respondida com status 200. Falha explícita, em vez de seguir com dados
+    // vazios e um erro confuso mais adiante.
+    if ((corpo as Record<symbol, string>)[TEXTO_CRU]) {
+      lancarErro(502, corpo);
+    }
+
+    return corpo as T;
   }
 
   /**
@@ -157,7 +185,7 @@ export function criarClienteBambu(opcoes: OpcoesCliente = {}) {
    */
   async function loginComTotp(tfaKey: string, tfaCode: string): Promise<ResultadoLogin> {
     const respostaCsrf = await fetchImpl(`${BASE_SITE}/api/csrf`, { method: "GET" });
-    if (!respostaCsrf.ok) await lerErro(respostaCsrf);
+    if (!respostaCsrf.ok) lancarErro(respostaCsrf.status, await lerCorpo(respostaCsrf));
 
     const cookies = respostaCsrf.headers.get("set-cookie") ?? "";
     const csrf = /bbl_csrf_token=([^;]+)/.exec(cookies)?.[1];
@@ -174,7 +202,7 @@ export function criarClienteBambu(opcoes: OpcoesCliente = {}) {
       },
       body: JSON.stringify({ tfaKey, tfaCode }),
     });
-    if (!resposta.ok) await lerErro(resposta);
+    if (!resposta.ok) lancarErro(resposta.status, await lerCorpo(resposta));
 
     // O token vem como cookie `token` na resposta do site, não no corpo.
     const setCookie = resposta.headers.get("set-cookie") ?? "";

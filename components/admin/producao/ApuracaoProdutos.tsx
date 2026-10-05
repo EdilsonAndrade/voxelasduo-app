@@ -158,7 +158,7 @@ function Produto({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ produtoId: produto.produtoId, quantidade: Number(conjuntos) }),
       });
-      const dados = await resposta.json();
+      const dados = await resposta.json().catch(() => ({}) as Record<string, string>);
 
       if (!resposta.ok) {
         setErro(dados.erro ?? `Falha ao lançar (HTTP ${resposta.status}).`);

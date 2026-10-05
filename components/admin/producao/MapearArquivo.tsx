@@ -86,7 +86,7 @@ function LinhaPendente({
           unidadesPorProduto: Number(unidades),
         }),
       });
-      const dados = await resposta.json();
+      const dados = await resposta.json().catch(() => ({}) as Record<string, string>);
 
       if (!resposta.ok) {
         setErro(dados.erro ?? `Falha ao salvar (HTTP ${resposta.status}).`);

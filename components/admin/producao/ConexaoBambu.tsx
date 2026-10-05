@@ -64,7 +64,7 @@ export default function ConexaoBambu({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(corpo),
       });
-      const dados = await resposta.json();
+      const dados = await resposta.json().catch(() => ({}) as Record<string, string>);
 
       if (resposta.status === 202) {
         setPrecisaCodigo(dados.metodo);

@@ -168,7 +168,7 @@ function Linha({
           quantidadePerdida: Number(perda),
         }),
       });
-      const dados = await resposta.json();
+      const dados = await resposta.json().catch(() => ({}) as Record<string, string>);
 
       if (!resposta.ok) {
         setErro(dados.erro ?? `Falha ao lançar (HTTP ${resposta.status}).`);

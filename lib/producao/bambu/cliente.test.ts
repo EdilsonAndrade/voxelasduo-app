@@ -60,7 +60,7 @@ describe("login", () => {
     expect(erro.message).toBe("Bambu Lab respondeu HTTP 401: invalid credentials");
   });
 
-  it("não quebra quando a origem responde sem JSON (bloqueio, corpo vazio)", async () => {
+  it("mostra o corpo cru quando a origem responde sem JSON (página de bloqueio)", async () => {
     const fetchImpl = vi
       .fn()
       .mockImplementation(async () => new Response("<html>blocked</html>", { status: 403 }));
@@ -69,7 +69,7 @@ describe("login", () => {
     const erro = await cliente.login("eu@exemplo.com", "senha").catch((e) => e);
 
     expect(erro.status).toBe(403);
-    expect(erro.message).toBe("Bambu Lab respondeu HTTP 403.");
+    expect(erro.message).toBe("Bambu Lab respondeu HTTP 403: <html>blocked</html>");
   });
 });
 
@@ -94,6 +94,50 @@ describe("loginComCodigo", () => {
     await expect(cliente.loginComCodigo("eu@exemplo.com", "000000")).rejects.toBeInstanceOf(
       ErroBambu
     );
+  });
+});
+
+describe("corpos fora do padrão", () => {
+  it("aceita 200 com corpo vazio (é o que o envio de código devolve)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    const cliente = criarClienteBambu({ fetchImpl });
+
+    await expect(cliente.solicitarCodigo("eu@exemplo.com")).resolves.toBeUndefined();
+  });
+
+  it("não quebra o login quando a origem responde 200 sem corpo", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response("", { status: 200 }));
+    const cliente = criarClienteBambu({ fetchImpl });
+
+    await expect(cliente.login("eu@exemplo.com", "senha")).resolves.toEqual({
+      tipo: "precisaCodigo",
+      metodo: "email",
+    });
+  });
+
+  it("falha explicitamente quando um 200 traz HTML em vez de JSON", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response("<html>captcha</html>", { status: 200 }));
+    const cliente = criarClienteBambu({ fetchImpl });
+
+    const erro = await cliente.login("eu@exemplo.com", "senha").catch((e) => e);
+
+    expect(erro).toBeInstanceOf(ErroBambu);
+    expect(erro.status).toBe(502);
+    expect(erro.message).toContain("captcha");
+  });
+
+  it("usa o texto cru da origem na mensagem quando o erro não é JSON", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response("Forbidden by edge", { status: 403 }));
+    const cliente = criarClienteBambu({ fetchImpl });
+
+    const erro = await cliente.login("eu@exemplo.com", "senha").catch((e) => e);
+
+    expect(erro.status).toBe(403);
+    expect(erro.message).toBe("Bambu Lab respondeu HTTP 403: Forbidden by edge");
   });
 });
 
