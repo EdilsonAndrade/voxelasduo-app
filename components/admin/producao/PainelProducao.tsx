@@ -41,6 +41,8 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
     estado: "ausente",
     expiraEm: null,
     ativadoEm: null,
+    userId: null,
+    nomeUsuario: null,
   });
   const [pendentes, setPendentes] = useState<Pendente[]>([]);
   const [impressoes, setImpressoes] = useState<ImpressaoLista[]>([]);

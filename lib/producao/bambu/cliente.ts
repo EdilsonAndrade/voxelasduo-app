@@ -239,12 +239,23 @@ export function criarClienteBambu(opcoes: OpcoesCliente = {}) {
     return corpo.devices ?? [];
   }
 
-  /** Identificador do usuário na nuvem — guardado para a futura fase de tempo real. */
-  async function buscarUserId(): Promise<string | undefined> {
-    const corpo = await chamar<{ uid?: number | string }>(
-      "/v1/design-user-service/my/preference"
-    );
-    return corpo.uid !== undefined ? String(corpo.uid) : undefined;
+  /**
+   * Perfil da conta conectada. O `uid` é o mesmo número que a impressora e o
+   * Bambu Studio exibem como `user_<uid>`, o que permite conferir a olho se o
+   * admin está lendo a mesma conta em que a impressora está vinculada.
+   */
+  async function buscarPerfil(): Promise<{ uid?: string; nome?: string }> {
+    const corpo = await chamar<{
+      uid?: number | string;
+      name?: string;
+      nickName?: string;
+      account?: string;
+    }>("/v1/design-user-service/my/preference");
+
+    return {
+      uid: corpo.uid !== undefined ? String(corpo.uid) : undefined,
+      nome: corpo.name || corpo.nickName || corpo.account || undefined,
+    };
   }
 
   return {
@@ -254,7 +265,7 @@ export function criarClienteBambu(opcoes: OpcoesCliente = {}) {
     loginComTotp,
     listarTasks,
     listarDispositivos,
-    buscarUserId,
+    buscarPerfil,
   };
 }
 

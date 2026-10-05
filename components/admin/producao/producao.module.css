@@ -74,6 +74,19 @@
   background: var(--texto-soft);
 }
 
+/*
+ * A conta conectada em destaque: é o número que o usuário compara com o da
+ * tela da impressora (Configurações → Conta) para ter certeza de que o admin
+ * lê a conta certa.
+ */
+.contaConectada {
+  font-size: 0.82rem;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--roxo) 12%, transparent);
+  white-space: nowrap;
+}
+
 .conexaoInfo {
   color: var(--texto-soft);
   font-size: 0.82rem;

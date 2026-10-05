@@ -42,6 +42,7 @@ export function calcularExpiracao(agora: Date = new Date()): Date {
 export async function salvarCredencialBambu(dados: {
   accessToken: string;
   userId?: string;
+  nomeUsuario?: string;
 }): Promise<CredencialBambuLab> {
   const c = await colecao();
   const agora = new Date();
@@ -51,6 +52,7 @@ export async function salvarCredencialBambu(dados: {
     _id: CREDENCIAL_BAMBU_ID,
     accessToken: dados.accessToken,
     userId: dados.userId ?? existente?.userId,
+    nomeUsuario: dados.nomeUsuario ?? existente?.nomeUsuario,
     expiraEm: calcularExpiracao(agora),
     ativadoEm: existente?.ativadoEm ?? agora,
     atualizadoEm: agora,

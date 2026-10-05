@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ErroBambu } from "@/lib/producao/bambu/cliente";
 
-const { login, solicitarCodigo, loginComCodigo, loginComTotp, buscarUserId } = vi.hoisted(() => ({
+const { login, solicitarCodigo, loginComCodigo, loginComTotp, buscarPerfil } = vi.hoisted(() => ({
   login: vi.fn(),
   solicitarCodigo: vi.fn().mockResolvedValue(undefined),
   loginComCodigo: vi.fn(),
   loginComTotp: vi.fn(),
-  buscarUserId: vi.fn().mockResolvedValue("1234"),
+  buscarPerfil: vi.fn().mockResolvedValue({ uid: "1234", nome: "Voxelas Duo" }),
 }));
 const { buscarCredencialBambu, salvarCredencialBambu, removerCredencialBambu } = vi.hoisted(() => ({
   buscarCredencialBambu: vi.fn(),
@@ -25,7 +25,7 @@ vi.mock("@/lib/producao/bambu/cliente", async () => {
       solicitarCodigo,
       loginComCodigo,
       loginComTotp,
-      buscarUserId,
+      buscarPerfil,
       listarTasks: vi.fn(),
       listarDispositivos: vi.fn(),
     }),
@@ -83,6 +83,66 @@ describe("GET", () => {
     expect(corpo.accessToken).toBeUndefined();
   });
 
+  it("devolve a conta conectada, para conferir com a tela da impressora", async () => {
+    buscarCredencialBambu.mockResolvedValue({
+      _id: "bambu_lab",
+      accessToken: "tok",
+      userId: "4131614799",
+      nomeUsuario: "Voxelas Duo",
+      expiraEm: EXPIRA_EM,
+      ativadoEm: ATIVADO_EM,
+      atualizadoEm: ATIVADO_EM,
+    });
+
+    const corpo = await (await GET()).json();
+
+    expect(corpo).toMatchObject({
+      estado: "ativa",
+      userId: "4131614799",
+      nomeUsuario: "Voxelas Duo",
+    });
+  });
+
+  it("busca e guarda o perfil quando a credencial antiga não tem a conta", async () => {
+    buscarCredencialBambu.mockResolvedValue({
+      _id: "bambu_lab",
+      accessToken: "tok",
+      expiraEm: EXPIRA_EM,
+      ativadoEm: ATIVADO_EM,
+      atualizadoEm: ATIVADO_EM,
+    });
+    salvarCredencialBambu.mockResolvedValue({
+      _id: "bambu_lab",
+      accessToken: "tok",
+      userId: "1234",
+      nomeUsuario: "Voxelas Duo",
+      expiraEm: EXPIRA_EM,
+      ativadoEm: ATIVADO_EM,
+      atualizadoEm: ATIVADO_EM,
+    });
+
+    const corpo = await (await GET()).json();
+
+    expect(buscarPerfil).toHaveBeenCalled();
+    expect(corpo.userId).toBe("1234");
+  });
+
+  it("segue funcionando quando a origem não devolve o perfil", async () => {
+    buscarCredencialBambu.mockResolvedValue({
+      _id: "bambu_lab",
+      accessToken: "tok",
+      expiraEm: EXPIRA_EM,
+      ativadoEm: ATIVADO_EM,
+      atualizadoEm: ATIVADO_EM,
+    });
+    buscarPerfil.mockRejectedValueOnce(new Error("HTTP 500"));
+
+    const corpo = await (await GET()).json();
+
+    expect(corpo.estado).toBe("ativa");
+    expect(corpo.userId).toBeNull();
+  });
+
   it("informa ausente quando nunca houve conexão", async () => {
     buscarCredencialBambu.mockResolvedValue(null);
     await expect((await GET()).json()).resolves.toMatchObject({ estado: "ausente" });
@@ -114,6 +174,7 @@ describe("POST modo senha", () => {
     expect(salvarCredencialBambu).toHaveBeenCalledWith({
       accessToken: "tok-123",
       userId: "1234",
+      nomeUsuario: "Voxelas Duo",
     });
   });
 
@@ -191,7 +252,11 @@ describe("POST modo codigo e token", () => {
     const resposta = await POST(requisicao({ modo: "token", accessToken: "  tok-colado  " }));
 
     expect(resposta.status).toBe(200);
-    expect(salvarCredencialBambu).toHaveBeenCalledWith({ accessToken: "tok-colado" });
+    expect(salvarCredencialBambu).toHaveBeenCalledWith({
+      accessToken: "tok-colado",
+      userId: "1234",
+      nomeUsuario: "Voxelas Duo",
+    });
     expect(login).not.toHaveBeenCalled();
   });
 

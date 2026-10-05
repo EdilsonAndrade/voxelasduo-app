@@ -9,6 +9,9 @@ export interface ConexaoAtual {
   estado: EstadoConexao;
   expiraEm: string | null;
   ativadoEm: string | null;
+  /** Mesmo número que a impressora mostra em Configurações → Conta. */
+  userId: string | null;
+  nomeUsuario: string | null;
 }
 
 const TEXTO_ESTADO: Record<EstadoConexao, string> = {
@@ -121,6 +124,13 @@ export default function ConexaoBambu({
       <div className={styles.barraConexao}>
         <span className={`${styles.ponto} ${PONTO[conexao.estado]}`} aria-hidden="true" />
         <strong>{TEXTO_ESTADO[conexao.estado]}</strong>
+
+        {conexao.estado === "ativa" && conexao.userId && (
+          <span className={styles.contaConectada}>
+            conta <strong>user_{conexao.userId}</strong>
+            {conexao.nomeUsuario ? ` · ${conexao.nomeUsuario}` : ""}
+          </span>
+        )}
 
         {conexao.estado === "ativa" && conexao.expiraEm && (
           <span className={styles.conexaoInfo}>

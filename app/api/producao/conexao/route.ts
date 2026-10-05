@@ -14,12 +14,35 @@ import {
  * estado e as datas. Erros da origem saem com o status HTTP real (FR-004).
  */
 export async function GET() {
-  const credencial = await buscarCredencialBambu();
+  let credencial = await buscarCredencialBambu();
+  const estado = estadoDaConexao(credencial);
+
+  // Credencial guardada antes de passarmos a registrar o perfil: busca uma
+  // vez e guarda, para o painel poder mostrar de qual conta se trata.
+  if (credencial && estado === "ativa" && !credencial.userId) {
+    try {
+      const perfil = await criarClienteBambu({
+        accessToken: credencial.accessToken,
+      }).buscarPerfil();
+
+      if (perfil.uid) {
+        credencial = await salvarCredencialBambu({
+          accessToken: credencial.accessToken,
+          userId: perfil.uid,
+          nomeUsuario: perfil.nome,
+        });
+      }
+    } catch {
+      // Falha aqui não invalida a conexão: só deixa o painel sem o nome.
+    }
+  }
 
   return NextResponse.json({
-    estado: estadoDaConexao(credencial),
+    estado,
     expiraEm: credencial?.expiraEm ?? null,
     ativadoEm: credencial?.ativadoEm ?? null,
+    userId: credencial?.userId ?? null,
+    nomeUsuario: credencial?.nomeUsuario ?? null,
   });
 }
 
@@ -44,8 +67,9 @@ export async function POST(request: Request) {
       if (!payload.accessToken?.trim()) {
         return NextResponse.json({ erro: "Informe o token de acesso." }, { status: 400 });
       }
-      const credencial = await salvarCredencialBambu({ accessToken: payload.accessToken.trim() });
-      return NextResponse.json({ estado: "ativa", expiraEm: credencial.expiraEm });
+      // Passa pelo mesmo caminho dos demais modos: quem cola um token é
+      // quem mais precisa ver de qual conta ele é.
+      return NextResponse.json(await concluir(payload.accessToken.trim()));
     }
 
     if (payload.modo === "senha") {
@@ -97,16 +121,27 @@ export async function POST(request: Request) {
   }
 }
 
-/** Guarda o token e tenta descobrir o `userId` — a falha nisso não invalida a conexão. */
+/** Guarda o token e tenta descobrir de qual conta ele é — a falha nisso não invalida a conexão. */
 async function concluir(accessToken: string) {
-  let userId: string | undefined;
+  let perfil: { uid?: string; nome?: string } = {};
   try {
-    userId = await criarClienteBambu({ accessToken }).buscarUserId();
+    perfil = await criarClienteBambu({ accessToken }).buscarPerfil();
   } catch {
-    // O `userId` só é necessário na fase de tempo real; não impede importar.
+    // Saber a conta é conveniência de conferência; não impede importar.
   }
-  const credencial = await salvarCredencialBambu({ accessToken, userId });
-  return { estado: "ativa" as const, expiraEm: credencial.expiraEm };
+
+  const credencial = await salvarCredencialBambu({
+    accessToken,
+    userId: perfil.uid,
+    nomeUsuario: perfil.nome,
+  });
+
+  return {
+    estado: "ativa" as const,
+    expiraEm: credencial.expiraEm,
+    userId: credencial.userId ?? null,
+    nomeUsuario: credencial.nomeUsuario ?? null,
+  };
 }
 
 export async function DELETE() {

@@ -24,8 +24,15 @@ export const CREDENCIAL_BAMBU_ID = "bambu_lab";
 export interface CredencialBambuLab {
   _id: typeof CREDENCIAL_BAMBU_ID;
   accessToken: string;
-  /** Identificador do usuário na nuvem — guardado para a fase de tempo real (MQTT). */
+  /**
+   * Identificador do usuário na nuvem. É o mesmo número que a impressora
+   * mostra em Configurações → Conta (`user_<userId>`) — serve para conferir
+   * se o admin lê a conta em que a impressora está vinculada, e também será
+   * usado na fase de tempo real (MQTT).
+   */
   userId?: string;
+  /** Nome de exibição da conta, quando a origem informa. */
+  nomeUsuario?: string;
   /** Estimado em emissão + 90 dias, já que a origem não informa a validade. */
   expiraEm: Date;
   /**
