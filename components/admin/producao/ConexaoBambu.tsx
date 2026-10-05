@@ -128,7 +128,11 @@ export default function ConexaoBambu({
         {conexao.estado === "ativa" && conexao.userId && (
           <span className={styles.contaConectada}>
             conta <strong>user_{conexao.userId}</strong>
-            {conexao.nomeUsuario ? ` · ${conexao.nomeUsuario}` : ""}
+            {/* A origem repete o identificador como nome quando a conta não
+                tem nome de exibição próprio — não vale mostrar duas vezes. */}
+            {conexao.nomeUsuario && conexao.nomeUsuario !== `user_${conexao.userId}`
+              ? ` · ${conexao.nomeUsuario}`
+              : ""}
           </span>
         )}
 
