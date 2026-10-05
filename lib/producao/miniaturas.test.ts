@@ -48,6 +48,18 @@ describe("copiarMiniatura", () => {
     expect(enviarMiniaturaProducao).not.toHaveBeenCalled();
   });
 
+  it("aceita imagem servida como binary/octet-stream — o S3 da origem faz isso", async () => {
+    const png = new Uint8Array(64);
+    png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const buscar = vi.fn().mockResolvedValue(
+      new Response(png, { status: 200, headers: { "content-type": "binary/octet-stream" } })
+    );
+
+    await copiarMiniatura("https://cdn.bambu/capa.png", "55", buscar);
+
+    expect(enviarMiniaturaProducao.mock.calls[0][1]).toBe("55.png");
+  });
+
   it("desiste quando a resposta não é imagem", async () => {
     const buscar = vi.fn().mockResolvedValue(
       new Response("<html>login</html>", {

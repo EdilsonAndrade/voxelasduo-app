@@ -5,6 +5,33 @@ const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024;
 const TIPOS_ACEITOS = ["image/jpeg", "image/png", "image/webp"];
 
 /**
+ * Tipo real do que foi baixado.
+ *
+ * O `content-type` é só a primeira pista: o S3 que serve as capas da origem
+ * entrega arquivos como `binary/octet-stream`, e confiar só no cabeçalho fazia
+ * a cópia desistir em silêncio de uma imagem perfeitamente válida. Os bytes
+ * iniciais decidem quando o cabeçalho não ajuda.
+ */
+function tipoDaImagem(contentType: string, bytes: Uint8Array): string | undefined {
+  if (TIPOS_ACEITOS.includes(contentType)) return contentType;
+
+  const ehPng =
+    bytes.length > 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+  if (ehPng) return "image/png";
+
+  const ehJpeg = bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (ehJpeg) return "image/jpeg";
+
+  const ehWebp =
+    bytes.length > 12 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+  if (ehWebp) return "image/webp";
+
+  return undefined;
+}
+
+/**
  * Copia a miniatura da placa para o nosso storage.
  *
  * Existe porque a URL devolvida pela origem é assinada e expira: depois de
@@ -30,11 +57,19 @@ export async function copiarMiniatura(
       return undefined;
     }
 
-    const tipo = (resposta.headers.get("content-type") ?? "").split(";")[0].trim();
-    if (!TIPOS_ACEITOS.includes(tipo)) return undefined;
+    const cabecalho = (resposta.headers.get("content-type") ?? "").split(";")[0].trim();
 
     const dados = await resposta.arrayBuffer();
-    if (dados.byteLength === 0 || dados.byteLength > TAMANHO_MAXIMO_BYTES) return undefined;
+    if (dados.byteLength === 0 || dados.byteLength > TAMANHO_MAXIMO_BYTES) {
+      console.error(`[producao] miniatura ${taskId}: tamanho fora do aceito (${dados.byteLength} bytes)`);
+      return undefined;
+    }
+
+    const tipo = tipoDaImagem(cabecalho, new Uint8Array(dados));
+    if (!tipo) {
+      console.error(`[producao] miniatura ${taskId}: resposta não é imagem (content-type "${cabecalho}")`);
+      return undefined;
+    }
 
     const extensao = tipo === "image/jpeg" ? "jpg" : tipo.split("/")[1];
     const arquivo = new File([dados], `${taskId}.${extensao}`, { type: tipo });
