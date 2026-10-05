@@ -160,23 +160,48 @@ export async function buscarImpressaoPorId(id: string): Promise<Impressao | null
  * que seria desproporcional para o volume esperado.
  */
 export async function agruparPendentes(): Promise<
-  { nomeArquivo: string; impressoes: number; gramasTotal: number; ultimaEm: Date }[]
+  {
+    nomeArquivo: string;
+    impressoes: number;
+    gramasTotal: number;
+    ultimaEm: Date;
+    coverUrl?: string;
+  }[]
 > {
   const [impressoes, vinculos] = await Promise.all([colecaoImpressoes(), colecaoVinculos()]);
   const nomesVinculados = await vinculos.distinct("nomeArquivo");
 
   return impressoes
-    .aggregate<{ nomeArquivo: string; impressoes: number; gramasTotal: number; ultimaEm: Date }>([
+    .aggregate<{
+      nomeArquivo: string;
+      impressoes: number;
+      gramasTotal: number;
+      ultimaEm: Date;
+      coverUrl?: string;
+    }>([
       { $match: { nomeArquivo: { $nin: nomesVinculados } } },
+      // Ordenado antes do agrupamento para que `$last` seja a impressão mais
+      // recente — é a miniatura que ajuda a reconhecer a peça.
+      { $sort: { inicio: 1 } },
       {
         $group: {
           _id: "$nomeArquivo",
           impressoes: { $sum: 1 },
           gramasTotal: { $sum: { $ifNull: ["$gramas", 0] } },
           ultimaEm: { $max: "$inicio" },
+          coverUrl: { $last: "$coverUrl" },
         },
       },
-      { $project: { _id: 0, nomeArquivo: "$_id", impressoes: 1, gramasTotal: 1, ultimaEm: 1 } },
+      {
+        $project: {
+          _id: 0,
+          nomeArquivo: "$_id",
+          impressoes: 1,
+          gramasTotal: 1,
+          ultimaEm: 1,
+          coverUrl: 1,
+        },
+      },
       { $sort: { ultimaEm: -1 } },
     ])
     .toArray();

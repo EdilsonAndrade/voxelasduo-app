@@ -13,6 +13,7 @@ export interface Pendente {
   impressoes: number;
   gramasTotal: number;
   ultimaEm: string;
+  coverUrl?: string;
 }
 
 /**
@@ -102,6 +103,26 @@ function LinhaPendente({
 
   return (
     <div className={styles.pendente}>
+      {/*
+        A miniatura da impressão mais recente deste nome: muitos títulos vêm
+        do perfil de fatiamento ("0.2mm layer, 2 walls...") e não dizem nada
+        sobre a peça — a foto da placa é o que permite reconhecê-la. Abre em
+        tamanho cheio numa aba nova.
+      */}
+      {pendente.coverUrl ? (
+        <a
+          href={pendente.coverUrl}
+          target="_blank"
+          rel="noreferrer"
+          title="Abrir a foto da placa"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className={styles.miniaturaPendente} src={pendente.coverUrl} alt="" loading="lazy" />
+        </a>
+      ) : (
+        <span className={styles.miniaturaPendente} aria-hidden="true" />
+      )}
+
       <div className={styles.pendenteNome}>
         <div className={styles.nomeArquivo}>{pendente.nomeArquivo}</div>
         <div className={styles.pendenteDados}>

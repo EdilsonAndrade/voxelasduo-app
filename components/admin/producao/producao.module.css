@@ -279,6 +279,18 @@
   border-top: none;
 }
 
+/* Maior que a da tabela: aqui ela serve para identificar a peça, não para decorar. */
+.miniaturaPendente {
+  display: block;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 9px;
+  object-fit: cover;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  flex: none;
+}
+
 .pendenteNome {
   flex: 1 1 14rem;
   min-width: 0;
