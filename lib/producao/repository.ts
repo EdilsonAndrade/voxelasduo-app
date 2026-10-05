@@ -287,7 +287,7 @@ export async function iniciarImportacao(origem: OrigemImportacao): Promise<Objec
 
 export async function finalizarImportacao(
   id: ObjectId,
-  dados: { novas: number; ignoradas: number; paginas: number; erro?: string }
+  dados: { novas: number; ignoradas: number; paginas: number; totalNaOrigem?: number; erro?: string }
 ): Promise<void> {
   const colecao = await colecaoImportacoes();
   await colecao.updateOne(

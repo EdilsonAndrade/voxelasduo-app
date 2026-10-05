@@ -28,7 +28,8 @@ export class ConexaoIndisponivel extends Error {
  * depois de a requisição terminar (FR-004).
  */
 export async function executarImportacao(
-  origem: OrigemImportacao
+  origem: OrigemImportacao,
+  deviceId?: string
 ): Promise<ResultadoImportacao> {
   const credencial = await buscarCredencialBambu();
   if (!credencial || estadoDaConexao(credencial) !== "ativa") {
@@ -49,6 +50,7 @@ export async function executarImportacao(
       inserirImpressoesNovas,
       ativadoEm: credencial.ativadoEm,
       cargaCompleta: jaImportadas === 0,
+      deviceId,
     });
 
     await finalizarImportacao(registroId, resultado);
@@ -68,6 +70,25 @@ export async function executarImportacao(
     });
     throw erro;
   }
+}
+
+/** Impressoras vinculadas à conta conectada, para o seletor de importação. */
+export async function listarImpressorasDaConta() {
+  const credencial = await buscarCredencialBambu();
+  if (!credencial || estadoDaConexao(credencial) !== "ativa") {
+    throw new ConexaoIndisponivel();
+  }
+
+  const dispositivos = await criarClienteBambu({
+    accessToken: credencial.accessToken,
+  }).listarDispositivos();
+
+  return dispositivos.map((dispositivo) => ({
+    id: dispositivo.dev_id,
+    nome: dispositivo.name ?? dispositivo.dev_id,
+    modelo: dispositivo.dev_model_name,
+    online: dispositivo.online ?? false,
+  }));
 }
 
 /** Status HTTP que a rota deve devolver para um erro desta feature. */

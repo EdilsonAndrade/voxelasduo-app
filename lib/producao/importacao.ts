@@ -9,12 +9,24 @@ import type { Impressao, OrigemImportacao } from "@/lib/models/producao";
  * (FR-008).
  */
 export const MAX_PAGINAS_POR_EXECUCAO = 20;
-export const TAMANHO_PAGINA = 50;
+/*
+ * 20 é o tamanho de página padrão da origem. Valores maiores foram observados
+ * voltando lista vazia em vez de erro, o que é indistinguível de "não há
+ * histórico" — não vale a economia de requisições.
+ */
+export const TAMANHO_PAGINA = 20;
 
 export interface ResultadoImportacao {
   novas: number;
   ignoradas: number;
   paginas: number;
+  /**
+   * Quantas impressões a origem diz ter no histórico (campo `total` da
+   * primeira página). Distingue "a conta não tem histórico na nuvem" de "a
+   * origem tem histórico mas não consegui ler" — sem isso, as duas situações
+   * aparecem como "0 novas" e não dá para diagnosticar.
+   */
+  totalNaOrigem?: number;
 }
 
 /** Dependências injetadas para a lógica ser testável sem rede e sem banco. */
@@ -28,6 +40,8 @@ export interface DependenciasImportacao {
   /** `true` na primeira carga: percorre o histórico inteiro em vez de parar na página conhecida. */
   cargaCompleta: boolean;
   maxPaginas?: number;
+  /** Importar só de uma impressora — ausente traz as de todas as máquinas da conta. */
+  deviceId?: string;
 }
 
 /** Cursor da próxima página: o id da última impressão recebida. */
@@ -54,10 +68,16 @@ export async function importarHistorico(
   let novas = 0;
   let ignoradas = 0;
   let paginas = 0;
+  let totalNaOrigem: number | undefined;
 
   while (paginas < maxPaginas) {
-    const pagina = await deps.listarTasks({ after: cursor, limit: TAMANHO_PAGINA });
+    const pagina = await deps.listarTasks({
+      after: cursor,
+      limit: TAMANHO_PAGINA,
+      deviceId: deps.deviceId,
+    });
     paginas++;
+    if (totalNaOrigem === undefined) totalNaOrigem = pagina.total;
 
     if (pagina.hits.length === 0) break;
 
@@ -80,7 +100,7 @@ export async function importarHistorico(
     cursor = proximo;
   }
 
-  return { novas, ignoradas, paginas };
+  return { novas, ignoradas, paginas, totalNaOrigem };
 }
 
 export function origemDoDisparo(automatica: boolean): OrigemImportacao {

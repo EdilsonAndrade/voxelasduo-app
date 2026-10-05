@@ -15,10 +15,18 @@ interface Importacao {
   iniciadoEm: string;
   novas: number;
   ignoradas: number;
+  totalNaOrigem?: number | null;
   erro?: string | null;
 }
 
 const FILTROS_INICIAIS: Filtros = { resultado: "", vinculo: "", produtoId: "" };
+
+interface Impressora {
+  id: string;
+  nome: string;
+  modelo?: string;
+  online: boolean;
+}
 
 /**
  * Orquestra a área de produção (EDI-127). Os quatro blocos aparecem na ordem
@@ -44,6 +52,8 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
     impressoesSemVinculo: 0,
   });
   const [ultimaImportacao, setUltimaImportacao] = useState<Importacao | null>(null);
+  const [impressoras, setImpressoras] = useState<Impressora[]>([]);
+  const [impressoraEscolhida, setImpressoraEscolhida] = useState("");
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIAIS);
   const [carregando, setCarregando] = useState(true);
   const [importando, setImportando] = useState(false);
@@ -88,6 +98,11 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
       setResumo(apurado.resumo);
 
       setUltimaImportacao((await rImportacoes.json()).importacoes[0] ?? null);
+
+      // As impressoras vêm da nuvem e só existem com conexão ativa: a falha
+      // aqui não impede o resto da tela de funcionar.
+      const rImpressoras = await fetch("/api/producao/impressoras");
+      setImpressoras(rImpressoras.ok ? (await rImpressoras.json()).impressoras : []);
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : "Falha de rede ao carregar a produção.");
     } finally {
@@ -104,7 +119,11 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
     setErro(null);
 
     try {
-      const resposta = await fetch("/api/producao/importar-agora", { method: "POST" });
+      const resposta = await fetch("/api/producao/importar-agora", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: impressoraEscolhida || undefined }),
+      });
       const dados = await resposta.json().catch(() => ({}) as Record<string, string>);
 
       if (!resposta.ok) {
@@ -133,6 +152,26 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
 
       <div className={styles.bloco}>
         <div className={styles.acoesProduto} style={{ marginTop: 0 }}>
+          {impressoras.length > 1 && (
+            <label className={styles.campo}>
+              <span className={styles.rotulo}>Impressora</span>
+              <select
+                className={styles.entrada}
+                value={impressoraEscolhida}
+                onChange={(e) => setImpressoraEscolhida(e.target.value)}
+              >
+                <option value="">todas as impressoras da conta</option>
+                {impressoras.map((impressora) => (
+                  <option key={impressora.id} value={impressora.id}>
+                    {impressora.nome}
+                    {impressora.modelo ? ` (${impressora.modelo})` : ""}
+                    {impressora.online ? "" : " · offline"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <button
             type="button"
             className={styles.botao}
@@ -148,6 +187,8 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
               {ultimaImportacao.origem === "automatica" ? "automática" : "manual"} em{" "}
               {new Date(ultimaImportacao.iniciadoEm).toLocaleString("pt-BR")}:{" "}
               {ultimaImportacao.novas} novas, {ultimaImportacao.ignoradas} já conhecidas
+              {typeof ultimaImportacao.totalNaOrigem === "number" &&
+                ` · a Bambu Lab informa ${ultimaImportacao.totalNaOrigem} no histórico da conta`}
             </span>
           )}
         </div>
@@ -160,6 +201,15 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
         {ultimaImportacao?.erro && (
           <p className={styles.erro}>Última importação falhou: {ultimaImportacao.erro}</p>
         )}
+        {ultimaImportacao &&
+          !ultimaImportacao.erro &&
+          ultimaImportacao.totalNaOrigem === 0 && (
+            <p className={styles.ok}>
+              A conta conectada não tem nenhuma impressão no histórico da nuvem. Só entram aqui
+              as impressões enviadas pela nuvem (Bambu Studio ou Handy conectados) — o que você
+              imprime direto do cartão SD ou em modo LAN não é registrado lá.
+            </p>
+          )}
         {erro && <p className={styles.erro}>{erro}</p>}
       </div>
 

@@ -21,8 +21,10 @@ function deps(
   extras: { cargaCompleta?: boolean; maxPaginas?: number } = {}
 ) {
   const listarTasks = vi.fn();
-  paginas.forEach((hits) => listarTasks.mockResolvedValueOnce({ total: 0, hits }));
-  listarTasks.mockResolvedValue({ total: 0, hits: [] });
+  paginas.forEach((hits) =>
+    listarTasks.mockResolvedValueOnce({ total: paginas.flat().length, hits })
+  );
+  listarTasks.mockResolvedValue({ total: paginas.flat().length, hits: [] });
 
   const inserirImpressoesNovas = vi.fn(async (impressoes: { taskId: string }[]) => ({
     novas: impressoes.length,
@@ -40,6 +42,46 @@ function deps(
     maxPaginas: extras.maxPaginas,
   };
 }
+
+describe("filtro por impressora", () => {
+  it("repassa o deviceId escolhido em todas as páginas", async () => {
+    const d = { ...deps([[task(10)], []]), deviceId: "DEV-A1" };
+
+    await importarHistorico(d);
+
+    for (const chamada of d.listarTasks.mock.calls) {
+      expect(chamada[0]).toMatchObject({ deviceId: "DEV-A1" });
+    }
+  });
+
+  it("sem deviceId importa de todas as impressoras da conta", async () => {
+    const d = deps([[task(10)], []]);
+
+    await importarHistorico(d);
+
+    expect(d.listarTasks.mock.calls[0][0].deviceId).toBeUndefined();
+  });
+});
+
+describe("diagnóstico", () => {
+  it("reporta quantas impressões a origem diz ter, para distinguir conta vazia de leitura falha", async () => {
+    const d = deps([[task(10)], []]);
+
+    const resultado = await importarHistorico(d);
+
+    expect(resultado.totalNaOrigem).toBe(1);
+  });
+
+  it("reporta total zero quando a conta não tem histórico na nuvem", async () => {
+    const listarTasks = vi.fn().mockResolvedValue({ total: 0, hits: [] });
+    const d = { ...deps([]), listarTasks };
+
+    const resultado = await importarHistorico(d);
+
+    expect(resultado.totalNaOrigem).toBe(0);
+    expect(resultado.novas).toBe(0);
+  });
+});
 
 describe("importarHistorico", () => {
   it("grava as impressões novas e usa o id da última como cursor da página seguinte", async () => {

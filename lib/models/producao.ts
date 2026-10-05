@@ -117,6 +117,8 @@ export interface ImportacaoProducao {
   novas: number;
   ignoradas: number;
   paginas: number;
+  /** Quantas impressões a origem diz ter no histórico — ver ResultadoImportacao. */
+  totalNaOrigem?: number;
   /** Mensagem com o status HTTP real da origem — nada é mascarado (FR-004). */
   erro?: string;
 }
