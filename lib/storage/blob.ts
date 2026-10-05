@@ -29,9 +29,22 @@ export async function enviarFotoEvento(arquivo: File): Promise<string> {
   return enviarImagem(arquivo, "eventos", `${crypto.randomUUID()}.${extensao}`);
 }
 
+/**
+ * Miniatura da placa vinda da nuvem da Bambu Lab (EDI-127). Precisa ser
+ * copiada para cá: a URL do CDN do fabricante é assinada e expira, e a
+ * miniatura é o que permite reconhecer qual peça é cada impressão quando o
+ * título vem do perfil de fatiamento.
+ */
+export async function enviarMiniaturaProducao(
+  arquivo: File,
+  nome: string
+): Promise<string> {
+  return enviarImagem(arquivo, "producao", nome);
+}
+
 async function enviarImagem(
   arquivo: File,
-  pasta: "produtos" | "banners" | "encomendas" | "eventos",
+  pasta: "produtos" | "banners" | "encomendas" | "eventos" | "producao",
   nome = `${crypto.randomUUID()}-${arquivo.name}`
 ): Promise<string> {
   if (!TIPOS_ACEITOS.includes(arquivo.type)) {

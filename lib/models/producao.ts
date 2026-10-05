@@ -37,8 +37,10 @@ export interface Impressao {
   /** Nome do arquivo impresso; chave do vínculo com o produto. */
   nomeArquivo: string;
   nomePlaca?: string;
-  /** Miniatura servida pelo CDN do fabricante — pode expirar, por isso não é copiada (research.md #9). */
+  /** Miniatura no CDN do fabricante. A URL é assinada e **expira**: serve só como origem da cópia. */
   coverUrl?: string;
+  /** Cópia da miniatura no nosso storage — é esta que a tela usa, porque não expira. */
+  miniaturaUrl?: string;
   resultado: ResultadoImpressao;
   inicio: Date;
   /** Ausente em registro incompleto da origem; sem ele não há duração nem custo de tempo. */
