@@ -72,7 +72,7 @@ export default function ConexaoBambu({
         setAviso(
           dados.metodo === "totp"
             ? "Digite o código do seu aplicativo autenticador."
-            : "Enviamos um código de 6 dígitos para o seu e-mail."
+            : "A Bambu Lab enviou um código de 6 dígitos para o seu e-mail."
         );
         return;
       }
@@ -211,7 +211,7 @@ export default function ConexaoBambu({
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ email }),
                     });
-                    setAviso("Enviamos outro código para o seu e-mail.");
+                    setAviso("Pedimos outro código para a Bambu Lab.");
                   }}
                 >
                   Enviar outro código

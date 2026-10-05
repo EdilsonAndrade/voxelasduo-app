@@ -117,7 +117,7 @@ describe("POST modo senha", () => {
     });
   });
 
-  it("responde 202 pedindo o código e já solicita o envio por e-mail", async () => {
+  it("responde 202 pedindo o código sem disparar um segundo e-mail", async () => {
     login.mockResolvedValue({ tipo: "precisaCodigo", metodo: "email" });
 
     const resposta = await POST(
@@ -126,7 +126,8 @@ describe("POST modo senha", () => {
 
     expect(resposta.status).toBe(202);
     await expect(resposta.json()).resolves.toMatchObject({ precisaCodigo: true, metodo: "email" });
-    expect(solicitarCodigo).toHaveBeenCalledWith("eu@exemplo.com");
+    // A origem já envia o código no login; pedir de novo mandaria dois e-mails.
+    expect(solicitarCodigo).not.toHaveBeenCalled();
     expect(salvarCredencialBambu).not.toHaveBeenCalled();
   });
 

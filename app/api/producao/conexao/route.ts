@@ -56,11 +56,10 @@ export async function POST(request: Request) {
       const resultado = await cliente.login(payload.email.trim(), payload.senha);
 
       if (resultado.tipo === "precisaCodigo") {
-        // Verificação por e-mail: já pedimos o código, para o vendedor só
-        // precisar digitá-lo. No TOTP o código vem do autenticador dele.
-        if (resultado.metodo === "email") {
-          await cliente.solicitarCodigo(payload.email.trim());
-        }
+        // Não pedimos o código aqui: a própria origem já o envia ao receber o
+        // login com senha, e solicitar de novo fazia chegarem dois e-mails.
+        // O reenvio continua disponível, por ação explícita, em
+        // `POST /api/producao/conexao/codigo`.
         return NextResponse.json(
           { precisaCodigo: true, metodo: resultado.metodo, tfaKey: resultado.tfaKey ?? null },
           { status: 202 }
