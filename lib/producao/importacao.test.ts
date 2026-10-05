@@ -142,6 +142,21 @@ describe("importarHistorico", () => {
     expect(d.listarTasks).toHaveBeenCalledTimes(2);
   });
 
+  it("recuperação de capas: relê páginas conhecidas, limitada pelo teto", async () => {
+    // Modo usado quando há miniaturas a recuperar: as tasks já estão no banco,
+    // e é a releitura que renova a URL assinada da capa.
+    const d = deps([[task(10)], [task(9)], [task(8)]], ["10", "9", "8"], {
+      cargaCompleta: true,
+      maxPaginas: 2,
+    });
+
+    const resultado = await importarHistorico(d);
+
+    expect(resultado.paginas).toBe(2);
+    expect(resultado.novas).toBe(0);
+    expect(resultado.ignoradas).toBe(2);
+  });
+
   it("para quando a origem não devolve cursor novo, sem laço infinito", async () => {
     const listarTasks = vi.fn().mockResolvedValue({ total: 1, hits: [task(10)] });
     const d = { ...deps([]), listarTasks, cargaCompleta: true };

@@ -125,6 +125,8 @@ export interface ImportacaoProducao {
   paginas: number;
   /** Quantas impressões a origem diz ter no histórico — ver ResultadoImportacao. */
   totalNaOrigem?: number;
+  /** Capas copiadas para o nosso storage nesta execução — ver `miniaturas.ts`. */
+  miniaturasCopiadas?: number;
   /** Mensagem com o status HTTP real da origem — nada é mascarado (FR-004). */
   erro?: string;
 }

@@ -118,6 +118,15 @@ export async function listarSemMiniaturaPropria(limite = 40): Promise<Impressao[
     .toArray();
 }
 
+/** Quantas impressões ainda dependem da URL da origem, que expira em 30 min. */
+export async function contarSemMiniaturaPropria(): Promise<number> {
+  const colecao = await colecaoImpressoes();
+  return colecao.countDocuments({
+    coverUrl: { $exists: true, $ne: "" },
+    miniaturaUrl: { $exists: false },
+  });
+}
+
 export async function definirMiniaturaPropria(
   taskId: string,
   miniaturaUrl: string
@@ -348,7 +357,14 @@ export async function iniciarImportacao(origem: OrigemImportacao): Promise<Objec
 
 export async function finalizarImportacao(
   id: ObjectId,
-  dados: { novas: number; ignoradas: number; paginas: number; totalNaOrigem?: number; erro?: string }
+  dados: {
+    novas: number;
+    ignoradas: number;
+    paginas: number;
+    totalNaOrigem?: number;
+    miniaturasCopiadas?: number;
+    erro?: string;
+  }
 ): Promise<void> {
   const colecao = await colecaoImportacoes();
   await colecao.updateOne(

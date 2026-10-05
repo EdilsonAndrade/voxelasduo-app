@@ -16,6 +16,7 @@ interface Importacao {
   novas: number;
   ignoradas: number;
   totalNaOrigem?: number | null;
+  miniaturasCopiadas?: number | null;
   erro?: string | null;
 }
 
@@ -217,6 +218,11 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
               {ultimaImportacao.novas} novas, {ultimaImportacao.ignoradas} já conhecidas
               {typeof ultimaImportacao.totalNaOrigem === "number" &&
                 ` · a Bambu Lab informa ${ultimaImportacao.totalNaOrigem} no histórico da conta`}
+              {typeof ultimaImportacao.miniaturasCopiadas === "number" &&
+                ultimaImportacao.miniaturasCopiadas > 0 &&
+                ` · ${ultimaImportacao.miniaturasCopiadas} ${
+                  ultimaImportacao.miniaturasCopiadas === 1 ? "foto salva" : "fotos salvas"
+                }`}
             </span>
           )}
         </div>
