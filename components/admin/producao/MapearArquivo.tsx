@@ -113,6 +113,7 @@ function LinhaPendente({
         url={pendente.coverUrl}
         nome={pendente.nomeArquivo}
         className={styles.miniaturaPendente}
+        classNameVazio={styles.semMiniaturaPendente}
       />
 
       <div className={styles.pendenteNome}>

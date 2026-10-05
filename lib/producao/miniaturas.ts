@@ -23,7 +23,12 @@ export async function copiarMiniatura(
 ): Promise<string | undefined> {
   try {
     const resposta = await buscar(coverUrl);
-    if (!resposta.ok) return undefined;
+    if (!resposta.ok) {
+      // A URL assinada da origem vale ~30 min: depois disso é 403 e a cópia
+      // nunca mais acontece. Aparece no log para não virar sumiço silencioso.
+      console.error(`[producao] miniatura ${taskId}: origem respondeu ${resposta.status}`);
+      return undefined;
+    }
 
     const tipo = (resposta.headers.get("content-type") ?? "").split(";")[0].trim();
     if (!TIPOS_ACEITOS.includes(tipo)) return undefined;
@@ -35,8 +40,10 @@ export async function copiarMiniatura(
     const arquivo = new File([dados], `${taskId}.${extensao}`, { type: tipo });
 
     return await enviarMiniaturaProducao(arquivo, `${taskId}.${extensao}`);
-  } catch {
-    // CDN fora do ar, URL já expirada, storage indisponível — segue sem foto.
+  } catch (erro) {
+    // CDN fora do ar, URL já expirada, storage sem token — segue sem foto, mas
+    // o motivo vai para o log: sem isso, "some a miniatura" não tem diagnóstico.
+    console.error(`[producao] miniatura ${taskId} não copiada:`, erro);
     return undefined;
   }
 }

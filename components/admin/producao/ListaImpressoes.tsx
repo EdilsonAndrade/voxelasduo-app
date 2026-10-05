@@ -190,7 +190,8 @@ function Linha({
         <FotoPlaca
           url={impressao.coverUrl}
           nome={impressao.nomeArquivo}
-          className={impressao.coverUrl ? styles.miniatura : styles.semMiniatura}
+          className={styles.miniatura}
+          classNameVazio={styles.semMiniatura}
         />
       </td>
 

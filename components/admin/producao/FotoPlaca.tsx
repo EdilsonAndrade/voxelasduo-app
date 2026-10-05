@@ -10,17 +10,31 @@ import styles from "./producao.module.css";
  * anexo, então abrir a URL numa aba baixaria o arquivo em vez de mostrá-lo.
  * Ampliar aqui resolve o que o usuário quer — ver a peça para reconhecê-la —
  * sem download e sem sair da tela.
+ *
+ * A URL da origem é assinada e vale 30 minutos. Quando ela expira antes de a
+ * cópia para o nosso storage acontecer, o navegador mostraria o ícone de
+ * imagem quebrada com o alt por cima; aqui a falha vira o mesmo espaço vazio
+ * de quem não tem foto, com o motivo no title.
  */
 export default function FotoPlaca({
   url,
   nome,
   className,
+  classNameVazio,
 }: {
   url?: string;
   nome: string;
   className: string;
+  /** Espaço reservado quando não há foto — ou quando a da origem já expirou. */
+  classNameVazio: string;
 }) {
   const [ampliada, setAmpliada] = useState(false);
+  const [falhou, setFalhou] = useState(false);
+
+  // Nova importação traz uma URL assinada nova: a falha anterior não vale mais.
+  useEffect(() => {
+    setFalhou(false);
+  }, [url]);
 
   useEffect(() => {
     if (!ampliada) return;
@@ -33,7 +47,16 @@ export default function FotoPlaca({
   }, [ampliada]);
 
   if (!url) {
-    return <span className={className} aria-hidden="true" />;
+    return <span className={classNameVazio} aria-hidden="true" />;
+  }
+
+  if (falhou) {
+    return (
+      <span
+        className={classNameVazio}
+        title="A miniatura da origem expirou (link vale 30 min). Importe de novo para copiá-la."
+      />
+    );
   }
 
   return (
@@ -45,7 +68,13 @@ export default function FotoPlaca({
         title="Ver a placa maior"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className={className} src={url} alt={`Placa de ${nome}`} loading="lazy" />
+        <img
+          className={className}
+          src={url}
+          alt={`Placa de ${nome}`}
+          loading="lazy"
+          onError={() => setFalhou(true)}
+        />
       </button>
 
       {ampliada && (

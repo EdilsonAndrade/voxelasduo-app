@@ -297,6 +297,17 @@
   flex: none;
 }
 
+/* Sem foto ou com a da origem já expirada: o mesmo espaço, em traço. */
+.semMiniaturaPendente {
+  display: block;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 9px;
+  background: var(--surface);
+  border: 1px dashed var(--surface-line);
+  flex: none;
+}
+
 .botaoFoto {
   background: none;
   border: none;

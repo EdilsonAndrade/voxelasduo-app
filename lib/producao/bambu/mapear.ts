@@ -1,25 +1,10 @@
 import type { Impressao, ConsumoSlot, ResultadoImpressao } from "@/lib/models/producao";
 import type { TaskBambu } from "./cliente";
+import { textoDeMaterial } from "../material";
 
 /** `status` da origem: 2 = concluída, 3 = abortada/falha (research.md #2). */
 const STATUS_CONCLUIDA = 2;
 const STATUS_INTERROMPIDA = 3;
-
-/**
- * A origem nem sempre devolve `material` como texto: em algumas respostas vem
- * um objeto. Concatenar direto produzia "[object Object]" na tela.
- */
-function textoDeMaterial(valor: unknown): string | undefined {
-  if (typeof valor === "string") return valor.trim() || undefined;
-  if (valor && typeof valor === "object") {
-    const objeto = valor as Record<string, unknown>;
-    for (const chave of ["name", "type", "filamentType", "material"]) {
-      const candidato = objeto[chave];
-      if (typeof candidato === "string" && candidato.trim()) return candidato.trim();
-    }
-  }
-  return undefined;
-}
 
 function paraData(valor?: string): Date | undefined {
   if (!valor) return undefined;

@@ -89,8 +89,10 @@ async function copiarMiniaturasPendentes(): Promise<void> {
       const url = await copiarMiniatura(impressao.coverUrl!, impressao.taskId);
       if (url) await definirMiniaturaPropria(impressao.taskId, url);
     }
-  } catch {
-    // Storage indisponível não pode derrubar a importação já concluída.
+  } catch (erro) {
+    // Storage indisponível não pode derrubar a importação já concluída — mas
+    // precisa aparecer no log do servidor.
+    console.error("[producao] cópia das miniaturas interrompida:", erro);
   }
 }
 

@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { textoDeMaterial } from "./material";
 import { listarProdutosPorIds } from "@/lib/produtos/repository";
 import { apurarProduto, saldoLancavel, type ApuracaoProduto } from "./apuracao";
 import {
@@ -106,7 +107,8 @@ function montar(
     fim: impressao.fim,
     duracaoSegundos: impressao.duracaoSegundos,
     gramas: impressao.gramas,
-    material: impressao.material,
+    // Registro antigo pode ter o objeto da origem aqui — só texto chega à tela.
+    material: textoDeMaterial(impressao.material),
     cores: impressao.cores,
     impressoraId: impressao.impressoraId,
     impressoraNome: impressao.impressoraNome,
