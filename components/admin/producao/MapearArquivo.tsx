@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import FotoPlaca from "./FotoPlaca";
+import { PARTE_PECA_UNICA } from "@/lib/models/producao";
 import styles from "./producao.module.css";
+
+/** Valor interno do item "outra parte…" — nunca é gravado. */
+const NOVA_PARTE = "__nova__";
 
 export interface ProdutoOpcao {
   id: string;
@@ -23,15 +27,21 @@ export interface Pendente {
  * produto acabado — depois disso o nome nunca mais é perguntado.
  *
  * O padrão de "parte" é peça única, porque é o caso mais comum: quem imprime
- * um produto inteiro numa placa não precisa pensar em partes.
+ * um produto inteiro numa placa não precisa pensar em partes. Quando o produto
+ * é montado de vários arquivos, a parte vira uma lista com o que já foi
+ * nomeado naquele produto — digitar o nome de novo, e errando uma letra,
+ * criaria uma parte duplicada.
  */
 export default function MapearArquivo({
   pendentes,
   produtos,
+  partesPorProduto,
   onMapeado,
 }: {
   pendentes: Pendente[];
   produtos: ProdutoOpcao[];
+  /** Partes já nomeadas em cada produto, para a lista do campo "Parte". */
+  partesPorProduto: Record<string, string[]>;
   onMapeado: () => void;
 }) {
   if (pendentes.length === 0) return null;
@@ -49,6 +59,7 @@ export default function MapearArquivo({
           key={pendente.nomeArquivo}
           pendente={pendente}
           produtos={produtos}
+          partesPorProduto={partesPorProduto}
           onMapeado={onMapeado}
         />
       ))}
@@ -59,14 +70,18 @@ export default function MapearArquivo({
 function LinhaPendente({
   pendente,
   produtos,
+  partesPorProduto,
   onMapeado,
 }: {
   pendente: Pendente;
   produtos: ProdutoOpcao[];
+  partesPorProduto: Record<string, string[]>;
   onMapeado: () => void;
 }) {
   const [produtoId, setProdutoId] = useState("");
-  const [parte, setParte] = useState("Peça única");
+  const [parte, setParte] = useState(PARTE_PECA_UNICA);
+  // Só aparece quando a parte ainda não existe no produto: é o "outra parte…".
+  const [nomeandoParte, setNomeandoParte] = useState(false);
   const [rendimento, setRendimento] = useState("1");
   const [unidades, setUnidades] = useState("1");
   const [erro, setErro] = useState<string | null>(null);
@@ -83,7 +98,7 @@ function LinhaPendente({
         body: JSON.stringify({
           nomeArquivo: pendente.nomeArquivo,
           produtoId,
-          parte,
+          parte: parte.trim(),
           rendimentoPorPlaca: Number(rendimento),
           unidadesPorProduto: Number(unidades),
         }),
@@ -101,6 +116,13 @@ function LinhaPendente({
       setEnviando(false);
     }
   }
+
+  // Peça única sempre primeiro: é o caso mais comum e o padrão do campo.
+  const partesDoProduto = partesPorProduto[produtoId] ?? [];
+  const opcoesDeParte = [
+    PARTE_PECA_UNICA,
+    ...partesDoProduto.filter((p) => p !== PARTE_PECA_UNICA),
+  ];
 
   return (
     <div className={styles.pendente}>
@@ -130,7 +152,13 @@ function LinhaPendente({
         <select
           className={styles.entrada}
           value={produtoId}
-          onChange={(e) => setProdutoId(e.target.value)}
+          onChange={(e) => {
+            setProdutoId(e.target.value);
+            // Partes são por produto: ao trocar, volta ao padrão em vez de
+            // levar junto o nome de uma parte de outro produto.
+            setParte(PARTE_PECA_UNICA);
+            setNomeandoParte(false);
+          }}
         >
           <option value="">selecione…</option>
           {produtos.map((produto) => (
@@ -143,12 +171,35 @@ function LinhaPendente({
 
       <label className={`${styles.campo} ${styles.campoCurto}`}>
         <span className={styles.rotulo}>Parte</span>
-        <input
-          className={styles.entrada}
-          value={parte}
-          onChange={(e) => setParte(e.target.value)}
-          placeholder="Peça única"
-        />
+        {nomeandoParte ? (
+          <input
+            className={styles.entrada}
+            value={parte}
+            onChange={(e) => setParte(e.target.value)}
+            placeholder="ex.: Base, Corpo, Tampa"
+            autoFocus
+          />
+        ) : (
+          <select
+            className={styles.entrada}
+            value={parte}
+            onChange={(e) => {
+              if (e.target.value === NOVA_PARTE) {
+                setParte("");
+                setNomeandoParte(true);
+                return;
+              }
+              setParte(e.target.value);
+            }}
+          >
+            {opcoesDeParte.map((opcao) => (
+              <option key={opcao} value={opcao}>
+                {opcao}
+              </option>
+            ))}
+            <option value={NOVA_PARTE}>outra parte…</option>
+          </select>
+        )}
       </label>
 
       <label className={`${styles.campo} ${styles.campoCurto}`}>
@@ -175,7 +226,7 @@ function LinhaPendente({
         type="button"
         className={styles.botao}
         onClick={salvar}
-        disabled={enviando || !produtoId}
+        disabled={enviando || !produtoId || parte.trim() === ""}
       >
         Salvar
       </button>

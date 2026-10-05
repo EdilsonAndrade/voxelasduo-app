@@ -45,6 +45,8 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
     nomeUsuario: null,
   });
   const [pendentes, setPendentes] = useState<Pendente[]>([]);
+  // Partes já nomeadas por produto: alimentam a lista do campo "Parte" (FR-013).
+  const [partesPorProduto, setPartesPorProduto] = useState<Record<string, string[]>>({});
   const [impressoes, setImpressoes] = useState<ImpressaoLista[]>([]);
   const [total, setTotal] = useState(0);
   const [apuracao, setApuracao] = useState<ProdutoApurado[]>([]);
@@ -71,15 +73,17 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
     if (filtros.produtoId) query.set("produtoId", filtros.produtoId);
 
     try {
-      const [rConexao, rPendentes, rImpressoes, rApuracao, rImportacoes] = await Promise.all([
-        fetch("/api/producao/conexao"),
-        fetch("/api/producao/pendentes"),
-        fetch(`/api/producao/impressoes?${query.toString()}`),
-        fetch("/api/producao/apuracao"),
-        fetch("/api/producao/importacoes?limite=1"),
-      ]);
+      const [rConexao, rPendentes, rImpressoes, rApuracao, rImportacoes, rVinculos] =
+        await Promise.all([
+          fetch("/api/producao/conexao"),
+          fetch("/api/producao/pendentes"),
+          fetch(`/api/producao/impressoes?${query.toString()}`),
+          fetch("/api/producao/apuracao"),
+          fetch("/api/producao/importacoes?limite=1"),
+          fetch("/api/producao/vinculos"),
+        ]);
 
-      const falhou = [rConexao, rPendentes, rImpressoes, rApuracao, rImportacoes].find(
+      const falhou = [rConexao, rPendentes, rImpressoes, rApuracao, rImportacoes, rVinculos].find(
         (r) => !r.ok
       );
       if (falhou) {
@@ -100,6 +104,16 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
       setResumo(apurado.resumo);
 
       setUltimaImportacao((await rImportacoes.json()).importacoes[0] ?? null);
+
+      const { vinculos } = (await rVinculos.json()) as {
+        vinculos: { produtoId: string; parte: string }[];
+      };
+      const partes: Record<string, string[]> = {};
+      for (const vinculo of vinculos) {
+        const lista = (partes[vinculo.produtoId] ??= []);
+        if (!lista.includes(vinculo.parte)) lista.push(vinculo.parte);
+      }
+      setPartesPorProduto(partes);
 
       // As impressoras vêm da nuvem e só existem com conexão ativa: a falha
       // aqui não impede o resto da tela de funcionar.
@@ -237,7 +251,12 @@ export default function PainelProducao({ produtos }: { produtos: ProdutoOpcao[] 
         {erro && <p className={styles.erro}>{erro}</p>}
       </div>
 
-      <MapearArquivo pendentes={pendentes} produtos={produtos} onMapeado={carregar} />
+      <MapearArquivo
+        pendentes={pendentes}
+        produtos={produtos}
+        partesPorProduto={partesPorProduto}
+        onMapeado={carregar}
+      />
 
       <ApuracaoProdutos produtos={apuracao} resumo={resumo} onAlterado={carregar} />
 
