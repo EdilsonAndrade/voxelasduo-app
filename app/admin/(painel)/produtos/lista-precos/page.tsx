@@ -4,7 +4,7 @@ import ImprimirButton from "@/components/admin/ImprimirButton";
 import { listarProdutosPorIds } from "@/lib/produtos/repository";
 import { formatarPreco } from "@/lib/produtos/formato";
 import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
-import { letraIndice, ordenarPorNome } from "@/lib/produtos/precoLista";
+import { letraIndice, ordenarPorNome, parseItensLista } from "@/lib/produtos/precoLista";
 import adminStyles from "@/components/admin/admin.module.css";
 import styles from "./listaPrecos.module.css";
 
@@ -14,8 +14,9 @@ export const metadata = { title: "Lista de preços · Voxelas Duo" };
 
 /**
  * Lista de preços para levar ao evento (EDI-126): só os produtos marcados na
- * lista do admin, em ordem alfabética, agrupados pela inicial. O PDF vem do
- * "Salvar como PDF" da impressão do navegador.
+ * lista do admin, em ordem alfabética, agrupados pela inicial. Cada produto
+ * leva uma comanda de quadradinhos numerados — um por peça levada — para
+ * riscar a venda no balcão. O PDF vem do "Salvar como PDF" da impressão.
  */
 export default async function ListaPrecosPage({
   searchParams,
@@ -23,13 +24,11 @@ export default async function ListaPrecosPage({
   searchParams: Promise<{ ids?: string }>;
 }) {
   const { ids = "" } = await searchParams;
-  const objectIds = ids
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => ObjectId.isValid(id))
-    .map((id) => new ObjectId(id));
+  // O parâmetro vem como "id:peças" — a quantidade é obrigatória na lista do admin.
+  const itens = parseItensLista(ids).filter((item) => ObjectId.isValid(item.id));
+  const quantidadePorId = new Map(itens.map((item) => [item.id, item.quantidade]));
 
-  const produtos = ordenarPorNome(await listarProdutosPorIds(objectIds));
+  const produtos = ordenarPorNome(await listarProdutosPorIds(itens.map((item) => new ObjectId(item.id))));
 
   // Custo de produção por peça, igual ao da tela de edição — fica ao lado do
   // preço para a equipe saber a margem na hora de negociar no evento.
@@ -48,6 +47,11 @@ export default async function ListaPrecosPage({
     else grupos.push({ letra, itens: [produto] });
   }
 
+  const pecasTotais = produtos.reduce(
+    (total, produto) => total + (quantidadePorId.get(produto._id!.toString()) ?? 0),
+    0
+  );
+
   const geradoEm = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "long",
@@ -65,19 +69,24 @@ export default async function ListaPrecosPage({
       </div>
 
       {produtos.length > 0 && (
-        <p className={`${styles.aviso} nao-imprimir`}>O custo aparece só aqui na tela — não sai na impressão.</p>
+        <p className={`${styles.aviso} nao-imprimir`}>
+          Um quadradinho por peça levada: risque um a cada venda. O custo aparece só aqui na tela — não sai na
+          impressão.
+        </p>
       )}
 
       {produtos.length === 0 ? (
         <p className={adminStyles.empty}>
-          Nenhum produto selecionado. Volte à lista de produtos e marque os que vão para o evento.
+          Nenhum produto selecionado. Volte à lista de produtos, marque os que vão para o evento e informe quantas
+          peças de cada um vão na caixa.
         </p>
       ) : (
         <article className={styles.folha}>
           <header className={styles.cabecalho}>
             <h1 className={styles.titulo}>Tabela de preços</h1>
             <p className={styles.subtitulo}>
-              Voxelas Duo · {produtos.length} {produtos.length === 1 ? "produto" : "produtos"} · {geradoEm}
+              Voxelas Duo · {produtos.length} {produtos.length === 1 ? "produto" : "produtos"} · {pecasTotais}{" "}
+              {pecasTotais === 1 ? "peça" : "peças"} · {geradoEm}
             </p>
           </header>
 
@@ -87,9 +96,11 @@ export default async function ListaPrecosPage({
                 <h2 className={styles.letra}>{grupo.letra}</h2>
                 <ul className={styles.itens}>
                   {grupo.itens.map((produto) => {
-                    const custo = custoPorProduto.get(produto._id!.toString()) ?? null;
+                    const id = produto._id!.toString();
+                    const custo = custoPorProduto.get(id) ?? null;
+                    const levadas = quantidadePorId.get(id) ?? 0;
                     return (
-                      <li key={produto._id!.toString()} className={styles.item}>
+                      <li key={id} className={styles.item}>
                         {produto.fotos?.[0] ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={produto.fotos[0]} alt="" className={styles.miniatura} loading="eager" />
@@ -101,6 +112,17 @@ export default async function ListaPrecosPage({
                           {custo === null ? "" : `custo ${formatarPreco(custo)}`}
                         </span>
                         <span className={styles.preco}>{formatarPreco(produto.preco)}</span>
+                        {/* Comanda: um quadradinho por peça, em blocos de cinco para contar de relance. */}
+                        <span className={styles.comanda} aria-label={`${levadas} peças levadas`}>
+                          <span className={styles.levar}>levar {levadas}</span>
+                          <span className={styles.quadrados}>
+                            {Array.from({ length: levadas }, (_, indice) => (
+                              <span key={indice} className={styles.quadrado}>
+                                {indice + 1}
+                              </span>
+                            ))}
+                          </span>
+                        </span>
                       </li>
                     );
                   })}

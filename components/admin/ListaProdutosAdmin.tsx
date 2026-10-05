@@ -19,11 +19,14 @@ import {
   ajustarPrecoEvento,
   centavosParaTexto,
   erroEstoque,
+  erroQuantidadeEvento,
   erroPrecoMercadoLivre,
   erroPrecoSite,
   percentualAjusteValido,
+  serializarItensLista,
   textoParaCentavos,
   textoParaEstoque,
+  MAX_QUANTIDADE_EVENTO,
 } from "@/lib/produtos/precoLista";
 import adminStyles from "./admin.module.css";
 import styles from "./listaProdutos.module.css";
@@ -124,6 +127,8 @@ export default function ListaProdutosAdmin({
   carrosseis: CarrosselOpcao[];
 }) {
   const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set());
+  // Quantas peças de cada produto vão ao evento: obrigatório em todo marcado (EDI-126).
+  const [quantidades, setQuantidades] = useState<Record<string, string>>({});
   const [linhas, setLinhas] = useState(() => estadoInicial(produtos));
   // As gravações em sequência leem o estado mais recente, não o do render que as disparou.
   const linhasRef = useRef(linhas);
@@ -144,7 +149,12 @@ export default function ListaProdutosAdmin({
   const idsAjustePendente = produtos.filter((p) => linhas[p.id].ajustePendente !== null).map((p) => p.id);
   const idsAjusteAtivo = produtos.filter((p) => linhas[p.id].ajusteAtivo !== null).map((p) => p.id);
   const percentuaisAtivos = [...new Set(idsAjusteAtivo.map((id) => linhas[id].ajusteAtivo!.percentual))];
-  const urlLista = `/admin/produtos/lista-precos?ids=${idsSelecionados.join(",")}`;
+  const quantidadeDe = (id: string) => textoParaEstoque(quantidades[id] ?? "");
+  const idsSemQuantidade = idsSelecionados.filter((id) => erroQuantidadeEvento(quantidadeDe(id)) !== null);
+  const pecasTotais = idsSelecionados.reduce((total, id) => total + (quantidadeDe(id) || 0), 0);
+  const urlLista = `/admin/produtos/lista-precos?ids=${serializarItensLista(
+    idsSelecionados.map((id) => ({ id, quantidade: quantidadeDe(id) ?? 0 }))
+  )}`;
   // Depois de Aplicar, só Salvar ou Descartar: evita somar dois ajustes na mesma tela.
   const ajusteTravado = idsAjustePendente.length > 0;
 
@@ -192,6 +202,22 @@ export default function ListaProdutosAdmin({
 
   function alternarTodos() {
     setSelecionados(todosMarcados ? new Set() : new Set(produtos.map((p) => p.id)));
+  }
+
+  function editarQuantidade(id: string, valor: string) {
+    setQuantidades((atual) => ({ ...atual, [id]: valor }));
+  }
+
+  /** Preenche a quantidade dos marcados com o estoque salvo — o caso mais comum é levar tudo. */
+  function usarEstoqueComoQuantidade() {
+    setQuantidades((atual) => {
+      const nova = { ...atual };
+      for (const id of idsSelecionados) {
+        const estoque = linhasRef.current[id].estoqueOriginal;
+        if (estoque >= 1) nova[id] = String(Math.min(estoque, MAX_QUANTIDADE_EVENTO));
+      }
+      return nova;
+    });
   }
 
   function atualizarLinha(id: string, mudanca: Partial<EstadoLinha>) {
@@ -510,6 +536,7 @@ export default function ListaProdutosAdmin({
               <th>Produto</th>
               <th>Categoria</th>
               <th>Estoque</th>
+              <th className={styles.colLevar}>Levar</th>
               <th>Preços</th>
               <th>Canais</th>
               <th>Destaques</th>
@@ -588,6 +615,31 @@ export default function ListaProdutosAdmin({
                         aria-label={`Estoque de ${produto.nome}`}
                       />
                       <span className={styles.unidade}>un.</span>
+                    </div>
+                  </td>
+                  <td className={styles.colLevar} data-rotulo="Levar ao evento">
+                    {/* Quantas peças deste produto vão na caixa: obrigatório para gerar a comanda. */}
+                    <div
+                      className={
+                        marcado && erroQuantidadeEvento(quantidadeDe(produto.id)) !== null
+                          ? `${styles.entrada} ${styles.entradaLevar} ${styles.entradaFalta}`
+                          : `${styles.entrada} ${styles.entradaLevar}`
+                      }
+                    >
+                      <input
+                        inputMode="numeric"
+                        value={quantidades[produto.id] ?? ""}
+                        placeholder={marcado ? "qtd" : "—"}
+                        disabled={!marcado}
+                        onChange={(e) => editarQuantidade(produto.id, e.target.value)}
+                        aria-label={`Peças de ${produto.nome} que vão ao evento`}
+                        title={
+                          marcado
+                            ? (erroQuantidadeEvento(quantidadeDe(produto.id)) ?? "Peças que vão na caixa do evento")
+                            : "Marque o produto para informar quantas peças vão"
+                        }
+                      />
+                      <span className={styles.unidade}>pç</span>
                     </div>
                   </td>
                   <td className={styles.colPrecos}>
@@ -676,21 +728,40 @@ export default function ListaProdutosAdmin({
         <span className={styles.contagem}>
           {idsSelecionados.length === 0
             ? "Marque os produtos que vão para a lista de preços."
-            : idsSelecionados.length === 1
-              ? "1 produto marcado"
-              : `${idsSelecionados.length} produtos marcados`}
+            : idsSemQuantidade.length > 0
+              ? `${idsSelecionados.length} ${plural(idsSelecionados.length, "produto marcado", "produtos marcados")} · informe as peças de ${idsSemQuantidade.length} ${plural(idsSemQuantidade.length, "produto", "produtos")}`
+              : `${idsSelecionados.length} ${plural(idsSelecionados.length, "produto marcado", "produtos marcados")} · ${pecasTotais} ${plural(pecasTotais, "peça", "peças")} na caixa`}
         </span>
+        {idsSelecionados.length > 0 && (
+          <button
+            type="button"
+            className={adminStyles.btnGhost}
+            onClick={usarEstoqueComoQuantidade}
+            title="Preenche as peças dos marcados com o estoque salvo"
+          >
+            Levar o estoque todo
+          </button>
+        )}
         {idsAlterados.length > 0 && (
           <button type="button" className={styles.btnSalvarTodos} onClick={() => void salvarTodos()} disabled={emLote}>
             {emLote ? "Salvando…" : `Salvar todos os alterados (${idsAlterados.length})`}
           </button>
         )}
-        {idsSelecionados.length > 0 ? (
+        {idsSelecionados.length > 0 && idsSemQuantidade.length === 0 ? (
           <a href={urlLista} target="_blank" rel="noopener" className={adminStyles.btnPrimary}>
             Gerar lista de preços ({idsSelecionados.length})
           </a>
         ) : (
-          <button type="button" className={adminStyles.btnPrimary} disabled>
+          <button
+            type="button"
+            className={adminStyles.btnPrimary}
+            disabled
+            title={
+              idsSelecionados.length === 0
+                ? "Marque os produtos que vão para o evento"
+                : "Informe quantas peças vão de cada produto marcado"
+            }
+          >
             Gerar lista de preços
           </button>
         )}

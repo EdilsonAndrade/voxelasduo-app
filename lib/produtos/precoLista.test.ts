@@ -12,6 +12,10 @@ import {
   margemPercentual,
   ordenarPorNome,
   textoParaCentavos,
+  erroQuantidadeEvento,
+  parseItensLista,
+  serializarItensLista,
+  MAX_QUANTIDADE_EVENTO,
 } from "./precoLista";
 
 describe("textoParaCentavos", () => {
@@ -136,5 +140,42 @@ describe("erroEstoque", () => {
     expect(erroEstoque(null)).toMatch(/Informe o estoque/);
     expect(erroEstoque(Number.NaN)).toMatch(/inválido/);
     expect(erroEstoque(-2)).toMatch(/negativo/);
+  });
+});
+
+describe("erroQuantidadeEvento", () => {
+  it("aceita de 1 ao teto da comanda", () => {
+    expect(erroQuantidadeEvento(1)).toBeNull();
+    expect(erroQuantidadeEvento(MAX_QUANTIDADE_EVENTO)).toBeNull();
+  });
+
+  it("cobra o campo e recusa zero, inválido e acima do teto", () => {
+    expect(erroQuantidadeEvento(null)).toMatch(/Informe quantas pe/);
+    expect(erroQuantidadeEvento(Number.NaN)).toMatch(/inválida/);
+    expect(erroQuantidadeEvento(0)).toMatch(/pelo menos 1/);
+    expect(erroQuantidadeEvento(MAX_QUANTIDADE_EVENTO + 1)).toMatch(/No máximo/);
+  });
+});
+
+describe("serializarItensLista e parseItensLista", () => {
+  it("vai e volta mantendo a ordem", () => {
+    const itens = [
+      { id: "aaaaaaaaaaaaaaaaaaaaaaaa", quantidade: 3 },
+      { id: "bbbbbbbbbbbbbbbbbbbbbbbb", quantidade: 12 },
+    ];
+    expect(serializarItensLista(itens)).toBe("aaaaaaaaaaaaaaaaaaaaaaaa:3,bbbbbbbbbbbbbbbbbbbbbbbb:12");
+    expect(parseItensLista(serializarItensLista(itens))).toEqual(itens);
+  });
+
+  it("sem quantidade ou com quantidade inválida assume 1 peça", () => {
+    expect(parseItensLista("abc,def:0,ghi:x")).toEqual([
+      { id: "abc", quantidade: 1 },
+      { id: "def", quantidade: 1 },
+      { id: "ghi", quantidade: 1 },
+    ]);
+  });
+
+  it("limita ao teto e ignora id repetido ou vazio", () => {
+    expect(parseItensLista("abc:999,,abc:2")).toEqual([{ id: "abc", quantidade: MAX_QUANTIDADE_EVENTO }]);
   });
 });

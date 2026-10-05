@@ -149,6 +149,11 @@
   min-width: 10rem;
 }
 
+.colLevar {
+  width: 1%;
+  white-space: nowrap;
+}
+
 .colCusto {
   text-align: right;
   white-space: nowrap;
@@ -224,6 +229,27 @@
 
 .entradaEstoque input {
   text-align: right;
+}
+
+/* Peças que vão ao evento: mesma caixa estreita do estoque, com "pç" à direita. */
+.entradaLevar {
+  max-width: 6rem;
+}
+
+.entradaLevar input {
+  text-align: right;
+}
+
+.entradaLevar input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Produto marcado sem peça informada: a lista só é gerada depois de preencher. */
+.entradaFalta {
+  border-color: var(--roxo);
+  background: color-mix(in srgb, var(--roxo) 10%, var(--surface));
+  color: var(--roxo);
 }
 
 /* Esgotado continua gritando na lista, como fazia o selo antes de o campo virar editável. */
@@ -572,6 +598,7 @@
 
   .colCategoria,
   .colEstoque,
+  .colLevar,
   .colPrecos,
   .colCanais,
   .colDestaques,
@@ -580,14 +607,16 @@
   }
 
   .colCategoria,
-  .colEstoque {
+  .colEstoque,
+  .colLevar {
     display: flex !important;
     align-items: center;
     gap: 0.5rem;
   }
 
   .colCategoria::before,
-  .colEstoque::before {
+  .colEstoque::before,
+  .colLevar::before {
     content: attr(data-rotulo);
     min-width: 4.5rem;
     font-size: 0.7rem;
