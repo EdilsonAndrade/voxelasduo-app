@@ -135,6 +135,18 @@ export async function definirMiniaturaPropria(
   await colecao.updateOne({ taskId }, { $set: { miniaturaUrl } });
 }
 
+/**
+ * Esquece a URL de capa da origem que não serve mais (expirada/removida).
+ *
+ * Sem isso, toda importação volta a baixar as mesmas capas mortas. O campo é
+ * regravado se a origem voltar a listar a task, então nada se perde: a
+ * impressão apenas passa a mostrar o espaço de "sem foto" até lá.
+ */
+export async function esquecerCapaDaOrigem(taskId: string): Promise<void> {
+  const colecao = await colecaoImpressoes();
+  await colecao.updateOne({ taskId }, { $unset: { coverUrl: "" } });
+}
+
 export interface FiltroImpressoes {
   de?: Date;
   ate?: Date;

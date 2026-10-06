@@ -32,6 +32,16 @@ function tipoDaImagem(contentType: string, bytes: Uint8Array): string | undefine
 }
 
 /**
+ * O que aconteceu na cópia. `capaExpirada` é separado de `falhou` porque só
+ * ele é definitivo: a URL assinada não volta a funcionar, então insistir nela
+ * a cada importação é trabalho perdido.
+ */
+export type ResultadoCopia =
+  | { tipo: "copiada"; url: string }
+  | { tipo: "capaExpirada" }
+  | { tipo: "falhou" };
+
+/**
  * Copia a miniatura da placa para o nosso storage.
  *
  * Existe porque a URL devolvida pela origem é assinada e expira: depois de
@@ -47,14 +57,15 @@ export async function copiarMiniatura(
   coverUrl: string,
   taskId: string,
   buscar: typeof fetch = fetch
-): Promise<string | undefined> {
+): Promise<ResultadoCopia> {
   try {
     const resposta = await buscar(coverUrl);
     if (!resposta.ok) {
       // A URL assinada da origem vale ~30 min: depois disso é 403 e a cópia
       // nunca mais acontece. Aparece no log para não virar sumiço silencioso.
       console.error(`[producao] miniatura ${taskId}: origem respondeu ${resposta.status}`);
-      return undefined;
+      const expirada = resposta.status === 403 || resposta.status === 404;
+      return expirada ? { tipo: "capaExpirada" } : { tipo: "falhou" };
     }
 
     const cabecalho = (resposta.headers.get("content-type") ?? "").split(";")[0].trim();
@@ -62,23 +73,23 @@ export async function copiarMiniatura(
     const dados = await resposta.arrayBuffer();
     if (dados.byteLength === 0 || dados.byteLength > TAMANHO_MAXIMO_BYTES) {
       console.error(`[producao] miniatura ${taskId}: tamanho fora do aceito (${dados.byteLength} bytes)`);
-      return undefined;
+      return { tipo: "falhou" };
     }
 
     const tipo = tipoDaImagem(cabecalho, new Uint8Array(dados));
     if (!tipo) {
       console.error(`[producao] miniatura ${taskId}: resposta não é imagem (content-type "${cabecalho}")`);
-      return undefined;
+      return { tipo: "falhou" };
     }
 
     const extensao = tipo === "image/jpeg" ? "jpg" : tipo.split("/")[1];
     const arquivo = new File([dados], `${taskId}.${extensao}`, { type: tipo });
 
-    return await enviarMiniaturaProducao(arquivo, `${taskId}.${extensao}`);
+    return { tipo: "copiada", url: await enviarMiniaturaProducao(arquivo, `${taskId}.${extensao}`) };
   } catch (erro) {
     // CDN fora do ar, URL já expirada, storage sem token — segue sem foto, mas
     // o motivo vai para o log: sem isso, "some a miniatura" não tem diagnóstico.
     console.error(`[producao] miniatura ${taskId} não copiada:`, erro);
-    return undefined;
+    return { tipo: "falhou" };
   }
 }

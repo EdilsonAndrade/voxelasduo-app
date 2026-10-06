@@ -24,9 +24,9 @@ describe("copiarMiniatura", () => {
   it("copia a imagem para o nosso storage e devolve a URL que não expira", async () => {
     const buscar = vi.fn().mockResolvedValue(imagem());
 
-    const url = await copiarMiniatura("https://cdn.bambu/capa.png", "123", buscar);
+    const resultado = await copiarMiniatura("https://cdn.bambu/capa.png", "123", buscar);
 
-    expect(url).toBe("https://blob.local/producao/123.png");
+    expect(resultado).toEqual({ tipo: "copiada", url: "https://blob.local/producao/123.png" });
     expect(buscar).toHaveBeenCalledWith("https://cdn.bambu/capa.png");
     const [arquivo, nome] = enviarMiniaturaProducao.mock.calls[0];
     expect(nome).toBe("123.png");
@@ -41,11 +41,21 @@ describe("copiarMiniatura", () => {
     expect(enviarMiniaturaProducao.mock.calls[0][1]).toBe("77.jpg");
   });
 
-  it("desiste sem erro quando a URL da origem já expirou", async () => {
+  it("avisa que a capa expirou, para a importação parar de tentar", async () => {
     const buscar = vi.fn().mockResolvedValue(new Response("denied", { status: 403 }));
 
-    await expect(copiarMiniatura("https://cdn.bambu/capa.png", "123", buscar)).resolves.toBeUndefined();
+    await expect(copiarMiniatura("https://cdn.bambu/capa.png", "123", buscar)).resolves.toEqual({
+      tipo: "capaExpirada",
+    });
     expect(enviarMiniaturaProducao).not.toHaveBeenCalled();
+  });
+
+  it("falha passageira da origem não marca a capa como perdida", async () => {
+    const buscar = vi.fn().mockResolvedValue(new Response("boom", { status: 500 }));
+
+    await expect(copiarMiniatura("https://cdn.bambu/capa.png", "123", buscar)).resolves.toEqual({
+      tipo: "falhou",
+    });
   });
 
   it("aceita imagem servida como binary/octet-stream — o S3 da origem faz isso", async () => {
@@ -68,23 +78,25 @@ describe("copiarMiniatura", () => {
       })
     );
 
-    await expect(copiarMiniatura("https://cdn.bambu/capa.png", "1", buscar)).resolves.toBeUndefined();
+    await expect(copiarMiniatura("https://cdn.bambu/capa.png", "1", buscar)).resolves.toEqual({
+      tipo: "falhou",
+    });
   });
 
   it("desiste em arquivo vazio ou grande demais", async () => {
     const vazio = vi.fn().mockResolvedValue(imagem("image/png", 0));
     const enorme = vi.fn().mockResolvedValue(imagem("image/png", 6 * 1024 * 1024));
 
-    await expect(copiarMiniatura("https://cdn/a.png", "1", vazio)).resolves.toBeUndefined();
-    await expect(copiarMiniatura("https://cdn/b.png", "2", enorme)).resolves.toBeUndefined();
+    await expect(copiarMiniatura("https://cdn/a.png", "1", vazio)).resolves.toEqual({ tipo: "falhou" });
+    await expect(copiarMiniatura("https://cdn/b.png", "2", enorme)).resolves.toEqual({ tipo: "falhou" });
   });
 
   it("não propaga falha de rede nem de storage", async () => {
     const quebrado = vi.fn().mockRejectedValue(new Error("ECONNRESET"));
-    await expect(copiarMiniatura("https://cdn/a.png", "1", quebrado)).resolves.toBeUndefined();
+    await expect(copiarMiniatura("https://cdn/a.png", "1", quebrado)).resolves.toEqual({ tipo: "falhou" });
 
     enviarMiniaturaProducao.mockRejectedValue(new Error("blob fora do ar"));
     const ok = vi.fn().mockResolvedValue(imagem());
-    await expect(copiarMiniatura("https://cdn/a.png", "1", ok)).resolves.toBeUndefined();
+    await expect(copiarMiniatura("https://cdn/a.png", "1", ok)).resolves.toEqual({ tipo: "falhou" });
   });
 });

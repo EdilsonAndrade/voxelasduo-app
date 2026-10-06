@@ -5,6 +5,7 @@ import { copiarMiniatura } from "./miniaturas";
 import {
   contarSemMiniaturaPropria,
   definirMiniaturaPropria,
+  esquecerCapaDaOrigem,
   finalizarImportacao,
   iniciarImportacao,
   inserirImpressoesNovas,
@@ -105,10 +106,14 @@ async function copiarMiniaturasPendentes(): Promise<number> {
     const pendentes = await listarSemMiniaturaPropria();
 
     for (const impressao of pendentes) {
-      const url = await copiarMiniatura(impressao.coverUrl!, impressao.taskId);
-      if (url) {
-        await definirMiniaturaPropria(impressao.taskId, url);
+      const resultado = await copiarMiniatura(impressao.coverUrl!, impressao.taskId);
+
+      if (resultado.tipo === "copiada") {
+        await definirMiniaturaPropria(impressao.taskId, resultado.url);
         copiadas++;
+      } else if (resultado.tipo === "capaExpirada") {
+        // Link morto: não adianta tentar de novo na próxima importação.
+        await esquecerCapaDaOrigem(impressao.taskId);
       }
     }
   } catch (erro) {
