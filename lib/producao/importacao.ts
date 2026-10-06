@@ -27,6 +27,8 @@ export interface ResultadoImportacao {
    * aparecem como "0 novas" e não dá para diagnosticar.
    */
   totalNaOrigem?: number;
+  /** `true` quando a varredura leu até o fim do histórico (não parou no teto de páginas). */
+  chegouAoFim: boolean;
 }
 
 /** Dependências injetadas para a lógica ser testável sem rede e sem banco. */
@@ -69,6 +71,7 @@ export async function importarHistorico(
   let ignoradas = 0;
   let paginas = 0;
   let totalNaOrigem: number | undefined;
+  let chegouAoFim = false;
 
   while (paginas < maxPaginas) {
     const pagina = await deps.listarTasks({
@@ -79,7 +82,10 @@ export async function importarHistorico(
     paginas++;
     if (totalNaOrigem === undefined) totalNaOrigem = pagina.total;
 
-    if (pagina.hits.length === 0) break;
+    if (pagina.hits.length === 0) {
+      chegouAoFim = true;
+      break;
+    }
 
     const impressoes = mapearTasks(pagina.hits, deps.ativadoEm);
     const existentes = await deps.taskIdsExistentes(impressoes.map((i) => i.taskId));
@@ -97,11 +103,14 @@ export async function importarHistorico(
     if (!deps.cargaCompleta && paginaInteiraConhecida) break;
 
     const proximo = proximoCursor(pagina);
-    if (!proximo || proximo === cursor) break; // origem sem cursor novo: evita laço infinito
+    if (!proximo || proximo === cursor) {
+      chegouAoFim = true; // origem sem cursor novo: evita laço infinito
+      break;
+    }
     cursor = proximo;
   }
 
-  return { novas, ignoradas, paginas, totalNaOrigem };
+  return { novas, ignoradas, paginas, totalNaOrigem, chegouAoFim };
 }
 
 export function origemDoDisparo(automatica: boolean): OrigemImportacao {

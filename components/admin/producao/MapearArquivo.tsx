@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import FotoPlaca from "./FotoPlaca";
+import DetalhePlaca from "./DetalhePlaca";
 import { PARTE_PECA_UNICA } from "@/lib/models/producao";
 import styles from "./producao.module.css";
 
@@ -15,6 +16,10 @@ export interface ProdutoOpcao {
 
 export interface Pendente {
   nomeArquivo: string;
+  titulo?: string;
+  nomePerfil?: string;
+  nomePlaca?: string;
+  designId?: string;
   impressoes: number;
   gramasTotal: number;
   ultimaEm: string;
@@ -133,13 +138,18 @@ function LinhaPendente({
       */}
       <FotoPlaca
         url={pendente.coverUrl}
-        nome={pendente.nomeArquivo}
+        nome={pendente.titulo ?? pendente.nomeArquivo}
         className={styles.miniaturaPendente}
         classNameVazio={styles.semMiniaturaPendente}
       />
 
       <div className={styles.pendenteNome}>
-        <div className={styles.nomeArquivo}>{pendente.nomeArquivo}</div>
+        <div className={styles.nomeArquivo}>{pendente.titulo ?? pendente.nomeArquivo}</div>
+        <DetalhePlaca
+          nomePlaca={pendente.nomePlaca}
+          nomePerfil={pendente.nomePerfil}
+          designId={pendente.designId}
+        />
         <div className={styles.pendenteDados}>
           {pendente.impressoes} {pendente.impressoes === 1 ? "impressão" : "impressões"} ·{" "}
           {Math.round(pendente.gramasTotal)} g · última em{" "}

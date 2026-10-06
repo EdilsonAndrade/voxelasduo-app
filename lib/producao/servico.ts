@@ -2,8 +2,11 @@ import { criarClienteBambu, ErroBambu } from "./bambu/cliente";
 import { buscarCredencialBambu, estadoDaConexao } from "./credencial";
 import { importarHistorico, type ResultadoImportacao } from "./importacao";
 import { copiarMiniatura } from "./miniaturas";
+import { VERSAO_CHAVE } from "./bambu/mapear";
 import {
+  contarComChaveAntiga,
   contarSemMiniaturaPropria,
+  encerrarMigracaoDeChave,
   definirMiniaturaPropria,
   esquecerCapaDaOrigem,
   finalizarImportacao,
@@ -22,6 +25,13 @@ import type { OrigemImportacao } from "@/lib/models/producao";
  * histórico inteiro.
  */
 export const MAX_PAGINAS_RECUPERACAO = 5;
+
+/**
+ * Teto de páginas da migração de chave (`VERSAO_CHAVE`): precisa reler o
+ * histórico inteiro uma vez para regravar a chave de cada impressão. Não
+ * concluiu no teto? A próxima importação continua a migração.
+ */
+export const MAX_PAGINAS_MIGRACAO = 100;
 
 /** Erro de pré-condição do lado do site (não da origem) — a rota traduz em 409. */
 export class ConexaoIndisponivel extends Error {
@@ -64,16 +74,28 @@ export async function executarImportacao(
   const recuperandoMiniaturas =
     origem === "manual" && jaImportadas > 0 && (await contarSemMiniaturaPropria()) > 0;
 
+  // Migração de chave: impressões gravadas pela regra antiga só ganham a
+  // chave nova (e levam o vínculo junto) relendo a task na origem. Só com
+  // todas as impressoras, senão as das outras ficariam para trás.
+  const migrandoChave =
+    jaImportadas > 0 && !deviceId && (await contarComChaveAntiga(VERSAO_CHAVE)) > 0;
+
   try {
     const resultado = await importarHistorico({
       listarTasks: cliente.listarTasks,
       taskIdsExistentes,
       inserirImpressoesNovas,
       ativadoEm: credencial.ativadoEm,
-      cargaCompleta: jaImportadas === 0 || recuperandoMiniaturas,
-      maxPaginas: recuperandoMiniaturas ? MAX_PAGINAS_RECUPERACAO : undefined,
+      cargaCompleta: jaImportadas === 0 || recuperandoMiniaturas || migrandoChave,
+      maxPaginas: migrandoChave
+        ? MAX_PAGINAS_MIGRACAO
+        : recuperandoMiniaturas
+          ? MAX_PAGINAS_RECUPERACAO
+          : undefined,
       deviceId,
     });
+
+    if (migrandoChave && resultado.chegouAoFim) await encerrarMigracaoDeChave(VERSAO_CHAVE);
 
     const miniaturasCopiadas = await copiarMiniaturasPendentes();
     await finalizarImportacao(registroId, { ...resultado, miniaturasCopiadas });

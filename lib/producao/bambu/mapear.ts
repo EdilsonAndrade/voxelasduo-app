@@ -2,6 +2,13 @@ import type { Impressao, ConsumoSlot, ResultadoImpressao } from "@/lib/models/pr
 import type { TaskBambu } from "./cliente";
 import { textoDeMaterial } from "../material";
 
+/**
+ * Versão da regra que monta `nomeArquivo`. Registro com versão menor foi
+ * gravado pela regra antiga (só o `title`) e é regravado — com os vínculos
+ * migrados — na próxima importação.
+ */
+export const VERSAO_CHAVE = 2;
+
 /** `status` da origem: 2 = concluída, 3 = abortada/falha (research.md #2). */
 const STATUS_CONCLUIDA = 2;
 const STATUS_INTERROMPIDA = 3;
@@ -14,6 +21,32 @@ function paraData(valor?: string): Date | undefined {
 
 function numeroPositivo(valor?: number): number | undefined {
   return typeof valor === "number" && valor > 0 ? valor : undefined;
+}
+
+/** Id da origem como texto; `0`/vazio significa "não tem". */
+function idDaOrigem(valor: unknown): string | undefined {
+  if (valor === undefined || valor === null) return undefined;
+  const texto = String(valor).trim();
+  return texto && texto !== "0" ? texto : undefined;
+}
+
+/**
+ * Chave que identifica **a placa impressa**, base do vínculo com o produto.
+ *
+ * Placa do MakerWorld tem `title` = nome do perfil, e o nome padrão dos perfis
+ * ("0.2mm layer, 2 walls, 15% infill") se repete entre modelos diferentes —
+ * agrupar por ele mistura produtos. Ali a placa é identificada por modelo +
+ * perfil + índice da placa. Arquivo próprio não tem `designId`, e o `title` é
+ * o nome do projeto: continua sendo a chave. O `profileId` sozinho não serve
+ * para arquivo próprio porque cada envio pelo fatiador pode criar um novo.
+ */
+export function chaveDaTask(task: TaskBambu): string | undefined {
+  const design = idDaOrigem(task.designId);
+  if (design) {
+    return `mw:${design}:${idDaOrigem(task.profileId) ?? "0"}:${task.plateIndex ?? 0}`;
+  }
+  const nome = (task.title || task.plateName || "").trim();
+  return nome || undefined;
 }
 
 /**
@@ -55,12 +88,17 @@ export function mapearTask(task: TaskBambu, ativadoEm: Date): Impressao | null {
     textoDeMaterial(task.material) ??
     slots.map((s) => s.material).find((m): m is string => Boolean(m));
 
-  const nomeArquivo = (task.title || task.plateName || "").trim();
+  const designId = idDaOrigem(task.designId);
+  const nomeDoTitle = (task.title || "").trim() || undefined;
 
   return {
     taskId: String(task.id),
-    nomeArquivo: nomeArquivo || `(sem nome) ${task.id}`,
+    nomeArquivo: chaveDaTask(task) ?? `(sem nome) ${task.id}`,
+    titulo: (designId && task.designTitle?.trim()) || nomeDoTitle || task.plateName || undefined,
+    nomePerfil: designId ? nomeDoTitle : undefined,
     nomePlaca: task.plateName || undefined,
+    designId,
+    versaoChave: VERSAO_CHAVE,
     coverUrl: task.cover || undefined,
     resultado,
     inicio,

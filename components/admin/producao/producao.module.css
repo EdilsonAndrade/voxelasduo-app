@@ -380,6 +380,18 @@
   font-size: 0.8rem;
 }
 
+.detalhePlaca {
+  display: block;
+  color: var(--texto-soft);
+  font-size: 0.8rem;
+  word-break: break-word;
+}
+
+.detalhePlaca a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 /* --------------------------------------------------------- apuração */
 
 .produto {

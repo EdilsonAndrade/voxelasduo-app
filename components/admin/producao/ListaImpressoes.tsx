@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import FotoPlaca from "./FotoPlaca";
+import DetalhePlaca from "./DetalhePlaca";
 import styles from "./producao.module.css";
 import type { ProdutoOpcao } from "./MapearArquivo";
 
 export interface ImpressaoLista {
   id: string;
   nomeArquivo: string;
+  titulo?: string;
+  nomePerfil?: string;
+  nomePlaca?: string;
+  designId?: string;
   coverUrl?: string;
   resultado: "concluida" | "interrompida" | "em_andamento";
   inicio: string;
@@ -189,7 +194,7 @@ function Linha({
       <td data-rotulo="Peça">
         <FotoPlaca
           url={impressao.coverUrl}
-          nome={impressao.nomeArquivo}
+          nome={impressao.titulo ?? impressao.nomeArquivo}
           className={styles.miniatura}
           classNameVazio={styles.semMiniatura}
         />
@@ -197,7 +202,12 @@ function Linha({
 
       <td data-rotulo="Arquivo">
         <span className={styles.celulaNome}>
-          <strong>{impressao.nomeArquivo}</strong>
+          <strong>{impressao.titulo ?? impressao.nomeArquivo}</strong>
+          <DetalhePlaca
+            nomePlaca={impressao.nomePlaca}
+            nomePerfil={impressao.nomePerfil}
+            designId={impressao.designId}
+          />
           {impressao.vinculo ? (
             <span className={styles.produtoVinculado}>
               {impressao.vinculo.produtoNome} · {impressao.vinculo.parte} ·{" "}

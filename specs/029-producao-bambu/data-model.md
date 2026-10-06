@@ -31,7 +31,11 @@ Uma por trabalho de impressão trazido da nuvem do fabricante.
 |---|---|---|
 | `_id` | `ObjectId` | |
 | `taskId` | `string` | id de origem; **índice único** (FR-007) |
-| `nomeArquivo` | `string` | `title` da origem; chave do vínculo |
+| `nomeArquivo` | `string` | chave do vínculo: `mw:<designId>:<profileId>:<plateIndex>` em placa do MakerWorld (o `title` ali é o nome do perfil e se repete entre modelos); `title` em arquivo próprio |
+| `titulo` | `string?` | nome para a tela: `designTitle` (MakerWorld) ou `title` |
+| `nomePerfil` | `string?` | `title` quando a placa é do MakerWorld (nome do perfil de impressão) |
+| `designId` | `string?` | modelo no MakerWorld, para o link |
+| `versaoChave` | `number?` | versão da regra da chave; abaixo de `VERSAO_CHAVE` dispara a migração na importação |
 | `nomePlaca` | `string?` | `plateName`, quando houver |
 | `coverUrl` | `string?` | miniatura servida pelo CDN do fabricante (research #9) |
 | `resultado` | `"concluida" \| "interrompida"` | mapeado de `status` 2/3 |

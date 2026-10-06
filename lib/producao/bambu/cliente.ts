@@ -37,7 +37,17 @@ export type ResultadoLogin =
 
 export interface TaskBambu {
   id: number | string;
+  /**
+   * Nome do **perfil** de impressão quando a placa veio do MakerWorld (o nome
+   * padrão de lá é "0.2mm layer, 2 walls, 15% infill"); nome do projeto
+   * quando veio de um arquivo próprio.
+   */
   title?: string;
+  /** Nome do modelo no MakerWorld — ausente (ou `designId` 0) em arquivo próprio. */
+  designTitle?: string;
+  designId?: number | string;
+  profileId?: number | string;
+  plateIndex?: number;
   plateName?: string;
   cover?: string;
   status?: number;

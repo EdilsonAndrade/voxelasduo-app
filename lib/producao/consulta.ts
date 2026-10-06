@@ -14,6 +14,10 @@ export interface ImpressaoComVinculo {
   id: string;
   taskId: string;
   nomeArquivo: string;
+  titulo?: string;
+  nomePerfil?: string;
+  nomePlaca?: string;
+  designId?: string;
   coverUrl?: string;
   resultado: ResultadoImpressao;
   inicio: Date;
@@ -100,6 +104,10 @@ function montar(
     id: impressao._id!.toString(),
     taskId: impressao.taskId,
     nomeArquivo: impressao.nomeArquivo,
+    titulo: impressao.titulo,
+    nomePerfil: impressao.nomePerfil,
+    nomePlaca: impressao.nomePlaca,
+    designId: impressao.designId,
     // A cópia nossa não expira; a da origem é só o fallback de quem ainda não copiou.
     coverUrl: impressao.miniaturaUrl ?? impressao.coverUrl,
     resultado: impressao.resultado,

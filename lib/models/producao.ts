@@ -34,9 +34,21 @@ export interface Impressao {
   _id?: ObjectId;
   /** Identificador na origem — índice único, é o que evita duplicidade (FR-007). */
   taskId: string;
-  /** Nome do arquivo impresso; chave do vínculo com o produto. */
+  /**
+   * Chave do vínculo com o produto. Placa do MakerWorld: `mw:<designId>:<profileId>:<plateIndex>`
+   * — o `title` dali é o nome do perfil e se repete entre modelos diferentes.
+   * Arquivo próprio: o `title` (nome do projeto). Ver `chaveDaTask`.
+   */
   nomeArquivo: string;
+  /** Nome legível para a tela: o do modelo no MakerWorld, ou o do projeto. */
+  titulo?: string;
+  /** Nome do perfil de impressão (MakerWorld), ex.: "0.2mm layer, 2 walls, 15% infill". */
+  nomePerfil?: string;
   nomePlaca?: string;
+  /** Modelo no MakerWorld — permite o link para a página dele. */
+  designId?: string;
+  /** Versão da regra de `nomeArquivo` que gerou este registro; ver `VERSAO_CHAVE`. */
+  versaoChave?: number;
   /** Miniatura no CDN do fabricante. A URL é assinada e **expira**: serve só como origem da cópia. */
   coverUrl?: string;
   /** Cópia da miniatura no nosso storage — é esta que a tela usa, porque não expira. */

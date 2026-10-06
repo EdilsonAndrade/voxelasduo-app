@@ -72,6 +72,15 @@ export async function inserirImpressoesNovas(
   if (impressoes.length === 0) return { novas: 0, ignoradas: 0 };
 
   const colecao = await colecaoImpressoes();
+  // A chave gravada antes desta escrita: se a regra de `nomeArquivo` mudou,
+  // os vínculos da chave antiga precisam acompanhar (`migrarVinculos`).
+  const anteriores = await colecao
+    .find(
+      { taskId: { $in: impressoes.map((i) => i.taskId) } },
+      { projection: { taskId: 1, nomeArquivo: 1 } }
+    )
+    .toArray();
+
   const resultado = await colecao.bulkWrite(
     impressoes.map((impressao) => {
       const { quantidadeLancada, quantidadePerdida, historico, importadoEm, ...daOrigem } =
@@ -91,8 +100,72 @@ export async function inserirImpressoesNovas(
     { ordered: false }
   );
 
+  const novaPorTask = new Map(impressoes.map((i) => [i.taskId, i.nomeArquivo]));
+  const trocas = anteriores
+    .map((a) => ({ de: a.nomeArquivo, para: novaPorTask.get(a.taskId)! }))
+    .filter((t) => t.de !== t.para);
+  if (trocas.length > 0) await migrarVinculos(trocas);
+
   const novas = resultado.upsertedCount;
   return { novas, ignoradas: impressoes.length - novas };
+}
+
+/**
+ * Leva os vínculos da chave antiga para a nova quando a regra de
+ * `nomeArquivo` muda (placas do MakerWorld deixaram de ser agrupadas pelo nome
+ * do perfil).
+ *
+ * Uma chave antiga pode se dividir em várias novas — era justamente o erro:
+ * modelos diferentes com o mesmo nome de perfil. O vínculo é copiado para
+ * todas, para que nenhuma apuração mude de número na migração; agora que as
+ * placas aparecem separadas, o vendedor corrige a que estiver errada. O
+ * vínculo antigo só sai quando nenhuma impressão usa mais aquela chave
+ * (impressões que a origem não lista mais continuam com ela).
+ */
+async function migrarVinculos(trocas: { de: string; para: string }[]): Promise<void> {
+  const vinculos = await colecaoVinculos();
+  const antigos = await vinculos.find({ nomeArquivo: { $in: trocas.map((t) => t.de) } }).toArray();
+  if (antigos.length === 0) return;
+
+  const agora = new Date();
+  for (const antigo of antigos) {
+    const destinos = [...new Set(trocas.filter((t) => t.de === antigo.nomeArquivo).map((t) => t.para))];
+    const { _id, nomeArquivo, ...dados } = antigo;
+
+    await vinculos.bulkWrite(
+      destinos.map((para) => ({
+        updateOne: {
+          filter: { nomeArquivo: para },
+          // Vínculo já existente na chave nova é decisão mais recente: não sobrescreve.
+          update: { $setOnInsert: { ...dados, nomeArquivo: para, atualizadoEm: agora } },
+          upsert: true,
+        },
+      })),
+      { ordered: false }
+    );
+
+    const restantes = await (await colecaoImpressoes()).countDocuments({ nomeArquivo });
+    if (restantes === 0) await vinculos.deleteOne({ _id });
+  }
+}
+
+/** Impressões gravadas pela regra antiga de chave — ver `VERSAO_CHAVE`. */
+export async function contarComChaveAntiga(versaoAtual: number): Promise<number> {
+  const colecao = await colecaoImpressoes();
+  return colecao.countDocuments({ versaoChave: { $ne: versaoAtual } });
+}
+
+/**
+ * Marca como migradas as impressões que a varredura completa não alcançou: a
+ * origem não as lista mais, então não há como regravá-las. Sem isso, toda
+ * importação voltaria a varrer o histórico inteiro atrás delas.
+ */
+export async function encerrarMigracaoDeChave(versaoAtual: number): Promise<void> {
+  const colecao = await colecaoImpressoes();
+  await colecao.updateMany(
+    { versaoChave: { $ne: versaoAtual } },
+    { $set: { versaoChave: versaoAtual } }
+  );
 }
 
 export async function taskIdsExistentes(taskIds: string[]): Promise<Set<string>> {
@@ -219,6 +292,10 @@ export async function buscarImpressaoPorId(id: string): Promise<Impressao | null
 export async function agruparPendentes(): Promise<
   {
     nomeArquivo: string;
+    titulo?: string;
+    nomePerfil?: string;
+    nomePlaca?: string;
+    designId?: string;
     impressoes: number;
     gramasTotal: number;
     ultimaEm: Date;
@@ -231,6 +308,10 @@ export async function agruparPendentes(): Promise<
   return impressoes
     .aggregate<{
       nomeArquivo: string;
+      titulo?: string;
+      nomePerfil?: string;
+      nomePlaca?: string;
+      designId?: string;
       impressoes: number;
       gramasTotal: number;
       ultimaEm: Date;
@@ -247,6 +328,10 @@ export async function agruparPendentes(): Promise<
           gramasTotal: { $sum: { $ifNull: ["$gramas", 0] } },
           ultimaEm: { $max: "$inicio" },
           coverUrl: { $last: { $ifNull: ["$miniaturaUrl", "$coverUrl"] } },
+          titulo: { $last: "$titulo" },
+          nomePerfil: { $last: "$nomePerfil" },
+          nomePlaca: { $last: "$nomePlaca" },
+          designId: { $last: "$designId" },
         },
       },
       {
@@ -257,6 +342,10 @@ export async function agruparPendentes(): Promise<
           gramasTotal: 1,
           ultimaEm: 1,
           coverUrl: 1,
+          titulo: 1,
+          nomePerfil: 1,
+          nomePlaca: 1,
+          designId: 1,
         },
       },
       { $sort: { ultimaEm: -1 } },

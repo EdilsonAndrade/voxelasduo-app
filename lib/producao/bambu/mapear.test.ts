@@ -127,6 +127,35 @@ describe("mapearTask", () => {
     ).toBe("(sem nome) 912345");
   });
 
+  it("placa do MakerWorld: chave por modelo + perfil + placa, e o nome do modelo na tela", () => {
+    const doMakerWorld: TaskBambu = {
+      ...taskConcluida,
+      title: "0.2mm layer, 2 walls, 15% infill",
+      designId: 1234567,
+      designTitle: "Vaso Twist",
+      profileId: 998877,
+      plateIndex: 2,
+      plateName: "",
+    };
+    const impressao = mapearTask(doMakerWorld, ATIVADO_EM)!;
+
+    expect(impressao.nomeArquivo).toBe("mw:1234567:998877:2");
+    expect(impressao.titulo).toBe("Vaso Twist");
+    expect(impressao.nomePerfil).toBe("0.2mm layer, 2 walls, 15% infill");
+    expect(impressao.designId).toBe("1234567");
+
+    // Mesmo nome de perfil, outro modelo: não pode cair no mesmo grupo.
+    const outroModelo = mapearTask({ ...doMakerWorld, designId: 555 }, ATIVADO_EM)!;
+    expect(outroModelo.nomeArquivo).not.toBe(impressao.nomeArquivo);
+  });
+
+  it("arquivo próprio (designId 0) continua agrupado pelo title", () => {
+    const impressao = mapearTask({ ...taskConcluida, designId: 0, profileId: 42 }, ATIVADO_EM)!;
+    expect(impressao.nomeArquivo).toBe("vaso_base_v2");
+    expect(impressao.titulo).toBe("vaso_base_v2");
+    expect(impressao.nomePerfil).toBeUndefined();
+  });
+
   it("descarta item sem id ou sem data de início", () => {
     expect(mapearTask({ ...taskConcluida, startTime: undefined }, ATIVADO_EM)).toBeNull();
     expect(
