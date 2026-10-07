@@ -517,6 +517,58 @@
   accent-color: var(--roxo);
 }
 
+/* Atalho flutuante do "Publicado no site" — fixo à esquerda, acompanha o scroll. */
+.publicarFlutuante {
+  position: fixed;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border: 2px solid var(--preto);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--preto);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--preto);
+}
+
+.publicarFlutuante:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+.publicarFlutuanteAtivo {
+  composes: publicarFlutuante;
+  background: var(--turquesa);
+}
+
+.publicarFlutuanteIndicador {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 2px solid var(--preto);
+  background: var(--surface);
+}
+
+.publicarFlutuanteAtivo .publicarFlutuanteIndicador {
+  background: var(--preto);
+}
+
+@media (max-width: 900px) {
+  .publicarFlutuante {
+    top: auto;
+    bottom: 1rem;
+    transform: none;
+  }
+}
+
 .channelActions {
   display: flex;
   flex-wrap: wrap;

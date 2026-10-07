@@ -781,6 +781,19 @@ export default function ProdutoForm({
   return (
     <>
       <form className={styles.form} onSubmit={handleSubmit}>
+      {/* Atalho flutuante do "Publicado no site": acompanha o scroll pra não precisar voltar ao topo. */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={valores.publicado}
+        className={valores.publicado ? styles.publicarFlutuanteAtivo : styles.publicarFlutuante}
+        onClick={() => atualizarCampo("publicado", !valores.publicado)}
+        title={valores.publicado ? "Publicado no site — clique para voltar a rascunho" : "Rascunho — clique para publicar no site"}
+      >
+        <span className={styles.publicarFlutuanteIndicador} aria-hidden="true" />
+        {valores.publicado ? "Publicado no site" : "Rascunho"}
+      </button>
+
       <div className={styles.field}>
         <label htmlFor="nome">Nome {selo("republicar")}</label>
         <input
