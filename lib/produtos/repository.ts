@@ -60,6 +60,15 @@ export async function listarProdutos(filtro: FiltroListagem = {}) {
   return colecao.find(query).sort({ criadoEm: -1 }).toArray();
 }
 
+/** Só os nomes do catálogo, em ordem alfabética — sugestões do item no app de pedidos de evento. */
+export async function listarNomesProdutos(): Promise<string[]> {
+  const colecao = await colecaoProdutos();
+  const nomes = await colecao.distinct("nome");
+  return nomes
+    .filter((nome): nome is string => typeof nome === "string" && nome.trim() !== "")
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
 export async function buscarProdutoPorId(id: string): Promise<Produto | null> {
   if (!ObjectId.isValid(id)) return null;
   const colecao = await colecaoProdutos();

@@ -27,6 +27,8 @@ interface Props {
   autor: string;
   eventos: string[];
   conhecidos: PedidoConhecido[];
+  /** Nomes dos produtos do catálogo, sugeridos no campo de cada item. */
+  produtos: string[];
   /** Só o pedido novo guarda rascunho no aparelho. */
   guardarRascunho: boolean;
   onSalvo: (form: PedidoForm) => void;
@@ -50,6 +52,7 @@ export default function FormularioPedido({
   autor,
   eventos,
   conhecidos,
+  produtos,
   guardarRascunho,
   onSalvo,
   onAbrirExistente,
@@ -232,6 +235,7 @@ export default function FormularioPedido({
           key={item.id}
           item={item}
           indice={indice}
+          produtos={produtos}
           podeRemover={form.itens.length > 1}
           erro={erros[`itens.${indice}`]}
           erroQuantidade={erros[`itens.${indice}.quantidade`]}

@@ -12,8 +12,10 @@ import { apagarDb, lerDb } from "./offline/db";
 import {
   assinarFila,
   enfileirarPedido,
+  gravarCacheProdutos,
   gravarCachePedidos,
   lerCachePedidos,
+  lerCacheProdutos,
   lerUltimoEvento,
   listarFila,
   sincronizarFila,
@@ -106,6 +108,7 @@ export default function AppEvento({ usuario }: { usuario: string }) {
   const [confirmacao, setConfirmacao] = useState<string | null>(null);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [erroLista, setErroLista] = useState<string | null>(null);
+  const [produtos, setProdutos] = useState<string[]>([]);
 
   const recarregarLocal = useCallback(async () => {
     const [entradas, cache] = await Promise.all([listarFila().catch(() => []), lerCachePedidos()]);
@@ -133,6 +136,20 @@ export default function AppEvento({ usuario }: { usuario: string }) {
     }
   }, []);
 
+  // Nomes do catálogo para o campo do item: usa o guardado no aparelho e atualiza quando há internet.
+  const buscarProdutos = useCallback(async () => {
+    setProdutos(await lerCacheProdutos());
+    try {
+      const resposta = await fetch("/api/admin/evento/produtos", { cache: "no-store" });
+      if (!resposta.ok) return;
+      const { produtos: nomes } = (await resposta.json()) as { produtos: string[] };
+      setProdutos(nomes);
+      await gravarCacheProdutos(nomes);
+    } catch {
+      // Sem internet: fica com a lista guardada.
+    }
+  }, []);
+
   // Início: service worker, último evento, rascunho, fila e lista guardada.
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -147,9 +164,10 @@ export default function AppEvento({ usuario }: { usuario: string }) {
       await recarregarLocal();
       setPronto(true);
       void buscarServidor();
+      void buscarProdutos();
       void sincronizarFila();
     })();
-  }, [buscarServidor, recarregarLocal]);
+  }, [buscarServidor, buscarProdutos, recarregarLocal]);
 
   // A fila avisa a cada mudança: atualiza a barra e a lista (pedidos enviados entram no cache).
   useEffect(
@@ -270,6 +288,7 @@ export default function AppEvento({ usuario }: { usuario: string }) {
             autor={usuario}
             eventos={eventos}
             conhecidos={conhecidos}
+            produtos={produtos}
             guardarRascunho
             onSalvo={(form) => void aoSalvarNovo(form)}
             onAbrirExistente={abrirEdicao}
@@ -283,6 +302,7 @@ export default function AppEvento({ usuario }: { usuario: string }) {
             autor={usuario}
             eventos={eventos}
             conhecidos={conhecidos}
+            produtos={produtos}
             guardarRascunho={false}
             onSalvo={aoSalvarEdicao}
             onAbrirExistente={abrirEdicao}

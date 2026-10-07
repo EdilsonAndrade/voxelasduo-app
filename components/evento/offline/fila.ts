@@ -203,6 +203,16 @@ async function atualizarCachePedido(pedido: PedidoEventoJson): Promise<void> {
   await gravarCachePedidos([pedido, ...atuais.filter((p) => p._id !== pedido._id)]);
 }
 
+// ---- nomes dos produtos do catálogo (sugestões do item, também sem internet) ----
+
+export async function lerCacheProdutos(): Promise<string[]> {
+  return (await lerDb<string[]>("cache", "produtos").catch(() => undefined)) ?? [];
+}
+
+export async function gravarCacheProdutos(produtos: string[]): Promise<void> {
+  await gravarDb("cache", produtos, "produtos").catch(() => undefined);
+}
+
 export async function lerUltimoEvento(): Promise<string> {
   return (await lerDb<string>("cache", "ultimoEvento").catch(() => undefined)) ?? "";
 }

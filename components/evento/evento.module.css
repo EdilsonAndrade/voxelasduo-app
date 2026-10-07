@@ -875,3 +875,64 @@ select.input {
     animation: none;
   }
 }
+
+/* ---- campo "O que é?": produto do catálogo ou texto livre ---- */
+
+.produtoBusca {
+  position: relative;
+}
+
+.produtoCampo {
+  position: relative;
+}
+
+.produtoCampo .input {
+  padding-right: 3.2rem;
+}
+
+.produtoSeta {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 48px;
+  height: 100%;
+  border: none;
+  background: none;
+  color: var(--roxo);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.produtoLista {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  margin: 0;
+  padding: 0.3rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  border: 2px solid var(--roxo);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+.produtoOpcao {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.produtoOpcao:hover,
+.produtoOpcaoAtiva {
+  background: color-mix(in srgb, var(--roxo) 8%, var(--surface));
+  color: var(--roxo);
+}
