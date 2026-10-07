@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import { STATUS_PEDIDO, type CanalOrigem, type StatusPedido } from "@/lib/models/pedido";
 import type { PedidoDetalhado, PedidoResumo } from "@/lib/pedidos/apresentacao";
 import { formatarPreco } from "@/lib/produtos/formato";
 import ConfirmModal from "./ConfirmModal";
+import FotoAmpliavel from "./FotoAmpliavel";
 import Toast from "./Toast";
 import styles from "./admin.module.css";
 
@@ -26,6 +28,9 @@ const CLASSE_BADGE_STATUS: Record<PedidoResumo["status"], string> = {
   entregue: styles.badgeStatusEntregue,
   cancelado: styles.badgeStatusCancelado,
 };
+
+/** Quantas miniaturas cabem na linha antes de virar "+N". */
+const MAX_MINIATURAS = 3;
 
 const LABEL_CANAL: Record<PedidoResumo["canalOrigem"], string> = {
   site: "Site",
@@ -210,6 +215,7 @@ export default function PedidosLista({
         <tr>
           <th>Canal</th>
           <th>Pedido</th>
+          <th>Itens</th>
           <th>Cliente</th>
           <th>Valor</th>
           <th>Status</th>
@@ -232,6 +238,20 @@ export default function PedidosLista({
                 <small title="Código interno (hash) do pedido" style={{ wordBreak: "break-all" }}>
                   {pedido.id}
                 </small>
+              </td>
+              <td>
+                <div className={styles.pedidoItens}>
+                  {pedido.itens.slice(0, MAX_MINIATURAS).map((item, indice) => (
+                    <FotoAmpliavel
+                      key={indice}
+                      url={item.foto}
+                      nome={`${item.quantidade}x ${item.nome}`}
+                    />
+                  ))}
+                  {pedido.itens.length > MAX_MINIATURAS && (
+                    <span className={styles.pedidoItensMais}>+{pedido.itens.length - MAX_MINIATURAS}</span>
+                  )}
+                </div>
               </td>
               <td>
                 {pedido.cliente.nome}
@@ -258,7 +278,7 @@ export default function PedidosLista({
               <td>{formatarData(pedido.criadoEm)}</td>
               <td>
                 <button type="button" className={styles.btnGhost} onClick={() => alternarDetalhe(pedido.id)}>
-                  {pedidoExpandidoId === pedido.id ? "fechar" : "detalhes"}
+                  {pedidoExpandidoId === pedido.id ? "fechar" : "ver mais detalhes"}
                 </button>
                 <select
                   className={styles.filtroSelect}
@@ -280,21 +300,65 @@ export default function PedidosLista({
             </tr>
             {pedidoExpandidoId === pedido.id && (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   {carregandoDetalhe && <p>Carregando...</p>}
                   {detalhe && (
                     <div>
-                      <p>
-                        <strong>{detalhe.cliente.nome}</strong> · {detalhe.cliente.email}
-                      </p>
-                      <ul>
-                        {detalhe.itens.map((item, indice) => (
-                          <li key={indice}>
-                            {item.quantidade}x {item.nome} — {formatarPreco(item.precoUnitario)}
-                            {item.semCorrespondencia && " (sem correspondência no catálogo)"}
-                          </li>
-                        ))}
-                      </ul>
+                      <div className={styles.detalhePedido}>
+                        <section>
+                          <h3 className={styles.detalheTitulo}>Itens</h3>
+                          {detalhe.itens.map((item, indice) => (
+                            <div key={indice} className={styles.detalheItem}>
+                              <FotoAmpliavel url={item.foto} nome={item.nome} />
+                              <div>
+                                {item.quantidade}x <strong>{item.nome}</strong> —{" "}
+                                {formatarPreco(item.precoUnitario)}
+                                {item.semCorrespondencia && " (sem correspondência no catálogo)"}
+                                {item.produtoId && (
+                                  <div className={styles.detalheItemLinks}>
+                                    <Link href={`/admin/produtos/${item.produtoId}/editar`}>
+                                      ver produto
+                                    </Link>
+                                    {item.urlLoja && (
+                                      <a href={item.urlLoja} target="_blank" rel="noopener noreferrer">
+                                        ver na loja ↗
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </section>
+                        <section>
+                          <h3 className={styles.detalheTitulo}>Cliente e entrega</h3>
+                          <p>
+                            <strong>{detalhe.cliente.nome}</strong>
+                            <br />
+                            {detalhe.cliente.email}
+                            {detalhe.cliente.telefone && (
+                              <>
+                                <br />
+                                {detalhe.cliente.telefone}
+                              </>
+                            )}
+                          </p>
+                          {detalhe.cliente.endereco ? (
+                            <address className={styles.endereco}>
+                              {detalhe.cliente.endereco.logradouro}, {detalhe.cliente.endereco.numero}
+                              {detalhe.cliente.endereco.complemento &&
+                                ` — ${detalhe.cliente.endereco.complemento}`}
+                              <br />
+                              {detalhe.cliente.endereco.bairro} · {detalhe.cliente.endereco.cidade}/
+                              {detalhe.cliente.endereco.estado}
+                              <br />
+                              CEP {detalhe.cliente.endereco.cep}
+                            </address>
+                          ) : (
+                            <p className={styles.pedidoItensMais}>Endereço não informado pelo canal.</p>
+                          )}
+                        </section>
+                      </div>
                       {detalhe.pagamento.metodo && (
                         <p>
                           Pagamento: {detalhe.pagamento.metodo} — {detalhe.pagamento.status}

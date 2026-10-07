@@ -14,6 +14,8 @@ export interface PedidoResumo {
   temItemSemCorrespondencia: boolean;
   rastreio?: Pedido["rastreio"];
   envioAguardandoLiberacaoAte?: Pedido["envioAguardandoLiberacaoAte"];
+  /** Itens com miniatura — para reconhecer o que foi comprado direto na listagem. */
+  itens: ItemPedidoDetalhe[];
 }
 
 export interface ItemPedidoDetalhe {
@@ -22,6 +24,10 @@ export interface ItemPedidoDetalhe {
   quantidade: number;
   precoUnitario: number;
   semCorrespondencia: boolean;
+  /** Primeira foto do produto — ausente quando o produto saiu do catálogo ou não tem foto. */
+  foto?: string;
+  /** Página do produto na loja (/produtos/[categoria]/[slug]). */
+  urlLoja?: string;
 }
 
 export interface PedidoDetalhado {
@@ -52,6 +58,10 @@ function resolverItem(
     quantidade: item.quantidade,
     precoUnitario: item.precoUnitario,
     semCorrespondencia: !produto,
+    foto: produto?.fotos[0],
+    urlLoja: produto
+      ? `/produtos/${encodeURIComponent(produto.categoria)}/${encodeURIComponent(produto.slug)}`
+      : undefined,
   };
 }
 
@@ -71,6 +81,7 @@ export function paraPedidoResumo(pedido: Pedido, produtos: Map<string, Produto>)
     temItemSemCorrespondencia,
     rastreio: pedido.rastreio,
     envioAguardandoLiberacaoAte: pedido.envioAguardandoLiberacaoAte,
+    itens: pedido.itens.map((item) => resolverItem(item, produtos)),
   };
 }
 

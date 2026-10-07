@@ -972,3 +972,127 @@
     display: none;
   }
 }
+
+/* ── Pedidos: miniaturas dos itens e detalhe do pedido ── */
+.pedidoItens {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.pedidoItensMais {
+  font-size: 0.8rem;
+  color: var(--texto-soft);
+}
+
+.miniaturaBotao {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: zoom-in;
+  line-height: 0;
+  flex: none;
+}
+
+.miniaturaBotao:focus-visible {
+  outline: 2px solid var(--laranja);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.miniatura,
+.miniaturaVazia {
+  display: block;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 8px;
+  border: 1px solid var(--surface-line);
+  background: var(--surface);
+  object-fit: cover;
+  flex: none;
+}
+
+.miniaturaVazia {
+  border-style: dashed;
+}
+
+.fotoSobreposicao {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  padding: 2rem 1rem;
+  cursor: zoom-out;
+}
+
+.fotoAmpliada {
+  max-width: min(90vw, 70rem);
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.fotoLegenda {
+  color: #fff;
+  font-size: 0.9rem;
+  margin: 0;
+  text-align: center;
+  max-width: 90vw;
+  word-break: break-word;
+}
+
+.fotoFechar {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.detalhePedido {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem 2rem;
+  padding: 0.5rem 0 1rem;
+}
+
+.detalheTitulo {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-soft);
+  margin: 0 0 0.4rem;
+}
+
+.detalheItem {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.35rem 0;
+}
+
+.detalheItem + .detalheItem {
+  border-top: 1px solid var(--surface-line);
+}
+
+.detalheItemLinks {
+  display: flex;
+  gap: 0.8rem;
+  font-size: 0.85rem;
+}
+
+.endereco {
+  font-style: normal;
+  line-height: 1.5;
+  margin: 0;
+}
