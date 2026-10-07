@@ -39,6 +39,20 @@ function impressao(over: Partial<Impressao> = {}): Impressao {
 }
 
 describe("conjuntosDisponiveis", () => {
+  it("soma o saldo de placas diferentes da mesma parte", () => {
+    const v1 = vinculo({ nomeArquivo: "v1", parte: "Botas", rendimentoPorPlaca: 5 });
+    const v2 = vinculo({ nomeArquivo: "v2", parte: "botas", rendimentoPorPlaca: 2 });
+    const impressoes = [
+      impressao({ nomeArquivo: "v1", resultado: "interrompida" }),
+      impressao({ nomeArquivo: "v2" }),
+    ];
+
+    expect(conjuntosDisponiveis([v1, v2], impressoes)).toBe(2);
+    const plano = planejarLancamento([v1, v2], impressoes, 2)!;
+    expect(plano.itens).toHaveLength(1);
+    expect(plano.itens[0].impressao.nomeArquivo).toBe("v2");
+  });
+
   it("é o saldo total da parte em produto de peça única", () => {
     expect(conjuntosDisponiveis([vinculo()], [impressao()])).toBe(6);
     expect(conjuntosDisponiveis([vinculo()], [impressao(), impressao()])).toBe(12);

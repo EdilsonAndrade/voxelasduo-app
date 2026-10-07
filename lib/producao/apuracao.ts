@@ -126,6 +126,45 @@ function valorPorGramaCentavos(cadastro: CustoProducao): number {
     : 0;
 }
 
+export interface GrupoParte {
+  parte: string;
+  unidadesPorProduto: number;
+  vinculos: VinculoArquivoProduto[];
+}
+
+function chaveDaParte(parte: string): string {
+  return parte.trim().toLocaleLowerCase("pt-BR");
+}
+
+/**
+ * Junta os vínculos que produzem **a mesma parte** do produto.
+ *
+ * A mesma parte pode sair de placas diferentes (outro perfil do modelo, a
+ * chave antiga e a nova de `nomeArquivo`). Cada placa vira um vínculo; tratá-los
+ * como partes distintas faria a placa que só teve falha aparecer como "parte sem
+ * produção" e travar as unidades acabadas em zero.
+ */
+export function agruparPorParte(vinculos: VinculoArquivoProduto[]): GrupoParte[] {
+  const grupos = new Map<string, GrupoParte>();
+  for (const vinculo of vinculos) {
+    const chave = chaveDaParte(vinculo.parte);
+    const grupo = grupos.get(chave);
+    if (grupo) {
+      grupo.vinculos.push(vinculo);
+      // Divergência entre placas: vale a exigência maior, para não prometer
+      // produto acabado que não fecha.
+      grupo.unidadesPorProduto = Math.max(grupo.unidadesPorProduto, vinculo.unidadesPorProduto);
+    } else {
+      grupos.set(chave, {
+        parte: vinculo.parte,
+        unidadesPorProduto: vinculo.unidadesPorProduto,
+        vinculos: [vinculo],
+      });
+    }
+  }
+  return [...grupos.values()];
+}
+
 /**
  * Apura a produção de um produto a partir das impressões dos seus vínculos.
  *
@@ -146,32 +185,38 @@ export function apurarProduto(
     porNome.set(impressao.nomeArquivo, lista);
   }
 
-  const partes: ApuracaoParte[] = vinculos.map((vinculo) => {
-    const daParte = porNome.get(vinculo.nomeArquivo) ?? [];
-    const concluidas = daParte.filter((i) => i.resultado === "concluida");
-    const interrompidas = daParte.filter((i) => i.resultado === "interrompida");
+  const partes: ApuracaoParte[] = agruparPorParte(vinculos).map((grupo) => {
+    // Cada placa tem o seu rendimento: o denominador soma impressão × rendimento
+    // da própria placa, não um rendimento único da parte.
+    const daParte = grupo.vinculos.flatMap((vinculo) =>
+      (porNome.get(vinculo.nomeArquivo) ?? []).map((impressao) => ({ impressao, vinculo }))
+    );
+    const concluidas = daParte.filter((i) => i.impressao.resultado === "concluida");
+    const interrompidas = daParte.filter((i) => i.impressao.resultado === "interrompida");
 
-    const comGramas = concluidas.filter((i) => (i.gramas ?? 0) > 0);
-    const comDuracao = concluidas.filter((i) => (i.duracaoSegundos ?? 0) > 0);
+    const comGramas = concluidas.filter((i) => (i.impressao.gramas ?? 0) > 0);
+    const comDuracao = concluidas.filter((i) => (i.impressao.duracaoSegundos ?? 0) > 0);
 
     const gramasPorUnidade =
       comGramas.length > 0
-        ? somar(comGramas.map((i) => i.gramas!)) / (comGramas.length * vinculo.rendimentoPorPlaca)
+        ? somar(comGramas.map((i) => i.impressao.gramas!)) /
+          somar(comGramas.map((i) => i.vinculo.rendimentoPorPlaca))
         : undefined;
 
     const horasPorUnidade =
       comDuracao.length > 0
-        ? somar(comDuracao.map((i) => i.duracaoSegundos!)) /
+        ? somar(comDuracao.map((i) => i.impressao.duracaoSegundos!)) /
           3600 /
-          (comDuracao.length * vinculo.rendimentoPorPlaca)
+          somar(comDuracao.map((i) => i.vinculo.rendimentoPorPlaca))
         : undefined;
 
+    const [principal] = grupo.vinculos;
     return {
-      nomeArquivo: vinculo.nomeArquivo,
-      parte: vinculo.parte,
-      rendimentoPorPlaca: vinculo.rendimentoPorPlaca,
-      unidadesPorProduto: vinculo.unidadesPorProduto,
-      unidadesProduzidas: concluidas.length * vinculo.rendimentoPorPlaca,
+      nomeArquivo: principal.nomeArquivo,
+      parte: principal.parte,
+      rendimentoPorPlaca: principal.rendimentoPorPlaca,
+      unidadesPorProduto: grupo.unidadesPorProduto,
+      unidadesProduzidas: somar(concluidas.map((i) => i.vinculo.rendimentoPorPlaca)),
       impressoesConcluidas: concluidas.length,
       impressoesInterrompidas: interrompidas.length,
       gramasPorUnidade,
@@ -180,7 +225,7 @@ export function apurarProduto(
         ? custoDaParte(cadastro, gramasPorUnidade, horasPorUnidade)
         : undefined,
       excedente: 0, // preenchido abaixo, quando as unidades acabadas são conhecidas
-      saldoLancavel: somar(daParte.map((i) => saldoLancavel(i, vinculo))),
+      saldoLancavel: somar(daParte.map((i) => saldoLancavel(i.impressao, i.vinculo))),
     };
   });
 

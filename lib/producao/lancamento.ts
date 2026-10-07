@@ -1,4 +1,4 @@
-import { saldoLancavel } from "./apuracao";
+import { agruparPorParte, saldoLancavel } from "./apuracao";
 import type { Impressao, VinculoArquivoProduto } from "@/lib/models/producao";
 
 export interface ItemConsumo {
@@ -21,13 +21,19 @@ export function conjuntosDisponiveis(
 ): number {
   if (vinculos.length === 0) return 0;
 
+  // Placas diferentes da mesma parte somam saldo (ver `agruparPorParte`).
   return Math.floor(
     Math.min(
-      ...vinculos.map((vinculo) => {
-        const saldo = impressoes
-          .filter((i) => i.nomeArquivo === vinculo.nomeArquivo)
-          .reduce((total, i) => total + saldoLancavel(i, vinculo), 0);
-        return saldo / vinculo.unidadesPorProduto;
+      ...agruparPorParte(vinculos).map((grupo) => {
+        const saldo = grupo.vinculos.reduce(
+          (total, vinculo) =>
+            total +
+            impressoes
+              .filter((i) => i.nomeArquivo === vinculo.nomeArquivo)
+              .reduce((soma, i) => soma + saldoLancavel(i, vinculo), 0),
+          0
+        );
+        return saldo / grupo.unidadesPorProduto;
       })
     )
   );
@@ -53,14 +59,19 @@ export function planejarLancamento(
 
   const itens: ItemConsumo[] = [];
 
-  for (const vinculo of vinculos) {
-    let faltam = conjuntos * vinculo.unidadesPorProduto;
+  for (const grupo of agruparPorParte(vinculos)) {
+    let faltam = conjuntos * grupo.unidadesPorProduto;
 
-    const candidatas = impressoes
-      .filter((i) => i.nomeArquivo === vinculo.nomeArquivo && saldoLancavel(i, vinculo) > 0)
-      .sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
+    // FIFO entre todas as placas da parte, não placa por placa.
+    const candidatas = grupo.vinculos
+      .flatMap((vinculo) =>
+        impressoes
+          .filter((i) => i.nomeArquivo === vinculo.nomeArquivo && saldoLancavel(i, vinculo) > 0)
+          .map((impressao) => ({ impressao, vinculo }))
+      )
+      .sort((a, b) => a.impressao.inicio.getTime() - b.impressao.inicio.getTime());
 
-    for (const impressao of candidatas) {
+    for (const { impressao, vinculo } of candidatas) {
       if (faltam <= 0) break;
       const usar = Math.min(faltam, saldoLancavel(impressao, vinculo));
       itens.push({

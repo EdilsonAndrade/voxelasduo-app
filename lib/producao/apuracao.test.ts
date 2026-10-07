@@ -192,6 +192,31 @@ describe("multipartes", () => {
     expect(a.gramasPorPeca).toBeUndefined();
     expect(a.unidadesAcabadas).toBe(0);
   });
+
+  it("junta placas diferentes da mesma parte (só falha numa, concluída na outra)", () => {
+    const corpo = vinculo({ nomeArquivo: "corpo", parte: "Corpo", rendimentoPorPlaca: 1 });
+    const botasV1 = vinculo({ nomeArquivo: "botas_v1", parte: "Botas", rendimentoPorPlaca: 5 });
+    const botasV2 = vinculo({ nomeArquivo: "botas_v2", parte: " botas ", rendimentoPorPlaca: 2 });
+
+    const a = apurarProduto(
+      produto(),
+      [corpo, botasV1, botasV2],
+      [
+        impressao({ nomeArquivo: "corpo", gramas: 100 }),
+        impressao({ nomeArquivo: "botas_v1", resultado: "interrompida", gramas: 30 }),
+        impressao({ nomeArquivo: "botas_v2", gramas: 20 }),
+      ]
+    );
+
+    expect(a.partes.map((p) => p.parte)).toEqual(["Corpo", "Botas"]);
+    expect(a.parcial).toBe(false);
+    expect(a.partesSemDados).toEqual([]);
+    const botas = a.partes[1];
+    expect(botas.unidadesProduzidas).toBe(2);
+    expect(botas.gramasPorUnidade).toBe(10); // 20 g / rendimento 2 da placa que concluiu
+    expect(botas.impressoesInterrompidas).toBe(1);
+    expect(a.unidadesAcabadas).toBe(1);
+  });
 });
 
 describe("impressões que não contam como peça", () => {
