@@ -46,13 +46,15 @@ describe("mapearTask", () => {
     expect(impressao.quantidadePerdida).toBe(0);
   });
 
-  it("trata status 3 como interrompida", () => {
-    const impressao = mapearTask({ ...taskConcluida, status: 3 }, ATIVADO_EM)!;
-    expect(impressao.resultado).toBe("interrompida");
+  it("trata status 3 (falha) e 4 (cancelada) como interrompida", () => {
+    for (const status of [3, 4]) {
+      const impressao = mapearTask({ ...taskConcluida, status }, ATIVADO_EM)!;
+      expect(impressao.resultado).toBe("interrompida");
+    }
   });
 
   it("trata status desconhecido como em andamento, nunca como falha", () => {
-    for (const status of [1, 4, undefined]) {
+    for (const status of [1, 5, undefined]) {
       const impressao = mapearTask({ ...taskConcluida, status }, ATIVADO_EM)!;
       expect(impressao.resultado).toBe("em_andamento");
     }

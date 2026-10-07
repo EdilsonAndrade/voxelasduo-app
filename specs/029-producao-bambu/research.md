@@ -35,7 +35,7 @@ Todas as incógnitas do Technical Context foram resolvidas aqui. Nenhum `NEEDS C
 
 **Alternatives considered**: `GET /v1/user-service/my/task/{id}` e `GET /v1/iot-service/api/user/task/{id}` — ambos respondem 403 mesmo para tasks do próprio usuário, portanto inutilizáveis.
 
-**Campos usados de cada hit**: `id`, `title`, `plateName`, `cover`, `status` (2 concluída / 3 interrompida), `startTime`, `endTime`, `weight`, `length`, `costTime`, `material`, `deviceId`, `deviceName`, `amsDetailMapping[]` (`filamentType`, `targetColor`, `weight`).
+**Campos usados de cada hit**: `id`, `title`, `plateName`, `cover`, `status` (2 concluída / 3 interrompida / 4 cancelada — tratada como interrompida), `startTime`, `endTime`, `weight`, `length`, `costTime`, `material`, `deviceId`, `deviceName`, `amsDetailMapping[]` (`filamentType`, `targetColor`, `weight`).
 
 **Duração efetiva** (FR-006): `endTime − startTime`, não `costTime`. Quando `endTime` estiver ausente, a impressão é gravada sem duração e fica fora dos cálculos de tempo.
 

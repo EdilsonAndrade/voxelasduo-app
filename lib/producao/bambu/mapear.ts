@@ -9,9 +9,12 @@ import { textoDeMaterial } from "../material";
  */
 export const VERSAO_CHAVE = 2;
 
-/** `status` da origem: 2 = concluída, 3 = abortada/falha (research.md #2). */
+/**
+ * `status` da origem: 2 = concluída, 3 = abortada/falha (research.md #2),
+ * 4 = cancelada pelo usuário (observado: vem com `endTime` segundos após o início).
+ */
 const STATUS_CONCLUIDA = 2;
-const STATUS_INTERROMPIDA = 3;
+const STATUS_INTERROMPIDA = [3, 4];
 
 function paraData(valor?: string): Date | undefined {
   if (!valor) return undefined;
@@ -68,12 +71,12 @@ export function mapearTask(task: TaskBambu, ativadoEm: Date): Impressao | null {
 
   const fim = paraData(task.endTime);
 
-  // Em andamento é o caso de tudo que não é 2 nem 3 — e também de um registro
-  // sem hora de término, que a origem ainda vai completar.
+  // Em andamento é o caso de tudo que não é concluída nem interrompida — e
+  // também de um registro sem hora de término, que a origem ainda vai completar.
   const resultado: ResultadoImpressao =
     task.status === STATUS_CONCLUIDA
       ? "concluida"
-      : task.status === STATUS_INTERROMPIDA
+      : task.status !== undefined && STATUS_INTERROMPIDA.includes(task.status)
         ? "interrompida"
         : "em_andamento";
 
