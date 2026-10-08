@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import styles from "./listaProdutos.module.css";
 
 export interface CarrosselOpcao {
@@ -40,8 +41,14 @@ export default function MenuAcoesProduto({
   const [erro, setErro] = useState<string | null>(null);
   const raizRef = useRef<HTMLDivElement>(null);
   const gatilhoRef = useRef<HTMLButtonElement>(null);
-  // Posição fixa na tela: a tabela rola e cortaria um painel absoluto.
-  const [posicao, setPosicao] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
+  const painelRef = useRef<HTMLDivElement>(null);
+  // Painel num portal no <body>, com posição fixa: dentro da caixa de rolagem
+  // da tabela ele ficava cortado/escondido e o menu parecia não abrir.
+  const [posicao, setPosicao] = useState<{
+    top?: number;
+    bottom?: number;
+    right: number;
+  } | null>(null);
 
   function abrirOuFechar() {
     if (aberto) {
@@ -53,7 +60,9 @@ export default function MenuAcoesProduto({
       const right = Math.max(8, window.innerWidth - rect.right);
       const cabeEmbaixo = rect.bottom + 6 + ALTURA_PAINEL <= window.innerHeight;
       setPosicao(
-        cabeEmbaixo ? { top: rect.bottom + 6, right } : { bottom: window.innerHeight - rect.top + 6, right }
+        cabeEmbaixo
+          ? { top: rect.bottom + 6, right }
+          : { bottom: window.innerHeight - rect.top + 6, right },
       );
     }
     setAberto(true);
@@ -61,15 +70,18 @@ export default function MenuAcoesProduto({
 
   useEffect(() => {
     if (!aberto) return;
+    const dentro = (alvo: EventTarget | null) =>
+      raizRef.current?.contains(alvo as Node) ||
+      painelRef.current?.contains(alvo as Node);
     function fora(evento: MouseEvent) {
-      if (!raizRef.current?.contains(evento.target as Node)) setAberto(false);
+      if (!dentro(evento.target)) setAberto(false);
     }
     function tecla(evento: KeyboardEvent) {
       if (evento.key === "Escape") setAberto(false);
     }
     // Rolar a página/tabela deslocaria o painel fixo — fecha.
     function rolagem(evento: Event) {
-      if (!raizRef.current?.contains(evento.target as Node)) setAberto(false);
+      if (!dentro(evento.target)) setAberto(false);
     }
     document.addEventListener("mousedown", fora);
     document.addEventListener("keydown", tecla);
@@ -86,14 +98,21 @@ export default function MenuAcoesProduto({
     setPendente(carrosselId);
     setErro(null);
 
-    const resposta = await fetch(`/api/admin/home/secoes/${carrosselId}/produtos/${produtoId}`, {
-      method: marcar ? "POST" : "DELETE",
-    }).catch(() => null);
+    const resposta = await fetch(
+      `/api/admin/home/secoes/${carrosselId}/produtos/${produtoId}`,
+      {
+        method: marcar ? "POST" : "DELETE",
+      },
+    ).catch(() => null);
     setPendente(null);
 
     if (!resposta?.ok) {
       const corpo = resposta ? await resposta.json().catch(() => ({})) : {};
-      setErro(resposta ? (corpo.erro ?? `Erro ${resposta.status}.`) : "Sem conexão. Tente de novo.");
+      setErro(
+        resposta
+          ? (corpo.erro ?? `Erro ${resposta.status}.`)
+          : "Sem conexão. Tente de novo.",
+      );
       return;
     }
 
@@ -116,69 +135,86 @@ export default function MenuAcoesProduto({
         aria-haspopup="menu"
         aria-expanded={aberto}
         aria-label={`Ações de ${produtoNome}`}
-        title={podeSalvar ? "Alterações não salvas — abra para salvar" : "Ações"}
+        title={
+          podeSalvar ? "Alterações não salvas — abra para salvar" : "Ações"
+        }
         onClick={abrirOuFechar}
       >
         <span aria-hidden="true">☰</span>
         {emDestaque > 0 && (
-          <span className={styles.menuDestaque} title={`Em ${emDestaque} carrossel(is) da home`}>
+          <span
+            className={styles.menuDestaque}
+            title={`Em ${emDestaque} carrossel(is) da home`}
+          >
             ★{emDestaque}
           </span>
         )}
       </button>
 
-      {aberto && (
-        <div
-          role="menu"
-          className={styles.menuPainel}
-          style={posicao ? { position: "fixed", ...posicao } : undefined}
-        >
-          <button
-            type="button"
-            role="menuitem"
-            className={`${styles.menuItem} ${styles.menuItemSalvar}`}
-            disabled={!podeSalvar || salvando}
-            onClick={() => {
-              setAberto(false);
-              onSalvar();
-            }}
+      {aberto &&
+        createPortal(
+          <div
+            ref={painelRef}
+            role="menu"
+            className={styles.menuPainel}
+            style={{ position: "fixed", ...posicao }}
           >
-            {salvando ? "Salvando…" : podeSalvar ? "Salvar alterações" : "Nada para salvar"}
-          </button>
-          <Link href={`/admin/produtos/${produtoId}/editar`} role="menuitem" className={styles.menuItem}>
-            Editar
-          </Link>
-          <Link
-            href={`/admin/produtos/novo?duplicarDe=${produtoId}`}
-            role="menuitem"
-            className={styles.menuItem}
-            title="Cria um novo produto com os mesmos dados e preços (sem fotos, estoque e anúncios)"
-          >
-            Duplicar
-          </Link>
+            <button
+              type="button"
+              role="menuitem"
+              className={`${styles.menuItem} ${styles.menuItemSalvar}`}
+              disabled={!podeSalvar || salvando}
+              onClick={() => {
+                setAberto(false);
+                onSalvar();
+              }}
+            >
+              {salvando
+                ? "Salvando…"
+                : podeSalvar
+                  ? "Salvar alterações"
+                  : "Nada para salvar"}
+            </button>
+            <Link
+              href={`/admin/produtos/${produtoId}/editar`}
+              role="menuitem"
+              className={styles.menuItem}
+            >
+              Editar
+            </Link>
+            <Link
+              href={`/admin/produtos/novo?duplicarDe=${produtoId}`}
+              role="menuitem"
+              className={styles.menuItem}
+              title="Cria um novo produto com os mesmos dados e preços (sem fotos, estoque e anúncios)"
+            >
+              Duplicar
+            </Link>
 
-          <p className={styles.menuSecao}>Destaques na home</p>
-          {carrosseis.length === 0 ? (
-            <p className={styles.menuVazio}>
-              Nenhum carrossel criado. <Link href="/admin/banners/nova">Criar carrossel</Link>
-            </p>
-          ) : (
-            carrosseis.map((carrossel) => (
-              <label key={carrossel.id} className={styles.menuItem}>
-                <input
-                  type="checkbox"
-                  className={styles.caixa}
-                  checked={marcados.has(carrossel.id)}
-                  disabled={pendente !== null}
-                  onChange={() => void alternarCarrossel(carrossel.id)}
-                />
-                {carrossel.titulo}
-              </label>
-            ))
-          )}
-          {erro && <p className={styles.menuErro}>{erro}</p>}
-        </div>
-      )}
+            <p className={styles.menuSecao}>Destaques na home</p>
+            {carrosseis.length === 0 ? (
+              <p className={styles.menuVazio}>
+                Nenhum carrossel criado.{" "}
+                <Link href="/admin/banners/nova">Criar carrossel</Link>
+              </p>
+            ) : (
+              carrosseis.map((carrossel) => (
+                <label key={carrossel.id} className={styles.menuItem}>
+                  <input
+                    type="checkbox"
+                    className={styles.caixa}
+                    checked={marcados.has(carrossel.id)}
+                    disabled={pendente !== null}
+                    onChange={() => void alternarCarrossel(carrossel.id)}
+                  />
+                  {carrossel.titulo}
+                </label>
+              ))
+            )}
+            {erro && <p className={styles.menuErro}>{erro}</p>}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

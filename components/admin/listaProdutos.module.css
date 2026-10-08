@@ -374,10 +374,8 @@
 }
 
 .menuPainel {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 0.35rem);
-  right: 0;
+  position: fixed;
+  z-index: 1000;
   min-width: 15rem;
   max-height: 340px;
   overflow-y: auto;
