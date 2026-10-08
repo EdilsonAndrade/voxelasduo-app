@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import BaixarFotosProduto from "./BaixarFotosProduto";
 import ConfirmModal from "./ConfirmModal";
@@ -10,7 +9,7 @@ import LinhaPrecoProduto, {
   type EstadoLinha,
   type PrecosLinha,
 } from "./LinhaPrecoProduto";
-import MarcarCarrosselProduto, { type CarrosselOpcao } from "./MarcarCarrosselProduto";
+import MenuAcoesProduto, { type CarrosselOpcao } from "./MenuAcoesProduto";
 import TrocarCategoriaProduto from "./TrocarCategoriaProduto";
 import type { CategoriaResumo } from "@/lib/models/categoria";
 import type { PrecosCanaisProduto, Produto } from "@/lib/models/produto";
@@ -539,9 +538,7 @@ export default function ListaProdutosAdmin({
               <th className={styles.colLevar}>Levar</th>
               <th>Preços</th>
               <th>Canais</th>
-              <th>Destaques</th>
               <th className={styles.colCusto}>Custo</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -649,6 +646,17 @@ export default function ListaProdutosAdmin({
                       custoCentavos={produto.custoCentavos}
                       onEditar={(campo, valor) => editar(produto.id, campo, valor)}
                       onSalvar={() => void salvar(produto.id)}
+                      menu={
+                        <MenuAcoesProduto
+                          produtoId={produto.id}
+                          produtoNome={produto.nome}
+                          carrosseis={carrosseis}
+                          marcadosIniciais={produto.carrosseis}
+                          podeSalvar={linhaAlterada(linhas[produto.id])}
+                          salvando={linhas[produto.id].salvando}
+                          onSalvar={() => void salvar(produto.id)}
+                        />
+                      }
                     />
                   </td>
                   <td className={styles.colCanais}>
@@ -684,14 +692,6 @@ export default function ListaProdutosAdmin({
                       </span>
                     )}
                   </td>
-                  <td className={styles.colDestaques}>
-                    <MarcarCarrosselProduto
-                      produtoId={produto.id}
-                      produtoNome={produto.nome}
-                      carrosseis={carrosseis}
-                      marcadosIniciais={produto.carrosseis}
-                    />
-                  </td>
                   <td className={styles.colCusto} data-rotulo="Custo">
                     {produto.custoCentavos === null ? (
                       <span className={styles.semCusto} title="Custo de produção não configurado">
@@ -700,18 +700,6 @@ export default function ListaProdutosAdmin({
                     ) : (
                       <span className={styles.custo}>{formatarPreco(produto.custoCentavos)}</span>
                     )}
-                  </td>
-                  <td className={styles.colAcoes}>
-                    <Link href={`/admin/produtos/${produto.id}/editar`} className={adminStyles.btnGhost}>
-                      editar
-                    </Link>{" "}
-                    <Link
-                      href={`/admin/produtos/novo?duplicarDe=${produto.id}`}
-                      className={adminStyles.btnGhost}
-                      title="Cria um novo produto com os mesmos dados e preços (sem fotos, estoque e anúncios)"
-                    >
-                      duplicar
-                    </Link>
                   </td>
                 </tr>
               );

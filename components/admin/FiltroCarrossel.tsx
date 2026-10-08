@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import type { CarrosselOpcao } from "./MarcarCarrosselProduto";
+import type { CarrosselOpcao } from "./MenuAcoesProduto";
 import styles from "./admin.module.css";
 
 /** Filtra a lista de produtos pelos marcados em um carrossel (FR-010) — `?carrossel=<id>`. */

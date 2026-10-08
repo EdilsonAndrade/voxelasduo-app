@@ -5,25 +5,23 @@
  */
 
 /*
- * A tabela tem dez colunas: em janela estreita ela não cabe. A rolagem lateral
- * fica aqui dentro, para a página não ganhar uma barra horizontal própria nem
- * arrastar o cabeçalho e o painel do evento junto.
+ * A rolagem fica aqui dentro, nos dois eixos, com altura da janela: assim a
+ * barra horizontal fica sempre à vista (antes ela só aparecia depois da
+ * última linha, escondida atrás da barra de seleção) e o cabeçalho gruda no
+ * topo. A página não ganha barra horizontal própria.
  */
 .rolagem {
-  overflow-x: auto;
+  overflow: auto;
   overscroll-behavior-x: contain;
-  /*
-   * Só o eixo horizontal rola. No vertical, `clip` com margem larga deixa a
-   * miniatura ampliada no hover e o painel de carrosséis passarem por cima da
-   * tabela, como antes, sem criar uma segunda barra de rolagem.
-   */
-  overflow-y: clip;
-  overflow-clip-margin: 18rem;
+  max-height: calc(100vh - 13rem);
+  min-height: 20rem;
+  border: 1px solid var(--surface-line);
+  border-radius: 12px;
 }
 
 .tabela {
   width: 100%;
-  min-width: 72rem;
+  min-width: 62rem;
   border-collapse: collapse;
   font-size: 0.92rem;
 }
@@ -38,6 +36,10 @@
   font-weight: 700;
   padding: 0.6rem 0.65rem;
   border-bottom: 2px solid var(--surface-line);
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface);
 }
 
 .tabela td {
@@ -139,7 +141,7 @@
 }
 
 .miniatura:hover {
-  transform: scale(4);
+  transform: scale(3);
   z-index: 10;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
@@ -161,13 +163,9 @@
 }
 
 /*
- * Canais e ações: cada selo/link em uma linha, inteiro. Sem isso a coluna fica
+ * Canais: cada selo/link em uma linha, inteiro. Sem isso a coluna fica
  * estreita e quebra "Mercado Livre" no meio, como se fosse dois canais.
  */
-.colAcoes {
-  white-space: nowrap;
-}
-
 .colCanais > a,
 .colCanais > span {
   display: block;
@@ -320,26 +318,145 @@
   padding-top: 1.05rem;
 }
 
-.btnSalvar {
+/* Mantém o Enter salvando a linha sem mostrar botão. */
+.submitOculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Menu ☰ da linha: salvar, editar, duplicar e destaques da home. */
+.menuAcoes {
+  position: relative;
+}
+
+.menuGatilho {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  justify-content: center;
+  padding: 0 0.6rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--preto);
   font-family: var(--font-body);
+  font-size: 1.05rem;
   font-weight: 800;
-  font-size: 0.85rem;
-  border-radius: 999px;
-  padding: 0.5rem 1.1rem;
-  border: 2px solid var(--roxo);
-  background: var(--roxo);
-  color: #fff;
   cursor: pointer;
 }
 
-.btnSalvar:disabled {
+.menuGatilho:hover,
+.menuGatilho[aria-expanded="true"] {
+  border-color: var(--roxo);
+}
+
+/* Linha com alteração não salva: o gatilho chama atenção para o Salvar lá dentro. */
+.menuGatilhoPendente {
+  background: var(--amarelo);
+  border-color: #111;
+  color: #111;
+}
+
+.menuDestaque {
+  font-size: 0.72rem;
+  color: var(--roxo);
+}
+
+.menuGatilhoPendente .menuDestaque {
+  color: #111;
+}
+
+.menuPainel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  min-width: 15rem;
+  max-height: 340px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 14px;
+  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.35);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 0;
+  border-radius: 8px;
   background: transparent;
-  border-color: var(--surface-line);
+  color: var(--preto);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menuItem:hover:not(:disabled),
+.menuItem:focus-visible {
+  background: var(--creme);
+  outline: none;
+}
+
+.menuItemSalvar:not(:disabled) {
+  background: var(--roxo);
+  color: #fff;
+}
+
+.menuItemSalvar:not(:disabled):hover {
+  background: color-mix(in srgb, var(--roxo) 85%, #000);
+}
+
+.menuItem:disabled {
   color: var(--texto-soft);
   cursor: default;
 }
 
-.btnSalvar:focus-visible,
+.menuSecao {
+  margin: 0.4rem 0 0;
+  padding: 0.45rem 0.6rem 0.2rem;
+  border-top: 1px solid var(--surface-line);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texto-soft);
+}
+
+.menuVazio,
+.menuErro {
+  margin: 0;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.82rem;
+}
+
+.menuVazio {
+  color: var(--texto-soft);
+}
+
+.menuErro {
+  color: #c23a3a;
+  font-weight: 700;
+}
+
+.menuGatilho:focus-visible,
 .caixa:focus-visible {
   outline: 3px solid var(--roxo);
   outline-offset: 2px;
@@ -523,6 +640,9 @@
      senão `visible` em um só volta a virar `auto`). */
   .rolagem {
     overflow: visible;
+    max-height: none;
+    min-height: 0;
+    border: 0;
   }
 
   .tabela {
@@ -600,9 +720,7 @@
   .colEstoque,
   .colLevar,
   .colPrecos,
-  .colCanais,
-  .colDestaques,
-  .colAcoes {
+  .colCanais {
     grid-column: 1 / -1;
   }
 
@@ -656,9 +774,9 @@
     padding-top: 0.15rem;
   }
 
-  .btnSalvar {
+  .menuGatilho {
     min-height: 44px;
-    padding: 0.6rem 1.6rem;
+    min-width: 44px;
   }
 
   .entrada input {

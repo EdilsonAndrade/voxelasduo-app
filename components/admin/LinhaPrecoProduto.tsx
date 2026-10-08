@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { formatarPreco } from "@/lib/produtos/formato";
 import {
   centavosParaTexto,
@@ -68,8 +69,8 @@ const CAMPOS: { campo: CampoPreco; rotulo: string; acessivel: string }[] = [
 
 /**
  * Preços do site, Mercado Livre e Shopee editáveis na lista de produtos
- * (EDI-126). Só grava ao clicar em "Salvar" (ou Enter); canal vazio = usa o
- * preço do site.
+ * (EDI-126). Só grava pelo "Salvar alterações" do menu da linha (ou Enter);
+ * canal vazio = usa o preço do site.
  */
 export default function LinhaPrecoProduto({
   produtoNome,
@@ -77,12 +78,15 @@ export default function LinhaPrecoProduto({
   custoCentavos,
   onEditar,
   onSalvar,
+  menu,
 }: {
   produtoNome: string;
   estado: EstadoLinha;
   custoCentavos: number | null;
   onEditar: (campo: CampoPreco, valor: string) => void;
   onSalvar: () => void;
+  /** Menu ☰ da linha (salvar, editar, duplicar, destaques) — fica no lugar do antigo botão Salvar. */
+  menu: ReactNode;
 }) {
   const alterado = linhaAlterada(estado);
   const site = valido(estado.textos.site);
@@ -124,9 +128,10 @@ export default function LinhaPrecoProduto({
       })}
 
       <div className={styles.acaoLinha}>
-        <button type="submit" className={styles.btnSalvar} disabled={!alterado || estado.salvando}>
-          {estado.salvando ? "Salvando…" : "Salvar"}
-        </button>
+        {/* Invisível: só mantém o Enter salvando a linha, já que o Salvar foi para o menu. */}
+        <button type="submit" className={styles.submitOculto} tabIndex={-1} aria-hidden="true" />
+        {menu}
+        {estado.salvando && <span className={styles.dica}>Salvando…</span>}
         {alterado && !estado.status && !estado.salvando && <span className={styles.seloPendente}>não salvo</span>}
         {estado.status && (
           <span className={estado.status.tipo === "ok" ? styles.statusOk : styles.statusErro} role="status">

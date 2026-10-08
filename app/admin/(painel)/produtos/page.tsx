@@ -24,7 +24,7 @@ export default async function AdminProdutosPage({
     listarCategoriasResumo(),
   ]);
 
-  // Carrosséis de cada produto (coluna "Destaques", EDI-114).
+  // Carrosséis de cada produto (menu ☰ da linha, EDI-114).
   const carrosseisPorProduto = new Map<string, string[]>();
   for (const carrossel of carrosseis) {
     for (const pid of carrossel.produtoIds) {
@@ -80,7 +80,7 @@ export default async function AdminProdutosPage({
       {produtos.length === 0 ? (
         <p className={styles.empty}>
           {carrosselSelecionado
-            ? "Nenhum produto marcado neste carrossel. Use a coluna Destaques para marcar."
+            ? "Nenhum produto marcado neste carrossel. Use o menu ☰ de cada produto para marcar."
             : "Nenhum produto cadastrado ainda."}
         </p>
       ) : (
