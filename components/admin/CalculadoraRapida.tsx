@@ -108,6 +108,49 @@ function Campo({
   );
 }
 
+/**
+ * Quanto colocar de verba no Ads: o necessário para vender a produção do mês
+ * inteira pelo anúncio (teto — acima disso sobra verba e falta peça) e o
+ * valor de teste para começar.
+ */
+function VerbaSugerida({
+  custoPorVendaCentavos,
+  pecasMes,
+  diasMes,
+  onUsar,
+}: {
+  custoPorVendaCentavos: number;
+  pecasMes: number;
+  diasMes: number;
+  onUsar?: (reais: string) => void;
+}) {
+  if (pecasMes <= 0 || custoPorVendaCentavos <= 0) {
+    return (
+      <span className={styles.mlLinkAviso}>
+        Preencha a produção do mês para ver a verba sugerida.
+      </span>
+    );
+  }
+  const mensalCentavos = custoPorVendaCentavos * pecasMes;
+  const diarioCentavos = Math.round(mensalCentavos / (diasMes > 0 ? diasMes : 30));
+  return (
+    <div className={calc.verbaSugerida}>
+      <span>
+        <strong>Verba sugerida:</strong> até {reais(mensalCentavos)}/mês (~{reais(diarioCentavos)}/dia) para vender
+        as {pecasMes} peças do mês pelo anúncio. Mais que isso não adianta: falta peça.
+      </span>
+      <span className={styles.mlLinkAviso}>
+        Para começar: R$ 10 a R$ 15 por dia, por 7 a 15 dias. Depois confira o ROAS real no painel antes de aumentar.
+      </span>
+      {onUsar && (
+        <button type="button" className={styles.btnGhost} onClick={() => onUsar((mensalCentavos / 100).toFixed(2))}>
+          Usar {reais(mensalCentavos)} como verba do mês
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Cálculo salvo reaberto na calculadora — ausente = cálculo novo. */
 export interface CalculoInicial {
   id: string;
@@ -619,6 +662,11 @@ export default function CalculadoraRapida({
                       <span>
                         Anúncio por venda: <strong>{reais(r.venda.anuncioCentavos)}</strong>
                       </span>
+                      <VerbaSugerida
+                        custoPorVendaCentavos={r.venda.anuncioCentavos}
+                        pecasMes={pecasMesNumero}
+                        diasMes={numero(producao.diasPorMes)}
+                      />
                       <span className={calc.semaforoVerde}>
                         ROAS real {formatarRoas(roas)} ou mais: você ganha {margemNumero}% ou mais
                       </span>
@@ -650,7 +698,16 @@ export default function CalculadoraRapida({
                           </>
                         )}
                       </span>
-                      <span>Cada venda pelo anúncio custa ~{reais(Math.round(r.precoCentavos / roas))}</span>
+                      <span>
+                        Cada venda pelo anúncio custa ~{reais(Math.round(r.precoCentavos / roas))} e deixa ~
+                        <strong>{reais(r.venda.lucroCentavos - Math.round(r.precoCentavos / roas))}</strong> de lucro
+                      </span>
+                      <VerbaSugerida
+                        custoPorVendaCentavos={Math.round(r.precoCentavos / roas)}
+                        pecasMes={pecasMesNumero}
+                        diasMes={numero(producao.diasPorMes)}
+                        onUsar={alterarAnuncio("verbaMesReais")}
+                      />
                       {verbaCentavos > 0 ? (
                         <>
                           <span>

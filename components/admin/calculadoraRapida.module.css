@@ -331,3 +331,19 @@
   composes: checkFaixa;
   grid-column: auto;
 }
+
+.verbaSugerida {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.3rem 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  background: var(--creme);
+}
+
+.verbaSugerida button {
+  align-self: flex-start;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+}
