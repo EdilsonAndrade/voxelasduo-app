@@ -83,3 +83,42 @@ export function calcularCanalCalculadora(entrada: {
     lucroMesCentavos: lucroCentavos * pecas,
   };
 }
+
+/** Quanto do preço pode ir para anúncio (Ads) sem o lucro cair abaixo da margem mínima. */
+export interface LimiteAnuncio {
+  /** Preço − taxa da plataforma − custo da peça: o que sobra antes de pagar anúncio. */
+  sobraCentavos: number;
+  /** Margem mínima aplicada sobre o preço de venda. */
+  lucroMinimoCentavos: number;
+  /** Máximo de anúncio por venda mantendo a margem mínima — negativo = não cabe anúncio. */
+  tetoAnuncioCentavos: number;
+  /** Meta de ROAS para a campanha (preço ÷ teto) — `null` quando não cabe anúncio. */
+  roasMinimo: number | null;
+  /** Abaixo deste ROAS a venda pelo anúncio dá prejuízo (preço ÷ sobra) — `null` quando já não sobra nada. */
+  roasPrejuizo: number | null;
+}
+
+/**
+ * Teto de anúncio e metas de ROAS de um canal (mesma conta da central do
+ * Shopee Ads: ROAS mínimo = 1 ÷ margem que sobra para o anúncio). A margem
+ * mínima aqui é sobre o preço de venda, como os marketplaces medem.
+ */
+export function calcularLimiteAnuncio(entrada: {
+  precoCentavos: number;
+  taxaCentavos: number;
+  custoCentavos: number;
+  margemMinimaPrecoPercentual: number;
+}): LimiteAnuncio {
+  const { precoCentavos, taxaCentavos, custoCentavos, margemMinimaPrecoPercentual } = entrada;
+  const sobraCentavos = precoCentavos - taxaCentavos - custoCentavos;
+  const lucroMinimoCentavos = Math.round((precoCentavos * margemMinimaPrecoPercentual) / 100);
+  const tetoAnuncioCentavos = sobraCentavos - lucroMinimoCentavos;
+
+  return {
+    sobraCentavos,
+    lucroMinimoCentavos,
+    tetoAnuncioCentavos,
+    roasMinimo: tetoAnuncioCentavos > 0 ? precoCentavos / tetoAnuncioCentavos : null,
+    roasPrejuizo: sobraCentavos > 0 ? precoCentavos / sobraCentavos : null,
+  };
+}

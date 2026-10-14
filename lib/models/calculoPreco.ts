@@ -16,6 +16,8 @@ export interface CanalCalculadoraValores {
 export interface CalculadoraValores {
   custo: CustoProducaoFormValores;
   margemPercentual: string;
+  /** Lucro mínimo que precisa sobrar depois do anúncio, em % do preço — ausente em cálculos antigos = 25. */
+  margemMinimaPrecoPercentual?: string;
   canais: { shopee: CanalCalculadoraValores; mercadoLivre: CanalCalculadoraValores };
   producao: { pecasPorMesa: string; horasMesaCheia: string; horasPorDia: string; diasPorMes: string };
   pecasPorMes: string;

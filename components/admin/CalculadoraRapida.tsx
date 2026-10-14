@@ -16,6 +16,7 @@ import {
 import { calcularPrecoSugeridoCanal } from "@/lib/produtos/canais";
 import {
   calcularCanalCalculadora,
+  calcularLimiteAnuncio,
   calcularProducaoMensal,
   type ResultadoCanalCalculadora,
 } from "@/lib/produtos/calculadoraRapida";
@@ -35,6 +36,11 @@ function numero(texto: string): number {
 
 function reais(centavos: number): string {
   return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/** ROAS com uma casa, arredondado para cima — a meta nunca fica abaixo do necessário. */
+function formatarRoas(roas: number): string {
+  return (Math.ceil(roas * 10) / 10).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 /** Campo numérico curto: rótulo, valor e unidade ao lado. */
@@ -81,6 +87,7 @@ function valoresPadrao(taxasGlobais: TaxasCanaisConfig): CalculadoraValores {
     // Filamento é digitado por kg: o carretel de referência fica fixo em 1000 g.
     custo: { ...VAZIO_CUSTO_PRODUCAO, pesoCarreteGramas: "1000", margemPerdaPercentual: "0" },
     margemPercentual: String(taxasGlobais.margemDesejadaPercentual),
+    margemMinimaPrecoPercentual: "25",
     canais: {
       shopee: { taxaPercentual: String(taxasGlobais.shopeeTaxaPercentual), taxaFixaReais: "0", anuncioPercentual: "0" },
       mercadoLivre: { taxaPercentual: "14", taxaFixaReais: "0", anuncioPercentual: "0" },
@@ -116,6 +123,7 @@ export default function CalculadoraRapida({
   const inicial = calculoInicial?.valores ?? valoresPadrao(taxasGlobais);
   const [custo, setCusto] = useState<CustoProducaoFormValores>(inicial.custo);
   const [margem, setMargem] = useState(inicial.margemPercentual);
+  const [margemMinima, setMargemMinima] = useState(inicial.margemMinimaPrecoPercentual ?? "25");
   const [canais, setCanais] = useState<Record<Marketplace, CanalForm>>(inicial.canais);
   const [producao, setProducao] = useState(inicial.producao);
   const [nome, setNome] = useState(calculoInicial?.nome ?? "");
@@ -199,7 +207,7 @@ export default function CalculadoraRapida({
         linkShopee: linkShopee.trim(),
         linkMercadoLivre: linkMercadoLivre.trim(),
         produtoId: produtoCriadoId ?? produtoId ?? undefined,
-        valores: { custo, margemPercentual: margem, canais, producao, pecasPorMes: pecasMes },
+        valores: { custo, margemPercentual: margem, margemMinimaPrecoPercentual: margemMinima, canais, producao, pecasPorMes: pecasMes },
       }),
     });
     if (!resposta.ok) {
@@ -318,6 +326,14 @@ export default function CalculadoraRapida({
         <section className={calc.bloco}>
           <h2>Margem e anúncio</h2>
           <Campo id="margem" rotulo="Quanto quero ganhar" unidade="% sobre o custo" valor={margem} onChange={setMargem} dica="100% = lucro igual ao custo da peça" />
+          <Campo
+            id="margemMinima"
+            rotulo="Lucro mínimo com anúncio"
+            unidade="% do preço"
+            valor={margemMinima}
+            onChange={setMargemMinima}
+            dica="Quanto do preço precisa sobrar para você depois de pagar o anúncio. Ex: 25"
+          />
           {(Object.keys(NOME_MARKETPLACE) as Marketplace[]).map((canal) => (
             <div key={canal} className={calc.linhaCanal}>
               <strong>{NOME_MARKETPLACE[canal]}</strong>
@@ -379,6 +395,44 @@ export default function CalculadoraRapida({
                     <dt className={calc.lucro}>Seu lucro por peça</dt>
                     <dd className={calc.lucro}>{reais(r.lucroCentavos)}</dd>
                   </dl>
+                  {(() => {
+                    const minimo = numero(margemMinima);
+                    if (!(minimo >= 0 && minimo < 100)) return null;
+                    const limite = calcularLimiteAnuncio({
+                      precoCentavos: r.precoCentavos,
+                      taxaCentavos: r.taxaCentavos,
+                      custoCentavos: cogs!.totalCentavos,
+                      margemMinimaPrecoPercentual: minimo,
+                    });
+                    return (
+                      <div className={calc.anuncio}>
+                        <strong>Anúncio (Ads) para manter {minimo}% de lucro</strong>
+                        {limite.roasMinimo === null ? (
+                          <span className={styles.fieldError}>
+                            Nesse preço não sobra nada para anúncio sem baixar seu lucro de {minimo}%. Suba o
+                            preço ou venda sem anúncio.
+                          </span>
+                        ) : (
+                          <>
+                            <span>
+                              Pode gastar até <strong>{reais(limite.tetoAnuncioCentavos)}</strong> de anúncio por venda
+                            </span>
+                            <span className={calc.roasMeta}>
+                              Meta de ROAS: <strong>{formatarRoas(limite.roasMinimo)}</strong> ou mais
+                            </span>
+                            <span className={styles.mlLinkAviso}>
+                              É o número que você coloca em &quot;Meta de ROAS&quot; na campanha.
+                            </span>
+                          </>
+                        )}
+                        {limite.roasPrejuizo !== null && (
+                          <span className={calc.roasPrejuizo}>
+                            ROAS real abaixo de {formatarRoas(limite.roasPrejuizo)} = prejuízo. Pause o anúncio.
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className={calc.mes}>
                     <span>{pecasMesNumero} peças no mês</span>
                     <span>

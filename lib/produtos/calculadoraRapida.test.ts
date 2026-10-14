@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularCanalCalculadora, calcularProducaoMensal } from "./calculadoraRapida";
+import { calcularCanalCalculadora, calcularLimiteAnuncio, calcularProducaoMensal } from "./calculadoraRapida";
 
 describe("calcularProducaoMensal", () => {
   it("conta só mesas inteiras no dia", () => {
@@ -41,5 +41,32 @@ describe("calcularCanalCalculadora", () => {
       pecasPorMes: 10,
     });
     expect(r.precoCentavos).toBeNull();
+  });
+});
+
+describe("calcularLimiteAnuncio", () => {
+  it("teto de anúncio e ROAS para manter 25% do preço (exemplo Shopee R$ 40)", () => {
+    const r = calcularLimiteAnuncio({
+      precoCentavos: 4000,
+      taxaCentavos: 1200,
+      custoCentavos: 1000,
+      margemMinimaPrecoPercentual: 25,
+    });
+    expect(r.sobraCentavos).toBe(1800);
+    expect(r.tetoAnuncioCentavos).toBe(800);
+    expect(r.roasMinimo).toBe(5);
+    expect(r.roasPrejuizo).toBeCloseTo(2.22, 2);
+  });
+
+  it("sem espaço para anúncio quando a sobra não cobre a margem mínima", () => {
+    const r = calcularLimiteAnuncio({
+      precoCentavos: 2000,
+      taxaCentavos: 800,
+      custoCentavos: 1000,
+      margemMinimaPrecoPercentual: 25,
+    });
+    expect(r.tetoAnuncioCentavos).toBe(-300);
+    expect(r.roasMinimo).toBeNull();
+    expect(r.roasPrejuizo).toBe(10);
   });
 });

@@ -273,3 +273,27 @@
   font-weight: 700;
   color: #c23a3a;
 }
+
+/* Teto de anúncio e metas de ROAS por canal. */
+.anuncio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.7rem;
+  padding: 0.6rem 0.75rem;
+  border: 2px solid var(--turquesa);
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+
+.roasMeta strong {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--roxo);
+}
+
+.roasPrejuizo {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #c23a3a;
+}
