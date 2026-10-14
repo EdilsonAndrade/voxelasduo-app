@@ -228,6 +228,7 @@ export default function CalculadoraRapida({
   const [margem, setMargem] = useState(inicial.margemMinimaPrecoPercentual ?? "25");
   const [anuncio, setAnuncio] = useState<AnuncioCalculadoraValores>(inicial.anuncio ?? ANUNCIO_PADRAO);
   const [precoConcorrente, setPrecoConcorrente] = useState(inicial.precoConcorrenteReais ?? "");
+  const [precoOferta, setPrecoOferta] = useState(inicial.precoConcorrenteOfertaReais ?? "");
   const [vendasConcorrente, setVendasConcorrente] = useState(inicial.vendasConcorrenteMes ?? "");
   const [canais, setCanais] = useState<Record<Marketplace, CanalForm>>(inicial.canais);
   const [producao, setProducao] = useState(inicial.producao);
@@ -348,6 +349,7 @@ export default function CalculadoraRapida({
       producao,
       pecasPorMes: pecasMes,
       precoConcorrenteReais: precoConcorrente,
+      precoConcorrenteOfertaReais: precoOferta.trim(),
       vendasConcorrenteMes: vendasConcorrente.trim(),
     };
   }
@@ -630,11 +632,19 @@ export default function CalculadoraRapida({
           <div className={calc.campos3}>
             <Campo
               id="precoConcorrente"
-              rotulo="Preço do concorrente (opcional)"
+              rotulo="Preço normal dele (opcional)"
               unidade="R$"
               valor={precoConcorrente}
               onChange={setPrecoConcorrente}
-              dica="O preço de 1 unidade do mesmo produto. Prefira o preço normal, não o de oferta relâmpago."
+              dica="O preço de 1 unidade do mesmo produto, fora de promoção."
+            />
+            <Campo
+              id="precoOferta"
+              rotulo="Preço na oferta relâmpago (se tiver)"
+              unidade="R$"
+              valor={precoOferta}
+              onChange={setPrecoOferta}
+              dica="Quanto ele cobra quando entra em oferta relâmpago."
             />
             <Campo
               id="vendasConcorrente"
@@ -882,6 +892,24 @@ export default function CalculadoraRapida({
                             <strong>{reais(Math.abs(vendaNoPreco.lucroCentavos))}</strong> por peça (
                             {vendaNoPreco.margemPrecoPercentual.toFixed(0)}%)
                           </span>
+                          {(() => {
+                            const ofertaCentavos = Math.round((numero(precoOferta) || 0) * 100);
+                            if (ofertaCentavos <= 0) return null;
+                            const vendaNaOferta = detalharVenda({
+                              precoCentavos: ofertaCentavos,
+                              faixas,
+                              custoCentavos: cogs.totalCentavos,
+                              anuncioPercentual: anuncioEmbutidoPercentual,
+                            });
+                            return (
+                              <span className={vendaNaOferta.lucroCentavos >= 0 ? calc.semaforoAmarelo : calc.roasPrejuizo}>
+                                Na oferta relâmpago dele ({reais(ofertaCentavos)}) você{" "}
+                                {vendaNaOferta.lucroCentavos >= 0 ? "ainda ganharia" : "perderia"}{" "}
+                                <strong>{reais(Math.abs(vendaNaOferta.lucroCentavos))}</strong> por peça (
+                                {vendaNaOferta.margemPrecoPercentual.toFixed(0)}%)
+                              </span>
+                            );
+                          })()}
                           {precoMinimo !== null && <span>Abaixo de {reais(precoMinimo)} você tem prejuízo.</span>}
                           {(() => {
                             // Quanto de anúncio cabe vendendo no preço dele e ainda ganhando a margem.

@@ -54,9 +54,10 @@ describe("montarOrcamentoProduto", () => {
   });
 
   it("traz preço e vendas do concorrente quando informados", () => {
-    const o = montarOrcamentoProduto(valores({ precoConcorrenteReais: "29,90", vendasConcorrenteMes: "150" }), "shopee", 2);
+    const o = montarOrcamentoProduto(valores({ precoConcorrenteReais: "29,90", precoConcorrenteOfertaReais: "24,90", vendasConcorrenteMes: "150" }), "shopee", 2);
     expect(o.precoConcorrenteCentavos).toBe(2990);
     expect(o.vendasConcorrenteMes).toBe(150);
+    expect(o.precoOfertaConcorrenteCentavos).toBe(2490);
     expect(montarOrcamentoProduto(valores(), "shopee", 2).vendasConcorrenteMes).toBeNull();
   });
 

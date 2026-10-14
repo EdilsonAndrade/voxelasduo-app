@@ -42,6 +42,8 @@ export interface CalculadoraValores {
   anuncio?: AnuncioCalculadoraValores;
   /** Preço do mesmo produto num concorrente, para comparar — opcional. */
   precoConcorrenteReais?: string;
+  /** Preço do concorrente em oferta relâmpago, quando ele faz — opcional. */
+  precoConcorrenteOfertaReais?: string;
   /** Quantas unidades o concorrente vendeu no mês (visto no anúncio dele) — opcional. */
   vendasConcorrenteMes?: string;
   canais: { shopee: CanalCalculadoraValores; mercadoLivre: CanalCalculadoraValores };
