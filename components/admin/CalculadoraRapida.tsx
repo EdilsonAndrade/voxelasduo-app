@@ -109,42 +109,69 @@ function Campo({
 }
 
 /**
- * Quanto colocar de verba no Ads: o necessário para vender a produção do mês
- * inteira pelo anúncio (teto — acima disso sobra verba e falta peça) e o
- * valor de teste para começar.
+ * O que digitar na tela de criar campanha: a meta (ROAS na Shopee, ACOS no
+ * Mercado Livre) e o orçamento diário em R$ — um valor de teste para começar e
+ * o teto que vende a produção do mês inteira pelo anúncio (acima disso falta peça).
  */
-function VerbaSugerida({
+function PreencherCampanha({
+  ehMl,
+  roas,
   custoPorVendaCentavos,
   pecasMes,
   diasMes,
-  onUsar,
+  verbaMesCentavos,
+  onUsarVerba,
 }: {
+  ehMl: boolean;
+  roas: number;
   custoPorVendaCentavos: number;
   pecasMes: number;
   diasMes: number;
-  onUsar?: (reais: string) => void;
+  /** Verba do bolso já informada — quando houver, vira o orçamento diário. */
+  verbaMesCentavos?: number;
+  onUsarVerba?: (reais: string) => void;
 }) {
-  if (pecasMes <= 0 || custoPorVendaCentavos <= 0) {
-    return (
-      <span className={styles.mlLinkAviso}>
-        Preencha a produção do mês para ver a verba sugerida.
-      </span>
-    );
-  }
-  const mensalCentavos = custoPorVendaCentavos * pecasMes;
-  const diarioCentavos = Math.round(mensalCentavos / (diasMes > 0 ? diasMes : 30));
+  const dias = diasMes > 0 ? diasMes : 30;
+  const tetoMensalCentavos = pecasMes > 0 ? custoPorVendaCentavos * pecasMes : 0;
+  const tetoDiarioCentavos = Math.round(tetoMensalCentavos / dias);
+  const inicioDiarioCentavos = tetoDiarioCentavos > 0 ? Math.min(1500, tetoDiarioCentavos) : 1000;
+  const verbaDiariaCentavos = verbaMesCentavos ? Math.round(verbaMesCentavos / dias) : 0;
+  const plataforma = ehMl ? "Mercado Ads" : "Shopee Ads";
+
   return (
     <div className={calc.verbaSugerida}>
-      <span>
-        <strong>Verba sugerida:</strong> até {reais(mensalCentavos)}/mês (~{reais(diarioCentavos)}/dia) para vender
-        as {pecasMes} peças do mês pelo anúncio. Mais que isso não adianta: falta peça.
-      </span>
+      <strong>O que digitar ao criar a campanha no {plataforma}:</strong>
+      <ol className={calc.passosCampanha}>
+        <li>
+          No campo <em>{ehMl ? "ACOS objetivo" : "Meta de ROAS"}</em>, digite{" "}
+          <strong className={calc.valorCampanha}>{ehMl ? formatarAcos(roas) : formatarRoas(roas)}</strong>
+        </li>
+        <li>
+          No campo <em>Orçamento diário</em>, digite{" "}
+          {verbaDiariaCentavos > 0 ? (
+            <>
+              <strong className={calc.valorCampanha}>{reais(verbaDiariaCentavos)}</strong> (sua verba de{" "}
+              {reais(verbaMesCentavos!)} ÷ {dias} dias)
+            </>
+          ) : (
+            <>
+              <strong className={calc.valorCampanha}>{reais(inicioDiarioCentavos)}</strong> para começar
+            </>
+          )}
+        </li>
+      </ol>
       <span className={styles.mlLinkAviso}>
-        Para começar: R$ 10 a R$ 15 por dia, por 7 a 15 dias. Depois confira o ROAS real no painel antes de aumentar.
+        Cada venda pelo anúncio gasta ~{reais(custoPorVendaCentavos)}.
+        {tetoDiarioCentavos > 0 &&
+          ` Depois de 7 a 15 dias, se o ROAS real estiver no verde, pode subir o orçamento até ${reais(tetoDiarioCentavos)}/dia (${reais(tetoMensalCentavos)}/mês) — é o que vende as ${pecasMes} peças do mês. Mais que isso falta peça.`}
       </span>
-      {onUsar && (
-        <button type="button" className={styles.btnGhost} onClick={() => onUsar((mensalCentavos / 100).toFixed(2))}>
-          Usar {reais(mensalCentavos)} como verba do mês
+      {onUsarVerba && tetoMensalCentavos > 0 && (
+        <button
+          type="button"
+          className={styles.btnGhost}
+          onClick={() => onUsarVerba(((inicioDiarioCentavos * dias) / 100).toFixed(2))}
+        >
+          Usar {reais(inicioDiarioCentavos)}/dia ({reais(inicioDiarioCentavos * dias)}/mês) como verba
         </button>
       )}
     </div>
@@ -647,26 +674,15 @@ export default function CalculadoraRapida({
 
                   {anuncio.modo === "embutido" && roasValido && (
                     <div className={calc.anuncio}>
-                      <strong>Na campanha {ehMl ? "do Mercado Ads" : "do Shopee Ads"}</strong>
-                      <span className={calc.roasMeta}>
-                        {ehMl ? (
-                          <>
-                            ACOS objetivo: <strong>{formatarAcos(roas)}</strong> ou menos
-                          </>
-                        ) : (
-                          <>
-                            Meta de ROAS: <strong>{formatarRoas(roas)}</strong> ou mais
-                          </>
-                        )}
-                      </span>
-                      <span>
-                        Anúncio por venda: <strong>{reais(r.venda.anuncioCentavos)}</strong>
-                      </span>
-                      <VerbaSugerida
+                      <strong>Anúncio pago pelo comprador (já está no preço)</strong>
+                      <PreencherCampanha
+                        ehMl={ehMl}
+                        roas={roas}
                         custoPorVendaCentavos={r.venda.anuncioCentavos}
                         pecasMes={pecasMesNumero}
                         diasMes={numero(producao.diasPorMes)}
                       />
+                      <strong>Depois, confira o ROAS real no painel:</strong>
                       <span className={calc.semaforoVerde}>
                         ROAS real {formatarRoas(roas)} ou mais: você ganha {margemNumero}% ou mais
                       </span>
@@ -686,28 +702,20 @@ export default function CalculadoraRapida({
 
                   {anuncio.modo === "bolso" && retorno && (
                     <div className={calc.anuncio}>
-                      <strong>Verba do bolso {ehMl ? "no Mercado Ads" : "no Shopee Ads"}</strong>
-                      <span className={calc.roasMeta}>
-                        {ehMl ? (
-                          <>
-                            ACOS objetivo: <strong>{formatarAcos(roas)}</strong>
-                          </>
-                        ) : (
-                          <>
-                            Meta de ROAS: <strong>{formatarRoas(roas)}</strong>
-                          </>
-                        )}
-                      </span>
+                      <strong>Anúncio pago do seu bolso</strong>
+                      <PreencherCampanha
+                        ehMl={ehMl}
+                        roas={roas}
+                        custoPorVendaCentavos={Math.round(r.precoCentavos / roas)}
+                        pecasMes={pecasMesNumero}
+                        diasMes={numero(producao.diasPorMes)}
+                        verbaMesCentavos={verbaCentavos}
+                        onUsarVerba={alterarAnuncio("verbaMesReais")}
+                      />
                       <span>
                         Cada venda pelo anúncio custa ~{reais(Math.round(r.precoCentavos / roas))} e deixa ~
                         <strong>{reais(r.venda.lucroCentavos - Math.round(r.precoCentavos / roas))}</strong> de lucro
                       </span>
-                      <VerbaSugerida
-                        custoPorVendaCentavos={Math.round(r.precoCentavos / roas)}
-                        pecasMes={pecasMesNumero}
-                        diasMes={numero(producao.diasPorMes)}
-                        onUsar={alterarAnuncio("verbaMesReais")}
-                      />
                       {verbaCentavos > 0 ? (
                         <>
                           <span>
