@@ -5,8 +5,25 @@ export const CALCULOS_PRECO_COLLECTION = "calculosPreco";
 
 export interface CanalCalculadoraValores {
   taxaPercentual: string;
+  /** Shopee: taxa fixa por venda; Mercado Livre: custo fixo por unidade abaixo de R$ 79. */
   taxaFixaReais: string;
-  anuncioPercentual: string;
+  /** Shopee: `false` = usa a taxa digitada em vez da tabela por faixa de preço (ausente = tabela). */
+  taxaPorFaixa?: boolean;
+  /** Shopee: conta CPF com mais de 450 pedidos em 90 dias — soma R$ 3 por item. */
+  cpfAcima450Pedidos?: boolean;
+  /** Legado: anúncio em % por canal, antes da meta de ROAS única. */
+  anuncioPercentual?: string;
+}
+
+/** Como o anúncio é pago: fora, embutido no preço de venda, ou com verba do próprio bolso. */
+export type ModoAnuncio = "sem" | "embutido" | "bolso";
+
+export interface AnuncioCalculadoraValores {
+  modo: ModoAnuncio;
+  /** Meta de ROAS da campanha (ex: "8" = R$ 8 vendidos a cada R$ 1 de anúncio). */
+  roasMeta: string;
+  /** Verba do bolso por mês, usada no modo "bolso". */
+  verbaMesReais: string;
 }
 
 /**
@@ -15,9 +32,12 @@ export interface CanalCalculadoraValores {
  */
 export interface CalculadoraValores {
   custo: CustoProducaoFormValores;
-  margemPercentual: string;
-  /** Lucro mínimo que precisa sobrar depois do anúncio, em % do preço — ausente em cálculos antigos = 25. */
+  /** Legado: margem sobre o custo, antes do lucro em % do preço. */
+  margemPercentual?: string;
+  /** Lucro que precisa sobrar em cada venda, em % do preço — ausente em cálculos antigos = 25. */
   margemMinimaPrecoPercentual?: string;
+  /** Ausente em cálculos antigos = sem anúncio, ROAS 8. */
+  anuncio?: AnuncioCalculadoraValores;
   canais: { shopee: CanalCalculadoraValores; mercadoLivre: CanalCalculadoraValores };
   producao: { pecasPorMesa: string; horasMesaCheia: string; horasPorDia: string; diasPorMes: string };
   pecasPorMes: string;
