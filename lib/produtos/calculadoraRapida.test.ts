@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calcularCustoKit,
   calcularCustoMaximo,
+  compararComConcorrente,
   FAIXAS_SHOPEE_2026,
   calcularLimiteAnuncio,
   calcularPrecoPorMargem,
@@ -147,5 +148,26 @@ describe("concorrente e kit", () => {
 
   it("kit de 3 soma as peças com uma embalagem só", () => {
     expect(calcularCustoKit(767, 250, 3)).toBe(1801);
+  });
+});
+
+describe("compararComConcorrente", () => {
+  it("diz quanto estamos acima e qual margem sobra no preço dele pagando o ROAS", () => {
+    const faixas = faixaUnica(20, 0);
+    const c = compararComConcorrente({
+      precoConcorrenteCentavos: 3000,
+      custoCentavos: 1000,
+      faixas,
+      roas: 10,
+      margemPrecoPercentual: 25,
+    });
+    // 1000 / (1 − 0,20 − 0,10 − 0,25) = 2222,2 → 2223
+    expect(c.nossoPrecoCentavos).toBe(2223);
+    expect(c.diferencaCentavos).toBe(-777);
+    // 3000 − 600 taxa − 300 anúncio − 1000 custo = 1100 → 36,7%
+    expect(c.lucroNoPrecoDeleCentavos).toBe(1100);
+    expect(c.margemNoPrecoDelePercentual).toBeCloseTo(36.67, 1);
+    // 1000 / 0,7 = 1428,6 → 1429
+    expect(c.precoEmpateCentavos).toBe(1429);
   });
 });

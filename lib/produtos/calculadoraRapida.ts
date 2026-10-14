@@ -222,3 +222,36 @@ export function calcularCustoMaximo(entrada: {
 export function calcularCustoKit(custoUnidadeCentavos: number, embalagemCentavos: number, unidades: number): number {
   return custoUnidadeCentavos * unidades - embalagemCentavos * (unidades - 1);
 }
+
+/** Nosso preço contra o de um concorrente, sempre pagando o anúncio na meta de ROAS. */
+export interface ComparacaoConcorrente {
+  /** Nosso preço com a margem desejada e o anúncio embutido — `null` = impossível. */
+  nossoPrecoCentavos: number | null;
+  /** Nosso preço − o dele: positivo = estamos mais caros. */
+  diferencaCentavos: number | null;
+  /** Lucro e margem (% do preço) se vendermos pelo preço dele, ainda pagando o anúncio. */
+  lucroNoPrecoDeleCentavos: number;
+  margemNoPrecoDelePercentual: number;
+  /** Menor preço que paga custo, taxa e anúncio sem lucro nenhum — `null` = impossível. */
+  precoEmpateCentavos: number | null;
+}
+
+export function compararComConcorrente(entrada: {
+  precoConcorrenteCentavos: number;
+  custoCentavos: number;
+  faixas: FaixaTaxa[];
+  roas: number;
+  margemPrecoPercentual: number;
+}): ComparacaoConcorrente {
+  const { precoConcorrenteCentavos, custoCentavos, faixas, roas, margemPrecoPercentual } = entrada;
+  const anuncioPercentual = 100 / roas;
+  const nossoPrecoCentavos = calcularPrecoPorMargem({ custoCentavos, faixas, margemPrecoPercentual, anuncioPercentual });
+  const venda = detalharVenda({ precoCentavos: precoConcorrenteCentavos, faixas, custoCentavos, anuncioPercentual });
+  return {
+    nossoPrecoCentavos,
+    diferencaCentavos: nossoPrecoCentavos !== null ? nossoPrecoCentavos - precoConcorrenteCentavos : null,
+    lucroNoPrecoDeleCentavos: venda.lucroCentavos,
+    margemNoPrecoDelePercentual: venda.margemPrecoPercentual,
+    precoEmpateCentavos: calcularPrecoPorMargem({ custoCentavos, faixas, margemPrecoPercentual: 0, anuncioPercentual }),
+  };
+}

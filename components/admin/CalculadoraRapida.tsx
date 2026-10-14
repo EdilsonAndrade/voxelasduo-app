@@ -21,6 +21,7 @@ import {
   calcularPrecoPorMargem,
   calcularProducaoMensal,
   calcularRetornoVerba,
+  compararComConcorrente,
   detalharVenda,
   faixaUnica,
   type DetalheVenda,
@@ -886,6 +887,84 @@ export default function CalculadoraRapida({
                       concorrente = (
                         <div className={calc.concorrente}>
                           <strong>Contra o concorrente ({reais(concorrenteCentavos)})</strong>
+                          {(() => {
+                            // Comparativo sempre pagando o anúncio na meta de ROAS (mesmo no modo "sem anúncio").
+                            const roasComparar = roasValido ? roas : 8;
+                            const ofertaCentavos = Math.round((numero(precoOferta) || 0) * 100);
+                            const precosDele = [
+                              { rotulo: "Normal", centavos: concorrenteCentavos },
+                              ...(ofertaCentavos > 0 ? [{ rotulo: "Oferta relâmpago", centavos: ofertaCentavos }] : []),
+                            ];
+                            return (
+                              <div className={calc.comparativo}>
+                                <span className={styles.mlLinkAviso}>
+                                  Comparativo pagando anúncio com {ehMl ? `ACOS ${formatarAcos(roasComparar)}` : `ROAS ${formatarRoas(roasComparar)}`}
+                                  {anuncio.modo === "embutido" ? "" : " (a sua meta, mesmo sem anúncio escolhido)"}.
+                                </span>
+                                <div className={calc.tabelaKitsRolagem}>
+                                  <table className={calc.tabelaKits}>
+                                    <thead>
+                                      <tr>
+                                        <th scope="col">Preço dele</th>
+                                        <th scope="col">Nosso com {margemNumero}%</th>
+                                        <th scope="col">Para igualar o dele</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {precosDele.map((p) => {
+                                        const c = compararComConcorrente({
+                                          precoConcorrenteCentavos: p.centavos,
+                                          custoCentavos: cogs.totalCentavos,
+                                          faixas,
+                                          roas: roasComparar,
+                                          margemPrecoPercentual: margemNumero,
+                                        });
+                                        const ganhamos = c.diferencaCentavos !== null && c.diferencaCentavos <= 0;
+                                        return (
+                                          <tr key={p.rotulo}>
+                                            <th scope="row">
+                                              {reais(p.centavos)}
+                                              <span className={calc.cadaUm}>{p.rotulo}</span>
+                                            </th>
+                                            <td>
+                                              {c.nossoPrecoCentavos !== null ? reais(c.nossoPrecoCentavos) : "impossível"}
+                                              {c.diferencaCentavos !== null && (
+                                                <span className={ganhamos ? calc.ganhamos : calc.perdemos}>
+                                                  {ganhamos
+                                                    ? `${reais(-c.diferencaCentavos)} mais barato`
+                                                    : `${reais(c.diferencaCentavos)} mais caro`}
+                                                </span>
+                                              )}
+                                            </td>
+                                            <td>
+                                              {ganhamos ? (
+                                                <span className={calc.ganhamos}>
+                                                  Já ganhamos. No preço dele a margem sobe para{" "}
+                                                  {c.margemNoPrecoDelePercentual.toFixed(0)}%
+                                                </span>
+                                              ) : c.lucroNoPrecoDeleCentavos > 0 ? (
+                                                <span>
+                                                  Baixar a margem para{" "}
+                                                  <strong>{Math.floor(c.margemNoPrecoDelePercentual)}%</strong> (
+                                                  {reais(c.lucroNoPrecoDeleCentavos)} por peça)
+                                                </span>
+                                              ) : (
+                                                <span className={calc.perdemos}>
+                                                  Não dá: com esse anúncio o mínimo sem lucro é{" "}
+                                                  {c.precoEmpateCentavos !== null ? reais(c.precoEmpateCentavos) : "impossível"}.
+                                                  Suba o ROAS ou baixe o custo.
+                                                </span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            );
+                          })()}
                           <span className={vendaNoPreco.lucroCentavos >= 0 ? undefined : calc.roasPrejuizo}>
                             Vendendo por {reais(concorrenteCentavos)} você{" "}
                             {vendaNoPreco.lucroCentavos >= 0 ? "ganha" : "perde"}{" "}

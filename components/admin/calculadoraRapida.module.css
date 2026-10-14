@@ -503,3 +503,25 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* Comparativo de preço com o concorrente pagando o ROAS. */
+.comparativo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ganhamos,
+.perdemos {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.ganhamos {
+  color: #1f8a4c;
+}
+
+.perdemos {
+  color: #c23a3a;
+}
