@@ -81,6 +81,7 @@ export default function CalculadoraRapida({ taxasGlobais }: { taxasGlobais: Taxa
   });
   const [producao, setProducao] = useState({ pecasPorMesa: "", horasMesaCheia: "", horasPorDia: "20", diasPorMes: "30" });
   const [nome, setNome] = useState("");
+  const [linkModelo, setLinkModelo] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   const [salvo, setSalvo] = useState<{ id: string; nome: string } | null>(null);
@@ -170,6 +171,7 @@ export default function CalculadoraRapida({ taxasGlobais }: { taxasGlobais: Taxa
             margemDesejadaPercentual: margemNumero,
           },
           precosCanais,
+          linkModelo3d: linkModelo.trim(),
           publicado: false,
         }),
       });
@@ -181,6 +183,7 @@ export default function CalculadoraRapida({ taxasGlobais }: { taxasGlobais: Taxa
       }
       setSalvo({ id: dados.produto._id, nome: dados.produto.nome });
       setNome("");
+      setLinkModelo("");
     } catch (erro) {
       setErroSalvar(`Não foi possível salvar: ${erro instanceof Error ? erro.message : String(erro)}`);
     } finally {
@@ -311,6 +314,16 @@ export default function CalculadoraRapida({ taxasGlobais }: { taxasGlobais: Taxa
           <div className={styles.field}>
             <label htmlFor="nomeRascunho">Nome do produto</label>
             <input id="nomeRascunho" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Vaso geométrico" />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="linkModelo">Link do modelo (MakerWorld)</label>
+            <input
+              id="linkModelo"
+              type="url"
+              value={linkModelo}
+              onChange={(e) => setLinkModelo(e.target.value)}
+              placeholder="https://makerworld.com/..."
+            />
           </div>
           <button type="button" className={styles.btnPrimary} disabled={!podeSalvar} onClick={salvarRascunho}>
             {salvando ? "Salvando…" : "Salvar como rascunho"}
