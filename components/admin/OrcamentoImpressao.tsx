@@ -111,6 +111,7 @@ export default function OrcamentoImpressao({
         <li>Mês = a produção de uma impressora (horas por dia do cálculo), toda vendida daquele jeito.</li>
       </ul>
 
+      <div className={o.rolagem}>
       <table className={o.tabela}>
         <thead>
           <tr>
@@ -212,6 +213,7 @@ export default function OrcamentoImpressao({
           );
         })}
       </table>
+      </div>
       <p className={o.rodape}>
         Valores calculados na calculadora de preço com o custo, a margem e a meta de anúncio salvos em cada produto.
         Pedidos sem produção informada aparecem com “—”.

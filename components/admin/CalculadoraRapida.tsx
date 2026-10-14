@@ -1042,6 +1042,11 @@ export default function CalculadoraRapida({
               onChange={(e) => setLinkModelo(e.target.value)}
               placeholder="https://makerworld.com/..."
             />
+            {/^https?:\/\/\S+$/.test(linkModelo.trim()) && (
+              <a href={linkModelo.trim()} target="_blank" rel="noopener noreferrer" className={styles.mlLinkAviso}>
+                Abrir modelo ↗
+              </a>
+            )}
           </div>
           <div className={styles.field}>
             <label htmlFor="linkShopee">Mesmo produto na Shopee (opcional)</label>
