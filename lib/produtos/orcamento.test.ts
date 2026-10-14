@@ -53,6 +53,13 @@ describe("montarOrcamentoProduto", () => {
     expect(o.linhas[1].pedidosMes).toBe(50);
   });
 
+  it("traz preço e vendas do concorrente quando informados", () => {
+    const o = montarOrcamentoProduto(valores({ precoConcorrenteReais: "29,90", vendasConcorrenteMes: "150" }), "shopee", 2);
+    expect(o.precoConcorrenteCentavos).toBe(2990);
+    expect(o.vendasConcorrenteMes).toBe(150);
+    expect(montarOrcamentoProduto(valores(), "shopee", 2).vendasConcorrenteMes).toBeNull();
+  });
+
   it("custo incompleto → sem linhas", () => {
     const v = valores();
     const o = montarOrcamentoProduto({ ...v, custo: { ...v.custo, pesoPecaGramas: "" } }, "shopee", 2);

@@ -228,6 +228,7 @@ export default function CalculadoraRapida({
   const [margem, setMargem] = useState(inicial.margemMinimaPrecoPercentual ?? "25");
   const [anuncio, setAnuncio] = useState<AnuncioCalculadoraValores>(inicial.anuncio ?? ANUNCIO_PADRAO);
   const [precoConcorrente, setPrecoConcorrente] = useState(inicial.precoConcorrenteReais ?? "");
+  const [vendasConcorrente, setVendasConcorrente] = useState(inicial.vendasConcorrenteMes ?? "");
   const [canais, setCanais] = useState<Record<Marketplace, CanalForm>>(inicial.canais);
   const [producao, setProducao] = useState(inicial.producao);
   const [nome, setNome] = useState(calculoInicial?.nome ?? "");
@@ -347,6 +348,7 @@ export default function CalculadoraRapida({
       producao,
       pecasPorMes: pecasMes,
       precoConcorrenteReais: precoConcorrente,
+      vendasConcorrenteMes: vendasConcorrente.trim(),
     };
   }
 
@@ -625,14 +627,30 @@ export default function CalculadoraRapida({
 
         <section className={calc.bloco}>
           <h2>Concorrente</h2>
-          <Campo
-            id="precoConcorrente"
-            rotulo="Preço do concorrente (opcional)"
-            unidade="R$"
-            valor={precoConcorrente}
-            onChange={setPrecoConcorrente}
-            dica="O preço de 1 unidade do mesmo produto. Prefira o preço normal, não o de oferta relâmpago."
-          />
+          <div className={calc.campos3}>
+            <Campo
+              id="precoConcorrente"
+              rotulo="Preço do concorrente (opcional)"
+              unidade="R$"
+              valor={precoConcorrente}
+              onChange={setPrecoConcorrente}
+              dica="O preço de 1 unidade do mesmo produto. Prefira o preço normal, não o de oferta relâmpago."
+            />
+            <Campo
+              id="vendasConcorrente"
+              rotulo="Vendas dele no mês (opcional)"
+              unidade="un"
+              valor={vendasConcorrente}
+              onChange={(v) => setVendasConcorrente(v.replace(/\D/g, ""))}
+              dica={(() => {
+                const vendas = Number(vendasConcorrente);
+                const preco = numero(precoConcorrente);
+                return vendas > 0 && preco > 0
+                  ? `Ele fatura ~${reais(Math.round(preco * 100) * vendas)} por mês com esse produto.`
+                  : "Quantas unidades ele vendeu no mês, como aparece no anúncio.";
+              })()}
+            />
+          </div>
         </section>
 
         <section className={calc.bloco}>

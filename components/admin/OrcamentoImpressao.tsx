@@ -151,6 +151,9 @@ export default function OrcamentoImpressao({
               </td>
               <td rowSpan={Math.max(orc.linhas.length, 1)} className={o.num}>
                 {orc.precoConcorrenteCentavos !== null ? reais(orc.precoConcorrenteCentavos) : "—"}
+                {orc.vendasConcorrenteMes !== null && (
+                  <span className={o.cada}>{orc.vendasConcorrenteMes.toLocaleString("pt-BR")} vendas/mês</span>
+                )}
               </td>
               <td rowSpan={Math.max(orc.linhas.length, 1)}>{metaAnuncio(orc.roas, ehMl)}</td>
             </>

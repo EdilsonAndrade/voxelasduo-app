@@ -64,6 +64,8 @@ export interface OrcamentoProduto {
   horasMesaCheia: number | null;
   pecasMes: number | null;
   precoConcorrenteCentavos: number | null;
+  /** Unidades que o concorrente vendeu no mês — `null` = não informado. */
+  vendasConcorrenteMes: number | null;
   linhas: LinhaOrcamento[];
 }
 
@@ -107,6 +109,7 @@ export function montarOrcamentoProduto(
     horasMesaCheia,
     pecasMes,
     precoConcorrenteCentavos: concorrente !== null ? Math.round(concorrente * 100) : null,
+    vendasConcorrenteMes: positivoOuNull(valores.vendasConcorrenteMes) !== null ? Math.floor(numero(valores.vendasConcorrenteMes)) : null,
   };
 
   const custoProducao = montarCustoProducao(valores.custo);
