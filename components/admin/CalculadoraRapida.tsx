@@ -887,15 +887,57 @@ export default function CalculadoraRapida({
                       <>
                         {concorrente}
                         <div className={calc.kits}>
-                          <strong>Vender em kit (uma embalagem só)</strong>
-                          {kits.map((k) =>
-                            k.preco === null ? null : (
-                              <span key={k.unidades}>
-                                Kit com {k.unidades}: <strong>{reais(k.preco)}</strong> ·{" "}
-                                {reais(Math.ceil(k.preco / k.unidades))} cada
-                              </span>
-                            )
-                          )}
+                          <strong>Avulso ou em kit? (kit usa uma embalagem só)</strong>
+                          <span className={styles.mlLinkAviso}>
+                            Mês = as {pecasMesNumero} peças da produção vendidas desse jeito
+                            {anuncio.modo === "bolso" && verbaCentavos > 0 ? ", já tirando a verba do bolso" : ""}.
+                          </span>
+                          <div className={calc.tabelaKitsRolagem}>
+                            <table className={calc.tabelaKits}>
+                              <thead>
+                                <tr>
+                                  <th scope="col">Venda</th>
+                                  <th scope="col">Preço</th>
+                                  <th scope="col">Lucro / pedido</th>
+                                  <th scope="col">Lucro / peça</th>
+                                  <th scope="col">Bruto no mês</th>
+                                  <th scope="col">Líquido no mês</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {[{ unidades: 1, preco: r.precoCentavos }, ...kits].map((k) => {
+                                  if (k.preco === null) return null;
+                                  const custoPedido = calcularCustoKit(cogs.totalCentavos, embalagemCentavos, k.unidades);
+                                  const lucroPedido = detalharVenda({
+                                    precoCentavos: k.preco,
+                                    faixas,
+                                    custoCentavos: custoPedido,
+                                    anuncioPercentual: anuncioEmbutidoPercentual,
+                                  }).lucroCentavos;
+                                  const pedidosMes = Math.floor(pecasMesNumero / k.unidades);
+                                  const liquidoMes =
+                                    lucroPedido * pedidosMes - (anuncio.modo === "bolso" ? verbaCentavos : 0);
+                                  return (
+                                    <tr key={k.unidades}>
+                                      <th scope="row">{k.unidades === 1 ? "Avulso" : `Kit ${k.unidades}`}</th>
+                                      <td>
+                                        {reais(k.preco)}
+                                        {k.unidades > 1 && (
+                                          <span className={calc.cadaUm}>{reais(Math.ceil(k.preco / k.unidades))} cada</span>
+                                        )}
+                                      </td>
+                                      <td>{reais(lucroPedido)}</td>
+                                      <td>{reais(Math.round(lucroPedido / k.unidades))}</td>
+                                      <td>{reais(k.preco * pedidosMes)}</td>
+                                      <td className={liquidoMes < 0 ? calc.roasPrejuizo : undefined}>
+                                        <strong>{reais(liquidoMes)}</strong>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       </>
                     );

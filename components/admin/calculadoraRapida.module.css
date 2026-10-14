@@ -412,3 +412,40 @@
   border-color: var(--roxo);
   background: var(--creme);
 }
+
+.tabelaKitsRolagem {
+  overflow-x: auto;
+}
+
+.tabelaKits {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabelaKits th,
+.tabelaKits td {
+  padding: 0.3rem 0.35rem;
+  border-bottom: 1px solid var(--surface-line);
+  text-align: right;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.tabelaKits thead th {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--texto-soft);
+  white-space: normal;
+}
+
+.tabelaKits th:first-child {
+  text-align: left;
+}
+
+.cadaUm {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--texto-soft);
+}
