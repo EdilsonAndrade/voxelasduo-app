@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import styles from "./admin.module.css";
 import calc from "./calculadoraRapida.module.css";
 import type { TaxasCanaisConfig } from "@/lib/models/configuracao";
+import type { CalculadoraValores } from "@/lib/models/calculoPreco";
 import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import {
   VAZIO_CUSTO_PRODUCAO,
@@ -25,11 +27,7 @@ const NOME_MARKETPLACE: Record<Marketplace, string> = {
   mercadoLivre: "Mercado Livre",
 };
 
-interface CanalForm {
-  taxaPercentual: string;
-  taxaFixaReais: string;
-  anuncioPercentual: string;
-}
+type CanalForm = CalculadoraValores["canais"]["shopee"];
 
 function numero(texto: string): number {
   return Number(texto.trim().replace(",", "."));
@@ -67,24 +65,64 @@ function Campo({
   );
 }
 
-export default function CalculadoraRapida({ taxasGlobais }: { taxasGlobais: TaxasCanaisConfig }) {
-  // Filamento é digitado por kg: o carretel de referência fica fixo em 1000 g.
-  const [custo, setCusto] = useState<CustoProducaoFormValores>({
-    ...VAZIO_CUSTO_PRODUCAO,
-    pesoCarreteGramas: "1000",
-    margemPerdaPercentual: "0",
+/** Cálculo salvo reaberto na calculadora — ausente = cálculo novo. */
+export interface CalculoInicial {
+  id: string;
+  nome: string;
+  linkModelo3d?: string;
+  valores: CalculadoraValores;
+  produtoId?: string;
+}
+
+function valoresPadrao(taxasGlobais: TaxasCanaisConfig): CalculadoraValores {
+  return {
+    // Filamento é digitado por kg: o carretel de referência fica fixo em 1000 g.
+    custo: { ...VAZIO_CUSTO_PRODUCAO, pesoCarreteGramas: "1000", margemPerdaPercentual: "0" },
+    margemPercentual: String(taxasGlobais.margemDesejadaPercentual),
+    canais: {
+      shopee: { taxaPercentual: String(taxasGlobais.shopeeTaxaPercentual), taxaFixaReais: "0", anuncioPercentual: "0" },
+      mercadoLivre: { taxaPercentual: "14", taxaFixaReais: "0", anuncioPercentual: "0" },
+    },
+    producao: { pecasPorMesa: "", horasMesaCheia: "", horasPorDia: "20", diasPorMes: "30" },
+    pecasPorMes: "",
+  };
+}
+
+function producaoDe(producao: CalculadoraValores["producao"]) {
+  return calcularProducaoMensal({
+    pecasPorMesa: numero(producao.pecasPorMesa),
+    horasMesaCheia: numero(producao.horasMesaCheia),
+    horasPorDia: numero(producao.horasPorDia),
+    diasPorMes: numero(producao.diasPorMes),
   });
-  const [margem, setMargem] = useState(String(taxasGlobais.margemDesejadaPercentual));
-  const [canais, setCanais] = useState<Record<Marketplace, CanalForm>>({
-    shopee: { taxaPercentual: String(taxasGlobais.shopeeTaxaPercentual), taxaFixaReais: "0", anuncioPercentual: "0" },
-    mercadoLivre: { taxaPercentual: "14", taxaFixaReais: "0", anuncioPercentual: "0" },
-  });
-  const [producao, setProducao] = useState({ pecasPorMesa: "", horasMesaCheia: "", horasPorDia: "20", diasPorMes: "30" });
-  const [nome, setNome] = useState("");
-  const [linkModelo, setLinkModelo] = useState("");
+}
+
+async function mensagemDeErro(resposta: Response): Promise<string> {
+  const dados = await resposta.json().catch(() => ({}));
+  const campos = dados.campos ? ` ${Object.values(dados.campos).join(" ")}` : "";
+  return `${dados.erro ?? `Erro ${resposta.status} ao salvar.`}${campos}`;
+}
+
+export default function CalculadoraRapida({
+  taxasGlobais,
+  calculoInicial,
+}: {
+  taxasGlobais: TaxasCanaisConfig;
+  calculoInicial?: CalculoInicial;
+}) {
+  const router = useRouter();
+  const inicial = calculoInicial?.valores ?? valoresPadrao(taxasGlobais);
+  const [custo, setCusto] = useState<CustoProducaoFormValores>(inicial.custo);
+  const [margem, setMargem] = useState(inicial.margemPercentual);
+  const [canais, setCanais] = useState<Record<Marketplace, CanalForm>>(inicial.canais);
+  const [producao, setProducao] = useState(inicial.producao);
+  const [nome, setNome] = useState(calculoInicial?.nome ?? "");
+  const [linkModelo, setLinkModelo] = useState(calculoInicial?.linkModelo3d ?? "");
+  const [calculoId, setCalculoId] = useState(calculoInicial?.id ?? null);
+  const [produtoId, setProdutoId] = useState(calculoInicial?.produtoId ?? null);
   const [salvando, setSalvando] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
-  const [salvo, setSalvo] = useState<{ id: string; nome: string } | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   const alterarCusto = (chave: keyof CustoProducaoFormValores) => (valor: string) =>
     setCusto((atual) => ({ ...atual, [chave]: valor }));
@@ -98,17 +136,15 @@ export default function CalculadoraRapida({ taxasGlobais }: { taxasGlobais: Taxa
   const margemNumero = numero(margem);
   const margemValida = margem.trim() !== "" && Number.isFinite(margemNumero) && margemNumero >= 0;
 
-  const producaoMensal = calcularProducaoMensal({
-    pecasPorMesa: numero(producao.pecasPorMesa),
-    horasMesaCheia: numero(producao.horasMesaCheia),
-    horasPorDia: numero(producao.horasPorDia),
-    diasPorMes: numero(producao.diasPorMes),
-  });
+  const producaoMensal = producaoDe(producao);
   const pecasAuto = producaoMensal?.pecasPorMes ?? null;
 
   // "Peças no mês" segue o cálculo automático sempre que ele muda, mas pode ser digitado por cima.
-  const [pecasMes, setPecasMes] = useState("");
-  const [pecasAutoAnterior, setPecasAutoAnterior] = useState<number | null>(null);
+  // Ao reabrir um cálculo salvo, mantém o valor que estava gravado.
+  const [pecasMes, setPecasMes] = useState(
+    calculoInicial ? inicial.pecasPorMes : pecasAuto !== null ? String(pecasAuto) : ""
+  );
+  const [pecasAutoAnterior, setPecasAutoAnterior] = useState<number | null>(pecasAuto);
   if (pecasAuto !== pecasAutoAnterior) {
     setPecasAutoAnterior(pecasAuto);
     setPecasMes(pecasAuto !== null ? String(pecasAuto) : "");
@@ -136,7 +172,7 @@ export default function CalculadoraRapida({ taxasGlobais }: { taxasGlobais: Taxa
     mercadoLivre: resultadoCanal("mercadoLivre"),
   };
 
-  // Preço do site no rascunho: mesma fórmula do cadastro, com a taxa do site próprio.
+  // Preço do site no produto: mesma fórmula do cadastro, com a taxa do site próprio.
   const precoSiteCentavos =
     cogs && margemValida
       ? calcularPrecoSugeridoCanal(cogs.totalCentavos, margemNumero, {
@@ -145,12 +181,54 @@ export default function CalculadoraRapida({ taxasGlobais }: { taxasGlobais: Taxa
         })
       : null;
 
-  const podeSalvar = nome.trim() !== "" && custoProducao !== null && precoSiteCentavos !== null && !salvando;
+  const podeSalvarCalculo = nome.trim() !== "" && !salvando;
+  const podeCriarProduto = podeSalvarCalculo && custoProducao !== null && precoSiteCentavos !== null && !produtoId;
 
-  async function salvarRascunho() {
-    if (!podeSalvar || !custoProducao || precoSiteCentavos === null) return;
+  /** Grava (cria ou atualiza) o cálculo — `false` se a API recusar (o erro já fica na tela). */
+  async function gravarCalculo(produtoCriadoId?: string): Promise<boolean> {
+    const resposta = await fetch(calculoId ? `/api/admin/calculos-preco/${calculoId}` : "/api/admin/calculos-preco", {
+      method: calculoId ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome: nome.trim(),
+        linkModelo3d: linkModelo.trim(),
+        produtoId: produtoCriadoId ?? produtoId ?? undefined,
+        valores: { custo, margemPercentual: margem, canais, producao, pecasPorMes: pecasMes },
+      }),
+    });
+    if (!resposta.ok) {
+      setErroSalvar(await mensagemDeErro(resposta));
+      return false;
+    }
+    const { calculo } = await resposta.json();
+    if (!calculoId) {
+      const id = String(calculo._id);
+      setCalculoId(id);
+      router.replace(`/admin/produtos/calculadora?id=${id}`, { scroll: false });
+    }
+    router.refresh();
+    return true;
+  }
+
+  async function salvarCalculo() {
+    if (!podeSalvarCalculo) return;
     setSalvando(true);
     setErroSalvar(null);
+    setAviso(null);
+    try {
+      if (await gravarCalculo()) setAviso("Cálculo salvo.");
+    } catch (erro) {
+      setErroSalvar(`Não foi possível salvar: ${erro instanceof Error ? erro.message : String(erro)}`);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function criarProduto() {
+    if (!podeCriarProduto || !custoProducao || precoSiteCentavos === null) return;
+    setSalvando(true);
+    setErroSalvar(null);
+    setAviso(null);
     try {
       const precosCanais: { shopee?: number; mercadoLivre?: number } = {};
       if (resultados.shopee?.precoCentavos) precosCanais.shopee = resultados.shopee.precoCentavos;
@@ -175,17 +253,17 @@ export default function CalculadoraRapida({ taxasGlobais }: { taxasGlobais: Taxa
           publicado: false,
         }),
       });
-      const dados = await resposta.json();
       if (!resposta.ok) {
-        const campos = dados.campos ? ` ${Object.values(dados.campos).join(" ")}` : "";
-        setErroSalvar(`${dados.erro ?? `Erro ${resposta.status} ao salvar.`}${campos}`);
+        setErroSalvar(await mensagemDeErro(resposta));
         return;
       }
-      setSalvo({ id: dados.produto._id, nome: dados.produto.nome });
-      setNome("");
-      setLinkModelo("");
+      const dados = await resposta.json();
+      const novoProdutoId = String(dados.produto._id);
+      setProdutoId(novoProdutoId);
+      // O cálculo fica guardado com o vínculo ao produto criado.
+      await gravarCalculo(novoProdutoId);
     } catch (erro) {
-      setErroSalvar(`Não foi possível salvar: ${erro instanceof Error ? erro.message : String(erro)}`);
+      setErroSalvar(`Não foi possível criar o produto: ${erro instanceof Error ? erro.message : String(erro)}`);
     } finally {
       setSalvando(false);
     }
@@ -325,19 +403,31 @@ export default function CalculadoraRapida({ taxasGlobais }: { taxasGlobais: Taxa
               placeholder="https://makerworld.com/..."
             />
           </div>
-          <button type="button" className={styles.btnPrimary} disabled={!podeSalvar} onClick={salvarRascunho}>
-            {salvando ? "Salvando…" : "Salvar como rascunho"}
+          <button type="button" className={styles.btnPrimary} disabled={!podeSalvarCalculo} onClick={salvarCalculo}>
+            {salvando ? "Salvando…" : calculoId ? "Salvar alterações" : "Salvar cálculo"}
           </button>
-          {precoSiteCentavos !== null && (
-            <span className={styles.mlLinkAviso}>
-              Salva custo, margem e os preços da Shopee e do Mercado Livre. Preço no site: {reais(precoSiteCentavos)}.
-            </span>
-          )}
+          <span className={styles.mlLinkAviso}>
+            Fica em &quot;Cálculos salvos&quot; para você voltar e ajustar. Ainda não vira produto.
+          </span>
+          {aviso && <span className={styles.formSuccess}>{aviso}</span>}
           {erroSalvar && <span className={styles.fieldError}>{erroSalvar}</span>}
-          {salvo && (
+
+          {produtoId ? (
             <span className={styles.formSuccess}>
-              Rascunho salvo: <Link href={`/admin/produtos/${salvo.id}/editar`}>completar {salvo.nome}</Link>
+              Já virou produto: <Link href={`/admin/produtos/${produtoId}/editar`}>abrir o rascunho do produto</Link>
             </span>
+          ) : (
+            <>
+              <button type="button" className={styles.btnGhost} disabled={!podeCriarProduto} onClick={criarProduto}>
+                Transformar em produto rascunho
+              </button>
+              {precoSiteCentavos !== null && (
+                <span className={styles.mlLinkAviso}>
+                  Quando estiver pronto: cria o produto (fora da loja) com custo, margem e preços da Shopee e do
+                  Mercado Livre. Preço no site: {reais(precoSiteCentavos)}.
+                </span>
+              )}
+            </>
           )}
         </div>
       </aside>
