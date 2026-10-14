@@ -52,6 +52,8 @@ export default async function CalculadoraPrecoPage({ searchParams }: { searchPar
                 id: calculo._id!.toString(),
                 nome: calculo.nome,
                 linkModelo3d: calculo.linkModelo3d,
+                linkShopee: calculo.linkShopee,
+                linkMercadoLivre: calculo.linkMercadoLivre,
                 valores: calculo.valores,
                 produtoId: calculo.produtoId,
               }

@@ -26,6 +26,10 @@ export interface CalculoPreco {
   _id?: ObjectId;
   nome: string;
   linkModelo3d?: string;
+  /** Anúncio do mesmo produto visto na Shopee — referência de preço, opcional. */
+  linkShopee?: string;
+  /** Anúncio do mesmo produto visto no Mercado Livre — referência de preço, opcional. */
+  linkMercadoLivre?: string;
   valores: CalculadoraValores;
   /** Produto rascunho criado a partir deste cálculo — ausente = ainda não virou produto. */
   produtoId?: string;

@@ -70,6 +70,8 @@ export interface CalculoInicial {
   id: string;
   nome: string;
   linkModelo3d?: string;
+  linkShopee?: string;
+  linkMercadoLivre?: string;
   valores: CalculadoraValores;
   produtoId?: string;
 }
@@ -118,6 +120,8 @@ export default function CalculadoraRapida({
   const [producao, setProducao] = useState(inicial.producao);
   const [nome, setNome] = useState(calculoInicial?.nome ?? "");
   const [linkModelo, setLinkModelo] = useState(calculoInicial?.linkModelo3d ?? "");
+  const [linkShopee, setLinkShopee] = useState(calculoInicial?.linkShopee ?? "");
+  const [linkMercadoLivre, setLinkMercadoLivre] = useState(calculoInicial?.linkMercadoLivre ?? "");
   const [calculoId, setCalculoId] = useState(calculoInicial?.id ?? null);
   const [produtoId, setProdutoId] = useState(calculoInicial?.produtoId ?? null);
   const [salvando, setSalvando] = useState(false);
@@ -192,6 +196,8 @@ export default function CalculadoraRapida({
       body: JSON.stringify({
         nome: nome.trim(),
         linkModelo3d: linkModelo.trim(),
+        linkShopee: linkShopee.trim(),
+        linkMercadoLivre: linkMercadoLivre.trim(),
         produtoId: produtoCriadoId ?? produtoId ?? undefined,
         valores: { custo, margemPercentual: margem, canais, producao, pecasPorMes: pecasMes },
       }),
@@ -402,6 +408,36 @@ export default function CalculadoraRapida({
               onChange={(e) => setLinkModelo(e.target.value)}
               placeholder="https://makerworld.com/..."
             />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="linkShopee">Mesmo produto na Shopee (opcional)</label>
+            <input
+              id="linkShopee"
+              type="url"
+              value={linkShopee}
+              onChange={(e) => setLinkShopee(e.target.value)}
+              placeholder="https://shopee.com.br/..."
+            />
+            {linkShopee.trim() && (
+              <a href={linkShopee.trim()} target="_blank" rel="noopener noreferrer" className={styles.mlLinkAviso}>
+                Abrir anúncio ↗
+              </a>
+            )}
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="linkMercadoLivre">Mesmo produto no Mercado Livre (opcional)</label>
+            <input
+              id="linkMercadoLivre"
+              type="url"
+              value={linkMercadoLivre}
+              onChange={(e) => setLinkMercadoLivre(e.target.value)}
+              placeholder="https://www.mercadolivre.com.br/..."
+            />
+            {linkMercadoLivre.trim() && (
+              <a href={linkMercadoLivre.trim()} target="_blank" rel="noopener noreferrer" className={styles.mlLinkAviso}>
+                Abrir anúncio ↗
+              </a>
+            )}
           </div>
           <button type="button" className={styles.btnPrimary} disabled={!podeSalvarCalculo} onClick={salvarCalculo}>
             {salvando ? "Salvando…" : calculoId ? "Salvar alterações" : "Salvar cálculo"}

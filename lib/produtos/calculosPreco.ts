@@ -14,9 +14,19 @@ async function colecaoCalculos() {
 export interface DadosCalculoPreco {
   nome: string;
   linkModelo3d?: string;
+  linkShopee?: string;
+  linkMercadoLivre?: string;
   valores: CalculadoraValores;
   produtoId?: string;
 }
+
+const CAMPOS_LINK = ["linkModelo3d", "linkShopee", "linkMercadoLivre"] as const;
+type CampoLink = (typeof CAMPOS_LINK)[number];
+const ROTULO_LINK: Record<CampoLink, string> = {
+  linkModelo3d: "Link do modelo",
+  linkShopee: "Link da Shopee",
+  linkMercadoLivre: "Link do Mercado Livre",
+};
 
 function textoValido(valor: unknown): valor is string {
   return typeof valor === "string" && valor.trim() !== "";
@@ -29,9 +39,13 @@ export function validarCalculoPreco(payload: unknown): { dados?: DadosCalculoPre
 
   if (!textoValido(corpo.nome)) return { erro: "Informe o nome do produto." };
 
-  const link = typeof corpo.linkModelo3d === "string" ? corpo.linkModelo3d.trim() : "";
-  if (link !== "" && !/^https?:\/\/\S+$/.test(link)) {
-    return { erro: "Informe um link começando com http:// ou https://." };
+  const links: Record<CampoLink, string> = { linkModelo3d: "", linkShopee: "", linkMercadoLivre: "" };
+  for (const campo of CAMPOS_LINK) {
+    const link = typeof corpo[campo] === "string" ? (corpo[campo] as string).trim() : "";
+    if (link !== "" && !/^https?:\/\/\S+$/.test(link)) {
+      return { erro: `${ROTULO_LINK[campo]}: informe um link começando com http:// ou https://.` };
+    }
+    links[campo] = link;
   }
 
   const valores = corpo.valores as Record<string, unknown> | undefined;
@@ -48,7 +62,9 @@ export function validarCalculoPreco(payload: unknown): { dados?: DadosCalculoPre
   return {
     dados: {
       nome: corpo.nome.trim(),
-      linkModelo3d: link || undefined,
+      linkModelo3d: links.linkModelo3d || undefined,
+      linkShopee: links.linkShopee || undefined,
+      linkMercadoLivre: links.linkMercadoLivre || undefined,
       valores: valores as unknown as CalculadoraValores,
       produtoId: textoValido(corpo.produtoId) ? corpo.produtoId : undefined,
     },
@@ -69,7 +85,9 @@ export async function buscarCalculoPreco(id: string): Promise<CalculoPreco | nul
 export async function criarCalculoPreco(dados: DadosCalculoPreco): Promise<CalculoPreco> {
   const colecao = await colecaoCalculos();
   const agora = new Date();
-  const calculo: CalculoPreco = { ...dados, criadoEm: agora, atualizadoEm: agora };
+  // Links e produto vazios ficam fora do documento (não viram `null` no banco).
+  const preenchidos = Object.fromEntries(Object.entries(dados).filter(([, valor]) => valor !== undefined));
+  const calculo = { ...preenchidos, criadoEm: agora, atualizadoEm: agora } as CalculoPreco;
   const { insertedId } = await colecao.insertOne(calculo);
   return { ...calculo, _id: insertedId };
 }
@@ -77,15 +95,21 @@ export async function criarCalculoPreco(dados: DadosCalculoPreco): Promise<Calcu
 export async function atualizarCalculoPreco(id: string, dados: DadosCalculoPreco): Promise<CalculoPreco | null> {
   if (!ObjectId.isValid(id)) return null;
   const colecao = await colecaoCalculos();
-  const { linkModelo3d, produtoId, ...resto } = dados;
-  const desdefinir: Record<string, ""> = {};
-  if (!linkModelo3d) desdefinir.linkModelo3d = "";
+  const { linkModelo3d, linkShopee, linkMercadoLivre, produtoId, ...resto } = dados;
+  const links = { linkModelo3d, linkShopee, linkMercadoLivre };
+  // Link apagado na tela some do documento; preenchido entra no $set.
+  const preenchidos: Partial<Record<CampoLink, string>> = {};
+  const desdefinir: Partial<Record<CampoLink, "">> = {};
+  for (const campo of CAMPOS_LINK) {
+    if (links[campo]) preenchidos[campo] = links[campo];
+    else desdefinir[campo] = "";
+  }
   return colecao.findOneAndUpdate(
     { _id: new ObjectId(id) },
     {
       $set: {
         ...resto,
-        ...(linkModelo3d ? { linkModelo3d } : {}),
+        ...preenchidos,
         ...(produtoId ? { produtoId } : {}),
         atualizadoEm: new Date(),
       },
