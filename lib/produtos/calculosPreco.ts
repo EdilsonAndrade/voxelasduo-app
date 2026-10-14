@@ -82,6 +82,16 @@ export async function buscarCalculoPreco(id: string): Promise<CalculoPreco | nul
   return colecao.findOne({ _id: new ObjectId(id) });
 }
 
+/** Vários cálculos pelos ids, na ordem pedida — ids inválidos ou que não existem ficam de fora. */
+export async function buscarCalculosPreco(ids: string[]): Promise<CalculoPreco[]> {
+  const validos = ids.filter((id) => ObjectId.isValid(id));
+  if (validos.length === 0) return [];
+  const colecao = await colecaoCalculos();
+  const encontrados = await colecao.find({ _id: { $in: validos.map((id) => new ObjectId(id)) } }).toArray();
+  const porId = new Map(encontrados.map((c) => [c._id!.toString(), c]));
+  return validos.flatMap((id) => porId.get(id) ?? []);
+}
+
 export async function criarCalculoPreco(dados: DadosCalculoPreco): Promise<CalculoPreco> {
   const colecao = await colecaoCalculos();
   const agora = new Date();

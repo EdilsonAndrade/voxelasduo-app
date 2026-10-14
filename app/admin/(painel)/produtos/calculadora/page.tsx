@@ -39,6 +39,7 @@ export default async function CalculadoraPrecoPage({ searchParams }: { searchPar
         calculos={calculos.map((c) => ({
           id: c._id!.toString(),
           nome: c.nome,
+          alturaCm: c.valores?.alturaCm?.trim() || undefined,
           atualizadoEm: c.atualizadoEm.toISOString(),
           virouProduto: Boolean(c.produtoId),
         }))}

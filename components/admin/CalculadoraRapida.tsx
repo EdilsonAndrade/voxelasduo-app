@@ -23,14 +23,12 @@ import {
   calcularRetornoVerba,
   detalharVenda,
   faixaUnica,
-  faixasMercadoLivre,
-  faixasShopee,
   type DetalheVenda,
   type FaixaTaxa,
   type LimiteAnuncio,
 } from "@/lib/produtos/calculadoraRapida";
+import { faixasDoCanal as faixasDoCanalSalvo, type Marketplace } from "@/lib/produtos/orcamento";
 
-type Marketplace = "shopee" | "mercadoLivre";
 
 const NOME_MARKETPLACE: Record<Marketplace, string> = {
   shopee: "Shopee",
@@ -226,6 +224,7 @@ export default function CalculadoraRapida({
   const router = useRouter();
   const inicial = calculoInicial?.valores ?? valoresPadrao();
   const [custo, setCusto] = useState<CustoProducaoFormValores>(inicial.custo);
+  const [alturaCm, setAlturaCm] = useState(inicial.alturaCm ?? "");
   const [margem, setMargem] = useState(inicial.margemMinimaPrecoPercentual ?? "25");
   const [anuncio, setAnuncio] = useState<AnuncioCalculadoraValores>(inicial.anuncio ?? ANUNCIO_PADRAO);
   const [precoConcorrente, setPrecoConcorrente] = useState(inicial.precoConcorrenteReais ?? "");
@@ -240,6 +239,10 @@ export default function CalculadoraRapida({
   const [salvando, setSalvando] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  /** Nome da cópia sendo digitado — `null` = formulário de duplicar fechado. */
+  const [nomeCopia, setNomeCopia] = useState<string | null>(null);
+  const [duplicando, setDuplicando] = useState(false);
+  const [erroDuplicar, setErroDuplicar] = useState<string | null>(null);
 
   const alterarCusto = (chave: keyof CustoProducaoFormValores) => (valor: string) =>
     setCusto((atual) => ({ ...atual, [chave]: valor }));
@@ -275,15 +278,7 @@ export default function CalculadoraRapida({
   }
   const pecasMesNumero = Math.max(0, Math.floor(numero(pecasMes) || 0));
 
-  function faixasDoCanal(canal: Marketplace): FaixaTaxa[] | null {
-    const c = canais[canal];
-    if (canal === "shopee" && c.taxaPorFaixa !== false) return faixasShopee(c.cpfAcima450Pedidos === true);
-    const taxa = numero(c.taxaPercentual);
-    const fixa = c.taxaFixaReais.trim() === "" ? 0 : numero(c.taxaFixaReais);
-    if (![taxa, fixa].every((n) => Number.isFinite(n) && n >= 0)) return null;
-    const fixaCentavos = Math.round(fixa * 100);
-    return canal === "mercadoLivre" ? faixasMercadoLivre(taxa, fixaCentavos) : faixaUnica(taxa, fixaCentavos);
-  }
+  const faixasDoCanal = (canal: Marketplace): FaixaTaxa[] | null => faixasDoCanalSalvo(canal, canais);
 
   function resultadoCanal(canal: Marketplace): ResultadoCanal | null {
     const faixas = faixasDoCanal(canal);
@@ -341,10 +336,11 @@ export default function CalculadoraRapida({
   const podeSalvarCalculo = nome.trim() !== "" && !salvando;
   const podeCriarProduto = podeSalvarCalculo && custoProducao !== null && precoSiteCentavos !== null && !produtoId;
 
-  /** Grava (cria ou atualiza) o cálculo — `false` se a API recusar (o erro já fica na tela). */
-  async function gravarCalculo(produtoCriadoId?: string): Promise<boolean> {
-    const valores: CalculadoraValores = {
+  /** O que está na tela agora, no formato gravado do cálculo. */
+  function valoresAtuais(): CalculadoraValores {
+    return {
       custo,
+      alturaCm: alturaCm.trim(),
       margemMinimaPrecoPercentual: margem,
       anuncio,
       canais,
@@ -352,6 +348,11 @@ export default function CalculadoraRapida({
       pecasPorMes: pecasMes,
       precoConcorrenteReais: precoConcorrente,
     };
+  }
+
+  /** Grava (cria ou atualiza) o cálculo — `false` se a API recusar (o erro já fica na tela). */
+  async function gravarCalculo(produtoCriadoId?: string): Promise<boolean> {
+    const valores = valoresAtuais();
     const resposta = await fetch(calculoId ? `/api/admin/calculos-preco/${calculoId}` : "/api/admin/calculos-preco", {
       method: calculoId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -376,6 +377,38 @@ export default function CalculadoraRapida({
     }
     router.refresh();
     return true;
+  }
+
+  /** Cria um cálculo novo com o que está na tela e outro nome (ex: o mesmo produto em outro tamanho) e abre a cópia. */
+  async function duplicarCalculo() {
+    if (nomeCopia === null || nomeCopia.trim() === "" || duplicando) return;
+    setDuplicando(true);
+    setErroDuplicar(null);
+    try {
+      const resposta = await fetch("/api/admin/calculos-preco", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: nomeCopia.trim(),
+          linkModelo3d: linkModelo.trim(),
+          linkShopee: linkShopee.trim(),
+          linkMercadoLivre: linkMercadoLivre.trim(),
+          // A cópia ainda não é produto: fica sem o vínculo do original.
+          valores: valoresAtuais(),
+        }),
+      });
+      if (!resposta.ok) {
+        setErroDuplicar(`${await mensagemDeErro(resposta)} (status ${resposta.status})`);
+        return;
+      }
+      const { calculo } = await resposta.json();
+      router.push(`/admin/produtos/calculadora?id=${String(calculo._id)}`);
+      router.refresh();
+    } catch (erro) {
+      setErroDuplicar(`Não foi possível duplicar: ${erro instanceof Error ? erro.message : String(erro)}`);
+    } finally {
+      setDuplicando(false);
+    }
   }
 
   async function salvarCalculo() {
@@ -455,6 +488,7 @@ export default function CalculadoraRapida({
           <div className={calc.campos3}>
             <Campo id="tempo" rotulo="Tempo de impressão" unidade="h" valor={custo.tempoImpressaoHoras} onChange={alterarCusto("tempoImpressaoHoras")} dica="De 1 peça. Ex: 1.5" />
             <Campo id="peso" rotulo="Filamento usado" unidade="g" valor={custo.pesoPecaGramas} onChange={alterarCusto("pesoPecaGramas")} />
+            <Campo id="altura" rotulo="Altura da peça (opcional)" unidade="cm" valor={alturaCm} onChange={setAlturaCm} dica="Para separar tamanhos: gato 5 cm, 10 cm…" />
             <Campo id="perda" rotulo="Perda" unidade="%" valor={custo.margemPerdaPercentual} onChange={alterarCusto("margemPerdaPercentual")} dica="Purga, suportes, falhas" />
             <Campo id="filamento" rotulo="Preço do filamento" unidade="R$/kg" valor={custo.precoCarreteReais} onChange={alterarCusto("precoCarreteReais")} />
             <Campo id="energia" rotulo="Luz" unidade="R$/kWh" valor={custo.tarifaEnergiaReais} onChange={alterarCusto("tarifaEnergiaReais")} />
@@ -1047,6 +1081,55 @@ export default function CalculadoraRapida({
           </span>
           {aviso && <span className={styles.formSuccess}>{aviso}</span>}
           {erroSalvar && <span className={styles.fieldError}>{erroSalvar}</span>}
+
+          {calculoId &&
+            (nomeCopia === null ? (
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={() => {
+                  setErroDuplicar(null);
+                  setNomeCopia(`${nome.trim()} (cópia)`);
+                }}
+              >
+                Duplicar com outro nome
+              </button>
+            ) : (
+              <div className={calc.duplicar}>
+                <div className={styles.field}>
+                  <label htmlFor="nomeCopia">Nome da cópia</label>
+                  <input
+                    id="nomeCopia"
+                    value={nomeCopia}
+                    autoFocus
+                    onChange={(e) => setNomeCopia(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") duplicarCalculo();
+                      if (e.key === "Escape") setNomeCopia(null);
+                    }}
+                    placeholder="Ex: Gato 10 cm"
+                  />
+                </div>
+                <span className={styles.mlLinkAviso}>
+                  Copia tudo o que está na tela (mesmo o que não foi salvo) e abre a cópia para você ajustar tempo,
+                  filamento e altura. Este cálculo continua como está.
+                </span>
+                <div className={calc.opcoes}>
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    disabled={nomeCopia.trim() === "" || duplicando}
+                    onClick={duplicarCalculo}
+                  >
+                    {duplicando ? "Duplicando…" : "Criar cópia"}
+                  </button>
+                  <button type="button" className={styles.btnGhost} onClick={() => setNomeCopia(null)}>
+                    Cancelar
+                  </button>
+                </div>
+                {erroDuplicar && <span className={styles.fieldError}>{erroDuplicar}</span>}
+              </div>
+            ))}
 
           {produtoId ? (
             <span className={styles.formSuccess}>

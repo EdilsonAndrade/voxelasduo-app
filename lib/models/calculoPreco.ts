@@ -32,6 +32,8 @@ export interface AnuncioCalculadoraValores {
  */
 export interface CalculadoraValores {
   custo: CustoProducaoFormValores;
+  /** Altura da peça em cm — só informativa, para diferenciar tamanhos do mesmo produto (opcional). */
+  alturaCm?: string;
   /** Legado: margem sobre o custo, antes do lucro em % do preço. */
   margemPercentual?: string;
   /** Lucro que precisa sobrar em cada venda, em % do preço — ausente em cálculos antigos = 25. */

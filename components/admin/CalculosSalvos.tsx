@@ -10,15 +10,18 @@ import ConfirmModal from "./ConfirmModal";
 export interface CalculoResumo {
   id: string;
   nome: string;
+  /** Altura da peça em cm, quando informada. */
+  alturaCm?: string;
   atualizadoEm: string;
   virouProduto: boolean;
 }
 
-/** Lista dos cálculos guardados na calculadora: abrir para editar ou excluir. */
+/** Lista dos cálculos guardados na calculadora: abrir para editar, excluir ou marcar para imprimir. */
 export default function CalculosSalvos({ calculos, abertoId }: { calculos: CalculoResumo[]; abertoId?: string }) {
   const router = useRouter();
   const [excluindo, setExcluindo] = useState<CalculoResumo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [marcados, setMarcados] = useState<Set<string>>(new Set());
 
   async function confirmarExclusao() {
     if (!excluindo) return;
@@ -31,19 +34,66 @@ export default function CalculosSalvos({ calculos, abertoId }: { calculos: Calcu
       setErro(dados.erro ?? `Erro ${resposta.status} ao excluir.`);
       return;
     }
+    setMarcados((atual) => {
+      const novo = new Set(atual);
+      novo.delete(alvo.id);
+      return novo;
+    });
     if (alvo.id === abertoId) router.push("/admin/produtos/calculadora");
     router.refresh();
   }
 
+  function alternar(id: string) {
+    setMarcados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
+
   if (calculos.length === 0) return null;
+
+  // Ordem da lista, não a ordem em que foram marcados.
+  const idsMarcados = calculos.filter((c) => marcados.has(c.id)).map((c) => c.id);
+  const todosMarcados = idsMarcados.length === calculos.length;
 
   return (
     <details className={calc.salvos} open={!abertoId}>
       <summary>Cálculos salvos ({calculos.length})</summary>
+      <div className={calc.barraImpressao}>
+        <label className={calc.checkFaixaCurto}>
+          <input
+            type="checkbox"
+            checked={todosMarcados}
+            onChange={() => setMarcados(todosMarcados ? new Set() : new Set(calculos.map((c) => c.id)))}
+          />
+          Marcar todos
+        </label>
+        {idsMarcados.length > 0 ? (
+          <Link
+            href={`/admin/produtos/calculadora/imprimir?ids=${idsMarcados.join(",")}`}
+            target="_blank"
+            className={styles.btnPrimary}
+          >
+            Imprimir selecionados ({idsMarcados.length})
+          </Link>
+        ) : (
+          <span className={styles.mlLinkAviso}>Marque os cálculos para imprimir e mostrar aos sócios.</span>
+        )}
+      </div>
       <ul>
         {calculos.map((c) => (
           <li key={c.id} className={c.id === abertoId ? calc.salvoAberto : undefined}>
+            <input
+              type="checkbox"
+              className={calc.marcarSalvo}
+              checked={marcados.has(c.id)}
+              onChange={() => alternar(c.id)}
+              aria-label={`Marcar ${c.nome} para imprimir`}
+            />
             <Link href={`/admin/produtos/calculadora?id=${c.id}`}>{c.nome}</Link>
+            {c.alturaCm && <span className={calc.alturaSalvo}>{c.alturaCm.replace(".", ",")} cm</span>}
             <span className={styles.mlLinkAviso}>
               {new Date(c.atualizadoEm).toLocaleDateString("pt-BR")}
               {c.virouProduto && " · já virou produto"}

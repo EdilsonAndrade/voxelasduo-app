@@ -1,0 +1,279 @@
+/* Folha de orçamentos para os sócios (specs/031) — tela e impressão A4 deitada. */
+.folha {
+  padding-top: 1.25rem;
+  padding-bottom: 2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Controles: só na tela. */
+.controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 18px;
+}
+
+.grupo {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.grupo > span {
+  font-weight: 800;
+  font-size: 0.8rem;
+  margin-right: 0.25rem;
+}
+
+.opcao,
+.opcaoAtiva {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 2px solid var(--surface-line);
+  background: transparent;
+  color: var(--preto);
+  cursor: pointer;
+}
+
+.opcaoAtiva {
+  border-color: var(--laranja);
+  background: var(--laranja);
+  color: #fff;
+}
+
+.opcao:focus-visible,
+.opcaoAtiva:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+.acoes {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+/* Cabeçalho da folha. */
+.cabecalho {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 4px solid var(--laranja);
+}
+
+.marca {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--roxo);
+}
+
+.cabecalho h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  line-height: 1.05;
+}
+
+.data {
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+}
+
+.premissas {
+  margin: 0.6rem 0 1rem;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: var(--texto-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1.75rem;
+}
+
+/* Tabela: um grupo (tbody) por produto, com as linhas avulso e kit. */
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.tabela thead th {
+  text-align: left;
+  vertical-align: bottom;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.35rem 0.45rem;
+  border-bottom: 2px solid var(--preto);
+}
+
+.tabela td,
+.tabela tbody th {
+  padding: 0.4rem 0.45rem;
+  vertical-align: top;
+  border-top: 1px solid var(--surface-line);
+}
+
+.grupoProduto {
+  break-inside: avoid;
+}
+
+.grupoProduto tr:first-child > * {
+  border-top: 2px solid var(--preto);
+}
+
+.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tabela thead .num {
+  text-align: right;
+}
+
+.produto {
+  text-align: left;
+  border-left: 5px solid var(--laranja);
+  min-width: 9rem;
+}
+
+.nomeProduto {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.15;
+}
+
+.altura {
+  display: inline-block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--preto);
+}
+
+.custoPeca {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--texto-soft);
+}
+
+.venda {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.colPreco {
+  background: color-mix(in srgb, var(--roxo) 8%, transparent);
+}
+
+.cada {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--texto-soft);
+}
+
+/* O número que os sócios procuram primeiro. */
+.colLucro {
+  font-weight: 800;
+  font-size: 0.9rem;
+  border-left: 2px solid var(--preto);
+}
+
+.tabela thead .colLucro {
+  font-size: 0.68rem;
+}
+
+.negativo {
+  color: #c23a3a;
+}
+
+.falta {
+  font-style: italic;
+  color: var(--texto-soft);
+}
+
+.rodape {
+  margin-top: 0.8rem;
+  font-size: 0.72rem;
+  color: var(--texto-soft);
+}
+
+@media (max-width: 960px) {
+  .folha {
+    overflow-x: auto;
+  }
+
+  .tabela {
+    min-width: 1100px;
+  }
+}
+
+@page {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+@media print {
+  .controles {
+    display: none;
+  }
+
+  .folha {
+    padding: 0;
+    max-width: none;
+    overflow: visible;
+    color: #000;
+  }
+
+  .tabela {
+    min-width: 0;
+    font-size: 8.5pt;
+  }
+
+  .cabecalho {
+    border-bottom-color: #000;
+  }
+
+  .marca,
+  .data,
+  .premissas,
+  .custoPeca,
+  .cada,
+  .falta,
+  .rodape {
+    color: #333;
+  }
+
+  .produto {
+    border-left-color: #000;
+  }
+
+  .colPreco {
+    background: #eee;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .tabela thead {
+    display: table-header-group;
+  }
+}
