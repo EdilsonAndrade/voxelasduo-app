@@ -379,3 +379,36 @@
 .concorrente {
   border-color: var(--laranja);
 }
+
+.tabelaRoas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.3rem 0;
+}
+
+.opcaoRoas,
+.opcaoRoasAtual {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0.6rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--preto);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.opcaoRoas:hover,
+.opcaoRoas:focus-visible {
+  border-color: var(--roxo);
+}
+
+.opcaoRoasAtual {
+  border-color: var(--roxo);
+  background: var(--creme);
+}

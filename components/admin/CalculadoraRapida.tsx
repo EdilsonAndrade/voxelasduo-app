@@ -698,6 +698,36 @@ export default function CalculadoraRapida({
                         pecasMes={pecasMesNumero}
                         diasMes={numero(producao.diasPorMes)}
                       />
+                      <div className={calc.tabelaRoas}>
+                        <strong>Quer um preço menor? Suba a Meta de ROAS</strong>
+                        <span className={styles.mlLinkAviso}>
+                          ROAS maior = menos anúncio por venda = preço menor. Mas a {ehMl ? "plataforma" : "Shopee"}{" "}
+                          mostra menos o produto.
+                        </span>
+                        {[5, 8, 10, 15, 20].map((opcao) => {
+                          const preco = calcularPrecoPorMargem({
+                            custoCentavos: cogs.totalCentavos,
+                            faixas: faixasDoCanal(canal)!,
+                            margemPrecoPercentual: margemNumero,
+                            anuncioPercentual: 100 / opcao,
+                          });
+                          if (preco === null) return null;
+                          return (
+                            <button
+                              key={opcao}
+                              type="button"
+                              className={opcao === roas ? calc.opcaoRoasAtual : calc.opcaoRoas}
+                              onClick={() => setAnuncio((atual) => ({ ...atual, roasMeta: String(opcao) }))}
+                            >
+                              <span>{ehMl ? `ACOS ${formatarAcos(opcao)}` : `ROAS ${opcao}`}</span>
+                              <strong>{reais(preco)}</strong>
+                            </button>
+                          );
+                        })}
+                        {r.precoSemAnuncioCentavos !== null && (
+                          <span className={styles.mlLinkAviso}>Sem anúncio: {reais(r.precoSemAnuncioCentavos)}</span>
+                        )}
+                      </div>
                       <strong>Depois, confira o ROAS real no painel:</strong>
                       <span className={calc.semaforoVerde}>
                         ROAS real {formatarRoas(roas)} ou mais: você ganha {margemNumero}% ou mais
@@ -806,6 +836,32 @@ export default function CalculadoraRapida({
                             {vendaNoPreco.margemPrecoPercentual.toFixed(0)}%)
                           </span>
                           {precoMinimo !== null && <span>Abaixo de {reais(precoMinimo)} você tem prejuízo.</span>}
+                          {(() => {
+                            // Quanto de anúncio cabe vendendo no preço dele e ainda ganhando a margem.
+                            const vendaSemAnuncio = detalharVenda({
+                              precoCentavos: concorrenteCentavos,
+                              faixas,
+                              custoCentavos: cogs.totalCentavos,
+                              anuncioPercentual: 0,
+                            });
+                            const limite = calcularLimiteAnuncio({
+                              precoCentavos: concorrenteCentavos,
+                              taxaCentavos: vendaSemAnuncio.taxaCentavos,
+                              custoCentavos: cogs.totalCentavos,
+                              margemMinimaPrecoPercentual: margemNumero,
+                            });
+                            return limite.roasMinimo !== null ? (
+                              <span className={calc.semaforoVerde}>
+                                Vendendo no preço dele com {margemNumero}% de lucro, dá para anunciar com{" "}
+                                {ehMl ? `ACOS objetivo até ${formatarAcos(limite.roasMinimo)}` : `Meta de ROAS ${formatarRoas(limite.roasMinimo)}`}{" "}
+                                (até {reais(limite.tetoAnuncioCentavos)} de anúncio por venda).
+                              </span>
+                            ) : (
+                              <span className={calc.semaforoAmarelo}>
+                                No preço dele não sobra nada para anúncio com {margemNumero}% de lucro.
+                              </span>
+                            );
+                          })()}
                           <span>
                             Para ganhar {margemNumero}% nesse preço, sua peça teria que custar{" "}
                             {custoMaximo > 0 ? (
