@@ -8,6 +8,7 @@ import calc from "./calculadoraRapida.module.css";
 import type { TaxasCanaisConfig } from "@/lib/models/configuracao";
 import type { AnuncioCalculadoraValores, CalculadoraValores, ModoAnuncio } from "@/lib/models/calculoPreco";
 import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
+import { ANUNCIO_PADRAO, valoresPadrao } from "@/lib/produtos/calculadoraPadrao";
 import {
   VAZIO_CUSTO_PRODUCAO,
   montarCustoProducao,
@@ -191,23 +192,6 @@ export interface CalculoInicial {
   produtoId?: string;
 }
 
-const ANUNCIO_PADRAO: AnuncioCalculadoraValores = { modo: "sem", roasMeta: "8", verbaMesReais: "" };
-
-function valoresPadrao(): CalculadoraValores {
-  return {
-    // Filamento é digitado por kg: o carretel de referência fica fixo em 1000 g.
-    custo: { ...VAZIO_CUSTO_PRODUCAO, pesoCarreteGramas: "1000", margemPerdaPercentual: "0" },
-    margemMinimaPrecoPercentual: "25",
-    anuncio: ANUNCIO_PADRAO,
-    canais: {
-      shopee: { taxaPercentual: "20", taxaFixaReais: "4.50", taxaPorFaixa: true },
-      mercadoLivre: { taxaPercentual: "14", taxaFixaReais: "6.50" },
-    },
-    producao: { pecasPorMesa: "", horasMesaCheia: "", horasPorDia: "20", diasPorMes: "30" },
-    pecasPorMes: "",
-  };
-}
-
 function producaoDe(producao: CalculadoraValores["producao"]) {
   return calcularProducaoMensal({
     pecasPorMesa: numero(producao.pecasPorMesa),
@@ -331,6 +315,17 @@ export default function CalculadoraRapida({
     shopee: resultadoCanal("shopee"),
     mercadoLivre: resultadoCanal("mercadoLivre"),
   };
+
+  // Venda direta (em mãos, WhatsApp, feira): sem taxa de plataforma e sem anúncio — só custo + lucro.
+  const precoDiretoCentavos =
+    cogs && margemValida
+      ? calcularPrecoPorMargem({
+          custoCentavos: cogs.totalCentavos,
+          faixas: faixaUnica(0, 0),
+          margemPrecoPercentual: margemNumero,
+          anuncioPercentual: 0,
+        })
+      : null;
 
   // Preço do site no produto: mesmo lucro em % do preço, com a taxa do site próprio e sem anúncio.
   const precoSiteCentavos =
@@ -958,6 +953,46 @@ export default function CalculadoraRapida({
             </div>
           );
         })}
+
+        <div className={`${calc.cartaoCanal} ${calc.cartaoDireta}`}>
+          <span className={calc.nomeCanal}>Venda direta · sem taxa</span>
+          <span className={calc.avisoDireta}>
+            Só para vender fora dos marketplaces: em mãos, WhatsApp, Instagram ou feira. Não use este preço na Shopee nem
+            no Mercado Livre — lá a taxa sai do seu lucro.
+          </span>
+          {!cogs || !margemValida || precoDiretoCentavos === null ? (
+            <span className={styles.mlLinkAviso}>Preencha o custo da peça e quanto quer ganhar.</span>
+          ) : (
+            <>
+              <span className={calc.preco}>{reais(precoDiretoCentavos)}</span>
+              <span className={calc.precoLegenda}>sem taxa de plataforma e sem anúncio</span>
+              <dl className={calc.conta}>
+                <dt>Taxa</dt>
+                <dd>R$ 0,00</dd>
+                <dt>Custo da peça</dt>
+                <dd>− {reais(cogs.totalCentavos)}</dd>
+                <dt className={calc.lucro}>Seu lucro por peça</dt>
+                <dd className={calc.lucro}>
+                  {reais(precoDiretoCentavos - cogs.totalCentavos)} (
+                  {(((precoDiretoCentavos - cogs.totalCentavos) / precoDiretoCentavos) * 100).toFixed(0)}%)
+                </dd>
+              </dl>
+              <span className={styles.mlLinkAviso}>
+                O custo inclui a embalagem ({reais(cogs.custoEmbalagemCentavos)}). Se entregar sem embalagem, dá para
+                cobrar um pouco menos.
+              </span>
+              <div className={calc.mes}>
+                <span>Vendendo {pecasMesNumero} peças no mês</span>
+                <span>
+                  Faturamento bruto <strong>{reais(precoDiretoCentavos * pecasMesNumero)}</strong>
+                </span>
+                <span>
+                  Lucro líquido <strong>{reais((precoDiretoCentavos - cogs.totalCentavos) * pecasMesNumero)}</strong>
+                </span>
+              </div>
+            </>
+          )}
+        </div>
 
         <div className={calc.salvar}>
           <div className={styles.field}>

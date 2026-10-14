@@ -449,3 +449,20 @@
   font-size: 0.7rem;
   color: var(--texto-soft);
 }
+
+/* Venda direta: cartão separado, com borda tracejada para não ser confundido com os marketplaces. */
+.cartaoDireta {
+  border-style: dashed;
+  border-top-style: solid;
+  border-top-color: var(--turquesa);
+}
+
+.avisoDireta {
+  margin: 0.2rem 0 0.4rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  background: var(--creme);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.35;
+}

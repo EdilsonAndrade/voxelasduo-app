@@ -28,6 +28,16 @@ describe("calcularProducaoMensal", () => {
 });
 
 describe("calcularPrecoPorMargem", () => {
+  it("venda direta (sem taxa e sem anúncio): só custo ÷ (1 − margem)", () => {
+    const preco = calcularPrecoPorMargem({
+      custoCentavos: 1104,
+      faixas: faixaUnica(0, 0),
+      margemPrecoPercentual: 25,
+      anuncioPercentual: 0,
+    });
+    expect(preco).toBe(1472);
+  });
+
   it("Shopee abaixo de R$ 80: 20% + R$ 4,50, 25% do preço de lucro, sem anúncio", () => {
     const preco = calcularPrecoPorMargem({
       custoCentavos: 1104,

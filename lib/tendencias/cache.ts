@@ -56,12 +56,14 @@ export async function obterComCache<T extends Record<string, unknown>>(opcoes: {
   chave: string;
   forcar?: boolean;
   buscarNovo: () => Promise<T>;
+  /** Validade do cache — padrão 24h. */
+  ttlMs?: number;
 }): Promise<ResultadoComCache<T>> {
-  const { chave, forcar = false, buscarNovo } = opcoes;
+  const { chave, forcar = false, buscarNovo, ttlMs = TTL_MS } = opcoes;
   const colecao = await colecaoTrendCache();
   const documento = await colecao.findOne({ _id: chave });
 
-  const vigente = !!documento && Date.now() - documento.obtidoEm.getTime() < TTL_MS;
+  const vigente = !!documento && Date.now() - documento.obtidoEm.getTime() < ttlMs;
 
   if (documento && vigente && !forcar) {
     return {

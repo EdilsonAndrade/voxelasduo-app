@@ -143,3 +143,45 @@ describe("buscarTendenciasGerais", () => {
     await expect(buscarTendenciasGerais()).rejects.toThrow(/HTTP 500/);
   });
 });
+
+const { buscarTendenciasCategoria, contarProdutosCatalogo } = await import("./tendencias");
+
+describe("buscarTendenciasCategoria", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("consulta as tendências da categoria e mantém a ordem", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        { keyword: "organizador de gaveta", url: "u1" },
+        { keyword: "divisoria gaveta", url: "u2" },
+      ],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const termos = await buscarTendenciasCategoria("MLB436414");
+
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.mercadolibre.com/trends/MLB/MLB436414");
+    expect(termos.map((t) => t.termo)).toEqual(["organizador de gaveta", "divisoria gaveta"]);
+  });
+
+  it("propaga o status real do Mercado Livre", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("forbidden", { status: 403 })));
+    await expect(buscarTendenciasCategoria("MLB1")).rejects.toThrow("HTTP 403");
+  });
+});
+
+describe("contarProdutosCatalogo", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("devolve paging.total da busca de catálogo", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ paging: { total: 4640 } }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await contarProdutosCatalogo("organizador de gaveta modular")).toBe(4640);
+    const url = new URL(fetchMock.mock.calls[0][0]);
+    expect(url.pathname).toBe("/products/search");
+    expect(url.searchParams.get("q")).toBe("organizador de gaveta modular");
+    expect(url.searchParams.get("site_id")).toBe("MLB");
+  });
+});

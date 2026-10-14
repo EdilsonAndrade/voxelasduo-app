@@ -1,0 +1,373 @@
+/* Pesquisa de nichos: mesmos cartões da calculadora de preço; a "ficha" de cada modelo imita o resumo do fatiador. */
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-bottom: 3rem;
+}
+
+.bloco {
+  composes: bloco from "./calculadoraRapida.module.css";
+}
+
+.ajuda {
+  margin: -0.4rem 0 0;
+  font-size: 0.9rem;
+  color: var(--texto-soft);
+  max-width: 62ch;
+}
+
+.categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.categorias legend {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.6rem;
+}
+
+.categorias legend small {
+  font-weight: 400;
+  color: var(--texto-soft);
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  color: var(--preto);
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--roxo);
+  border-color: var(--roxo);
+  color: #fff;
+}
+
+.chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.chip:focus-visible,
+.linkBotao:focus-visible {
+  outline: 3px solid var(--turquesa);
+  outline-offset: 2px;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.check input {
+  margin-top: 0.2rem;
+  accent-color: var(--roxo);
+}
+
+.check small {
+  display: block;
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--texto-soft);
+}
+
+.categoria {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.categoria > h2 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+.lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
+  gap: 1rem;
+}
+
+.oportunidade {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 18px;
+  padding: 1rem 1.1rem 1.1rem;
+}
+
+.oportunidadeTopo h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin: 0 0 0.4rem;
+  text-transform: capitalize;
+}
+
+.selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  align-items: center;
+}
+
+.potencial {
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--creme);
+  border: 2px solid var(--surface-line);
+}
+
+.potencial[data-nivel="alto"] {
+  background: var(--turquesa);
+  border-color: var(--turquesa);
+  color: #0b3b38;
+}
+
+.potencial[data-nivel="medio"] {
+  background: var(--amarelo);
+  border-color: var(--amarelo);
+  color: #4a3600;
+}
+
+.concorrencia {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.concorrencia small {
+  flex-basis: 100%;
+  font-weight: 400;
+  font-size: 0.74rem;
+  color: var(--texto-soft);
+  padding-left: 1.6rem;
+}
+
+/* Três barras como sinal de celular: mais barras = mais gente vendendo. */
+.barras {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 0.85rem;
+}
+
+.barras i {
+  width: 4px;
+  border-radius: 2px;
+  background: var(--surface-line);
+}
+
+.barras i:nth-child(1) {
+  height: 40%;
+}
+
+.barras i:nth-child(2) {
+  height: 70%;
+}
+
+.barras i:nth-child(3) {
+  height: 100%;
+}
+
+.concorrencia[data-nivel="baixa"] .barraCheia {
+  background: #2f8f52;
+}
+
+.concorrencia[data-nivel="media"] .barraCheia {
+  background: #b3701f;
+}
+
+.concorrencia[data-nivel="alta"] .barraCheia {
+  background: #c23a3a;
+}
+
+.motivo {
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  color: var(--texto-soft);
+}
+
+.modelos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.modelo {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 0.9rem;
+  padding-top: 0.8rem;
+  border-top: 2px dashed var(--surface-line);
+}
+
+.capa {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--creme);
+  display: block;
+}
+
+.modeloCorpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.modeloNome {
+  font-size: 0.95rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.modeloAutor {
+  font-size: 0.78rem;
+  color: var(--texto-soft);
+}
+
+/* A assinatura da tela: a leitura do fatiador (tempo, gramas, mesas) em faixa compacta. */
+.ficha {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0.2rem 0;
+  border: 2px solid var(--preto);
+  border-radius: 10px;
+  overflow: hidden;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.ficha div {
+  padding: 0.25rem 0.6rem;
+  border-right: 2px solid var(--preto);
+}
+
+.ficha div:last-child {
+  border-right: none;
+}
+
+.ficha div:first-child {
+  background: var(--preto);
+  color: var(--creme);
+}
+
+.ficha dt {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.ficha dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.modeloAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.camposLink {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.origem,
+.rodape {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--texto-soft);
+}
+
+.linkBotao {
+  font: inherit;
+  font-weight: 700;
+  color: var(--roxo);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.carregando {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--texto-soft);
+}
+
+.vazio {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--texto-soft);
+}
+
+.erro {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #c23a3a;
+}
+
+@media (max-width: 760px) {
+  .camposLink {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .modelo {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .capa {
+    width: 72px;
+    height: 72px;
+  }
+}

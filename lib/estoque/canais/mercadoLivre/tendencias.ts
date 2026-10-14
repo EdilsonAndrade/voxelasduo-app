@@ -120,3 +120,45 @@ export async function buscarTendenciasGerais(): Promise<TendenciaGeral[]> {
   const corpo = (await resposta.json()) as TendenciaBruta[];
   return corpo.map((t) => ({ termo: t.keyword, url: t.url }));
 }
+
+/**
+ * Termos mais buscados dentro de uma categoria (`GET /trends/MLB/{categoryId}`,
+ * specs/030) — até 50, em ordem: a posição é o sinal de demanda da pesquisa
+ * de nichos.
+ */
+export async function buscarTendenciasCategoria(categoryId: string): Promise<TendenciaGeral[]> {
+  const token = await obterAccessTokenValido();
+
+  const resposta = await fetch(`${API}/trends/MLB/${encodeURIComponent(categoryId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!resposta.ok) {
+    throw await erroMercadoLivre(resposta, "Falha ao consultar as tendências da categoria no Mercado Livre");
+  }
+
+  const corpo = (await resposta.json()) as TendenciaBruta[];
+  return corpo.map((t) => ({ termo: t.keyword, url: t.url }));
+}
+
+/**
+ * Quantos produtos de catálogo o ML tem para um termo (`GET /products/search`,
+ * `paging.total`) — proxy de concorrência, porque a contagem de anúncios
+ * (`/sites/MLB/search`) é bloqueada para este app (specs/030 research #2).
+ * O ML devolve no máximo 10000.
+ */
+export async function contarProdutosCatalogo(termo: string): Promise<number> {
+  const token = await obterAccessTokenValido();
+  const params = new URLSearchParams({ status: "active", site_id: "MLB", q: termo, limit: "1" });
+
+  const resposta = await fetch(`${API}/products/search?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!resposta.ok) {
+    throw await erroMercadoLivre(resposta, "Falha ao contar produtos de catálogo no Mercado Livre");
+  }
+
+  const corpo = (await resposta.json()) as { paging?: { total?: number } };
+  return corpo.paging?.total ?? 0;
+}
