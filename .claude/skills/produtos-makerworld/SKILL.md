@@ -106,7 +106,7 @@ produto existente no banco em vez de inventar. Hoje são:
 | Campo | Valor |
 | --- | --- |
 | Preço do carretel | 9100 centavos / 1000 g |
-| Impressora | 457000 centavos / 4000 h de vida útil |
+| Impressora | 307000 centavos / 4000 h de vida útil |
 | Consumo elétrico | 0,15 kWh · tarifa 60 centavos/kWh |
 | Hora de trabalho | 100 centavos · 1 h de mão de obra |
 | Embalagem | 500 centavos |

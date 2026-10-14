@@ -1008,7 +1008,7 @@ export default function ProdutoForm({
             <input
               id="custoPrecoImpressora"
               inputMode="decimal"
-              placeholder="4570.00"
+              placeholder="3070.00"
               value={valores.custoProducao.precoImpressoraReais}
               onChange={(e) => atualizarCampoCustoProducao("precoImpressoraReais", e.target.value)}
             />

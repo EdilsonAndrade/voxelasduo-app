@@ -42,7 +42,7 @@ export const VAZIO_CUSTO_PRODUCAO: CustoProducaoFormValores = {
   pesoCarreteGramas: "1000",
   margemPerdaPercentual: "",
   taxaFalhaPercentual: "",
-  precoImpressoraReais: "4570.00",
+  precoImpressoraReais: "3070.00",
   vidaUtilImpressoraHoras: "4000",
   consumoEletricoKwh: "0.15",
   tarifaEnergiaReais: "0.90",
