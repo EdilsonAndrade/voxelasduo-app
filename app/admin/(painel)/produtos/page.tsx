@@ -70,9 +70,14 @@ export default async function AdminProdutosPage({
     <div className={styles.paginaLarga}>
       <div className={styles.bar}>
         <h1>Produtos cadastrados</h1>
-        <Link href="/admin/produtos/novo" className={styles.btnPrimary}>
-          + Novo produto
-        </Link>
+        <div className={styles.barAcoes}>
+          <Link href="/admin/produtos/calculadora" className={styles.btnGhost}>
+            Calculadora de preço
+          </Link>
+          <Link href="/admin/produtos/novo" className={styles.btnPrimary}>
+            + Novo produto
+          </Link>
+        </div>
       </div>
 
       <FiltroCarrossel carrosseis={opcoesCarrossel} atual={carrosselSelecionado ? carrosselFiltro : undefined} />
