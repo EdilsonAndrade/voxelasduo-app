@@ -201,3 +201,24 @@ export function calcularRetornoVerba(entrada: {
     roasEquilibrio: lucroPorPecaCentavos > 0 ? precoCentavos / lucroPorPecaCentavos : null,
   };
 }
+
+/**
+ * Maior custo de peça que ainda deixa `margemPrecoPercentual` do preço de lucro
+ * num preço fixo (ex: o do concorrente), já tirando taxa e anúncio embutido.
+ * Negativo = nesse preço não dá nem com custo zero.
+ */
+export function calcularCustoMaximo(entrada: {
+  precoCentavos: number;
+  faixas: FaixaTaxa[];
+  anuncioPercentual: number;
+  margemPrecoPercentual: number;
+}): number {
+  const { precoCentavos, faixas, anuncioPercentual, margemPrecoPercentual } = entrada;
+  const { taxaCentavos, anuncioCentavos } = detalharVenda({ precoCentavos, faixas, custoCentavos: 0, anuncioPercentual });
+  return precoCentavos - taxaCentavos - anuncioCentavos - Math.round((precoCentavos * margemPrecoPercentual) / 100);
+}
+
+/** Custo de um kit com `unidades` peças: as peças somadas, mas uma embalagem só. */
+export function calcularCustoKit(custoUnidadeCentavos: number, embalagemCentavos: number, unidades: number): number {
+  return custoUnidadeCentavos * unidades - embalagemCentavos * (unidades - 1);
+}

@@ -38,6 +38,8 @@ export interface CalculadoraValores {
   margemMinimaPrecoPercentual?: string;
   /** Ausente em cálculos antigos = sem anúncio, ROAS 8. */
   anuncio?: AnuncioCalculadoraValores;
+  /** Preço do mesmo produto num concorrente, para comparar — opcional. */
+  precoConcorrenteReais?: string;
   canais: { shopee: CanalCalculadoraValores; mercadoLivre: CanalCalculadoraValores };
   producao: { pecasPorMesa: string; horasMesaCheia: string; horasPorDia: string; diasPorMes: string };
   pecasPorMes: string;

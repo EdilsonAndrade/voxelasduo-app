@@ -14,6 +14,8 @@ import {
   type CustoProducaoFormValores,
 } from "@/lib/produtos/custoProducaoFormulario";
 import {
+  calcularCustoKit,
+  calcularCustoMaximo,
   calcularLimiteAnuncio,
   calcularPrecoPorMargem,
   calcularProducaoMensal,
@@ -242,6 +244,7 @@ export default function CalculadoraRapida({
   const [custo, setCusto] = useState<CustoProducaoFormValores>(inicial.custo);
   const [margem, setMargem] = useState(inicial.margemMinimaPrecoPercentual ?? "25");
   const [anuncio, setAnuncio] = useState<AnuncioCalculadoraValores>(inicial.anuncio ?? ANUNCIO_PADRAO);
+  const [precoConcorrente, setPrecoConcorrente] = useState(inicial.precoConcorrenteReais ?? "");
   const [canais, setCanais] = useState<Record<Marketplace, CanalForm>>(inicial.canais);
   const [producao, setProducao] = useState(inicial.producao);
   const [nome, setNome] = useState(calculoInicial?.nome ?? "");
@@ -352,6 +355,7 @@ export default function CalculadoraRapida({
       canais,
       producao,
       pecasPorMes: pecasMes,
+      precoConcorrenteReais: precoConcorrente,
     };
     const resposta = await fetch(calculoId ? `/api/admin/calculos-preco/${calculoId}` : "/api/admin/calculos-preco", {
       method: calculoId ? "PUT" : "POST",
@@ -591,6 +595,18 @@ export default function CalculadoraRapida({
         </section>
 
         <section className={calc.bloco}>
+          <h2>Concorrente</h2>
+          <Campo
+            id="precoConcorrente"
+            rotulo="Preço do concorrente (opcional)"
+            unidade="R$"
+            valor={precoConcorrente}
+            onChange={setPrecoConcorrente}
+            dica="O preço de 1 unidade do mesmo produto. Prefira o preço normal, não o de oferta relâmpago."
+          />
+        </section>
+
+        <section className={calc.bloco}>
           <h2>Produção no mês</h2>
           <div className={calc.campos3}>
             <Campo id="pecasMesa" rotulo="Peças por mesa" unidade="un" valor={producao.pecasPorMesa} onChange={alterarProducao("pecasPorMesa")} dica="Quantas cabem na mesa cheia" />
@@ -742,6 +758,92 @@ export default function CalculadoraRapida({
                       )}
                     </div>
                   )}
+
+                  {(() => {
+                    const faixas = faixasDoCanal(canal)!;
+                    const concorrenteCentavos = Math.round((numero(precoConcorrente) || 0) * 100);
+                    const embalagemCentavos = cogs.custoEmbalagemCentavos;
+                    const kits = [2, 3, 4].map((unidades) => ({
+                      unidades,
+                      preco: calcularPrecoPorMargem({
+                        custoCentavos: calcularCustoKit(cogs.totalCentavos, embalagemCentavos, unidades),
+                        faixas,
+                        margemPrecoPercentual: margemNumero,
+                        anuncioPercentual: anuncioEmbutidoPercentual,
+                      }),
+                    }));
+
+                    let concorrente = null;
+                    if (concorrenteCentavos > 0) {
+                      const vendaNoPreco = detalharVenda({
+                        precoCentavos: concorrenteCentavos,
+                        faixas,
+                        custoCentavos: cogs.totalCentavos,
+                        anuncioPercentual: anuncioEmbutidoPercentual,
+                      });
+                      const custoMaximo = calcularCustoMaximo({
+                        precoCentavos: concorrenteCentavos,
+                        faixas,
+                        anuncioPercentual: anuncioEmbutidoPercentual,
+                        margemPrecoPercentual: margemNumero,
+                      });
+                      const precoMinimo = calcularPrecoPorMargem({
+                        custoCentavos: cogs.totalCentavos,
+                        faixas,
+                        margemPrecoPercentual: 0,
+                        anuncioPercentual: anuncioEmbutidoPercentual,
+                      });
+                      const kitQueBate = kits.find(
+                        (k) => k.preco !== null && Math.ceil(k.preco / k.unidades) <= concorrenteCentavos
+                      );
+                      concorrente = (
+                        <div className={calc.concorrente}>
+                          <strong>Contra o concorrente ({reais(concorrenteCentavos)})</strong>
+                          <span className={vendaNoPreco.lucroCentavos >= 0 ? undefined : calc.roasPrejuizo}>
+                            Vendendo por {reais(concorrenteCentavos)} você{" "}
+                            {vendaNoPreco.lucroCentavos >= 0 ? "ganha" : "perde"}{" "}
+                            <strong>{reais(Math.abs(vendaNoPreco.lucroCentavos))}</strong> por peça (
+                            {vendaNoPreco.margemPrecoPercentual.toFixed(0)}%)
+                          </span>
+                          {precoMinimo !== null && <span>Abaixo de {reais(precoMinimo)} você tem prejuízo.</span>}
+                          <span>
+                            Para ganhar {margemNumero}% nesse preço, sua peça teria que custar{" "}
+                            {custoMaximo > 0 ? (
+                              <>
+                                no máximo <strong>{reais(custoMaximo)}</strong> (hoje custa {reais(cogs.totalCentavos)})
+                              </>
+                            ) : (
+                              <strong>menos que zero — impossível</strong>
+                            )}
+                          </span>
+                          {r.precoCentavos > concorrenteCentavos && (
+                            <span className={kitQueBate ? calc.semaforoVerde : calc.semaforoAmarelo}>
+                              {kitQueBate
+                                ? `Kit com ${kitQueBate.unidades} sai ${reais(Math.ceil(kitQueBate.preco! / kitQueBate.unidades))} cada, com seus ${margemNumero}% — mais barato que ele por unidade.`
+                                : "Nem em kit fica mais barato que ele por unidade. Concorra com qualidade, fotos e cores, não com preço."}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {concorrente}
+                        <div className={calc.kits}>
+                          <strong>Vender em kit (uma embalagem só)</strong>
+                          {kits.map((k) =>
+                            k.preco === null ? null : (
+                              <span key={k.unidades}>
+                                Kit com {k.unidades}: <strong>{reais(k.preco)}</strong> ·{" "}
+                                {reais(Math.ceil(k.preco / k.unidades))} cada
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
 
                   <div className={calc.mes}>
                     <span>Vendendo {pecasMesNumero} peças no mês</span>

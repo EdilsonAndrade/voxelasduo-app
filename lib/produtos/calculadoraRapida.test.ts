@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  calcularCustoKit,
+  calcularCustoMaximo,
   FAIXAS_SHOPEE_2026,
   calcularLimiteAnuncio,
   calcularPrecoPorMargem,
@@ -123,5 +125,17 @@ describe("calcularRetornoVerba", () => {
     expect(r.lucroVendasCentavos).toBe(19836);
     expect(r.saldoCentavos).toBe(9836);
     expect(r.roasEquilibrio).toBeCloseTo(4, 1);
+  });
+});
+
+describe("concorrente e kit", () => {
+  it("a R$ 12,48 na Shopee, com 25% de lucro, a peça pode custar no máximo R$ 2,36", () => {
+    expect(
+      calcularCustoMaximo({ precoCentavos: 1248, faixas: FAIXAS_SHOPEE_2026, anuncioPercentual: 0, margemPrecoPercentual: 25 })
+    ).toBe(236);
+  });
+
+  it("kit de 3 soma as peças com uma embalagem só", () => {
+    expect(calcularCustoKit(767, 250, 3)).toBe(1801);
   });
 });
