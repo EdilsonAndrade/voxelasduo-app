@@ -887,6 +887,11 @@
   border-radius: 18px;
 }
 
+/* O painel rola; sem isso a coluna flex achata os blocos (a barra de abas, com overflow, sumia). */
+.resumo > * {
+  flex-shrink: 0;
+}
+
 .resumoTopo {
   display: flex;
   align-items: center;
