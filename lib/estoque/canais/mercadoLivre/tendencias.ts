@@ -1,47 +1,25 @@
 import { obterAccessTokenValido } from "./auth";
 import { erroMercadoLivre } from "./erros";
-import { preverCategoriaMercadoLivre } from "./previsorCategoria";
-import { obterCategoria } from "./catalogoCategorias";
-import type { ItemRankingCategoria, TendenciaGeral } from "@/lib/models/trendCache";
+import type { ItemRankingCategoria, ProdutoCatalogo, TendenciaGeral } from "@/lib/models/trendCache";
+import type { CategoriaNavegavel } from "@/lib/models/produtosAlta";
 
 const API = "https://api.mercadolibre.com";
 
-/**
- * Resolve a categoria do Mercado Livre a partir de um termo de busca livre
- * (EDI-107) — reaproveita o mesmo previsor usado no cadastro de produto
- * (`resolverCategoriaParaSimulacao`/`precos.ts`), mas sem a "categoria do
- * site" como segundo parâmetro: aqui a tela só tem um campo de busca
- * (research.md #2). Devolve `undefined` quando o previsor não encontra
- * nenhuma correspondência.
- */
-export async function preverCategoriaParaTendencia(
-  termo: string
-): Promise<{ categoryId: string; categoriaNome?: string } | undefined> {
-  const categoryId = await preverCategoriaMercadoLivre(termo);
-  if (!categoryId) return undefined;
+async function getMl<T>(caminho: string, contexto: string): Promise<T> {
+  const token = await obterAccessTokenValido();
+  const resposta = await fetch(`${API}${caminho}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
-  // Nome legível é best-effort — a categoria já foi resolvida, então uma
-  // falha aqui não deveria impedir a busca (o ranking segue útil só com o id).
-  try {
-    const { categoria } = await obterCategoria(categoryId);
-    return { categoryId, categoriaNome: categoria.nome };
-  } catch {
-    return { categoryId };
+  if (!resposta.ok) {
+    throw await erroMercadoLivre(resposta, contexto);
   }
-}
 
-interface HighlightConteudo {
-  id: string;
-  position: number;
-  type: string;
+  return (await resposta.json()) as T;
 }
 
 interface HighlightResposta {
-  content?: HighlightConteudo[];
-}
-
-interface ProdutoCatalogoResposta {
-  name?: string;
+  content?: Array<{ id: string; position: number; type: string }>;
 }
 
 const TIPOS_RANKING = new Set(["PRODUCT", "ITEM", "USER_PRODUCT"]);
@@ -51,53 +29,47 @@ function tipoRanking(bruto: string): ItemRankingCategoria["tipo"] {
 }
 
 /**
- * Nome do produto de catálogo (`GET /products/{id}`) — só funciona para
- * itens `type: "PRODUCT"`; `ITEM` de terceiro devolve 403 e `USER_PRODUCT`
- * não foi testado (research.md #3/#3b). Falha ao resolver o nome de um item
- * não deve derrubar o ranking inteiro — `nome` ausente é um estado válido.
+ * Ranking de mais vendido de uma categoria (`GET /highlights/MLB/category/{id}`,
+ * `highlight_type: BEST_SELLER`) — só posição, id e tipo; nome e foto vêm de
+ * `obterProdutoCatalogo`, guardado à parte por 7 dias (specs/033 research #6).
  */
-async function resolverNomeProduto(id: string, token: string): Promise<string | undefined> {
-  try {
-    const resposta = await fetch(`${API}/products/${encodeURIComponent(id)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!resposta.ok) return undefined;
-    const dados = (await resposta.json()) as ProdutoCatalogoResposta;
-    return dados.name;
-  } catch {
-    return undefined;
-  }
+export async function buscarMaisVendidosCategoria(categoryId: string): Promise<ItemRankingCategoria[]> {
+  const corpo = await getMl<HighlightResposta>(
+    `/highlights/MLB/category/${encodeURIComponent(categoryId)}`,
+    "Falha ao consultar os mais vendidos no Mercado Livre"
+  );
+
+  return (corpo.content ?? []).map((item) => ({
+    posicao: item.position,
+    id: item.id,
+    tipo: tipoRanking(item.type),
+  }));
 }
 
-/**
- * Ranking de mais vendido de uma categoria (`GET /highlights/MLB/category/{id}`,
- * `highlight_type: BEST_SELLER`) — único sinal de popularidade por termo
- * acessível a este app; preço não está disponível (research.md #1/#3).
- */
-export async function buscarMaisVendidosCategoria(
-  categoryId: string
-): Promise<ItemRankingCategoria[]> {
-  const token = await obterAccessTokenValido();
+interface ProdutoBruto {
+  id: string;
+  name?: string;
+  domain_id?: string;
+  pictures?: Array<{ url?: string; secure_url?: string }>;
+}
 
-  const resposta = await fetch(
-    `${API}/highlights/MLB/category/${encodeURIComponent(categoryId)}`,
-    { headers: { Authorization: `Bearer ${token}` } }
+function produtoDoBruto(bruto: ProdutoBruto): ProdutoCatalogo {
+  const foto = bruto.pictures?.[0]?.secure_url ?? bruto.pictures?.[0]?.url;
+  return {
+    id: bruto.id,
+    nome: bruto.name,
+    foto: foto?.replace(/^http:\/\//, "https://"),
+    dominioId: bruto.domain_id,
+  };
+}
+
+/** Nome e foto de um produto de catálogo (`GET /products/{id}`) — só para itens `PRODUCT`. */
+export async function obterProdutoCatalogo(id: string): Promise<ProdutoCatalogo> {
+  const bruto = await getMl<ProdutoBruto>(
+    `/products/${encodeURIComponent(id)}`,
+    "Falha ao consultar o produto no Mercado Livre"
   );
-
-  if (!resposta.ok) {
-    throw await erroMercadoLivre(resposta, "Falha ao consultar os mais vendidos no Mercado Livre");
-  }
-
-  const corpo = (await resposta.json()) as HighlightResposta;
-  const conteudo = corpo.content ?? [];
-
-  return Promise.all(
-    conteudo.map(async (item) => {
-      const tipo = tipoRanking(item.type);
-      const nome = tipo === "PRODUCT" ? await resolverNomeProduto(item.id, token) : undefined;
-      return { posicao: item.position, id: item.id, tipo, nome } satisfies ItemRankingCategoria;
-    })
-  );
+  return produtoDoBruto({ ...bruto, id: bruto.id ?? id });
 }
 
 interface TendenciaBruta {
@@ -105,40 +77,21 @@ interface TendenciaBruta {
   url: string;
 }
 
-/** Termos em alta no Mercado Livre no momento (`GET /trends/MLB`) — geral, não filtrado por termo (US2). */
-export async function buscarTendenciasGerais(): Promise<TendenciaGeral[]> {
-  const token = await obterAccessTokenValido();
-
-  const resposta = await fetch(`${API}/trends/MLB`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!resposta.ok) {
-    throw await erroMercadoLivre(resposta, "Falha ao consultar as tendências do Mercado Livre");
-  }
-
-  const corpo = (await resposta.json()) as TendenciaBruta[];
+/**
+ * Termos mais buscados dentro de uma categoria (`GET /trends/MLB/{categoryId}`,
+ * specs/030) — até 50, em ordem: a posição é o sinal de demanda.
+ */
+export async function buscarTendenciasCategoria(categoryId: string): Promise<TendenciaGeral[]> {
+  const corpo = await getMl<TendenciaBruta[]>(
+    `/trends/MLB/${encodeURIComponent(categoryId)}`,
+    "Falha ao consultar as tendências da categoria no Mercado Livre"
+  );
   return corpo.map((t) => ({ termo: t.keyword, url: t.url }));
 }
 
-/**
- * Termos mais buscados dentro de uma categoria (`GET /trends/MLB/{categoryId}`,
- * specs/030) — até 50, em ordem: a posição é o sinal de demanda da pesquisa
- * de nichos.
- */
-export async function buscarTendenciasCategoria(categoryId: string): Promise<TendenciaGeral[]> {
-  const token = await obterAccessTokenValido();
-
-  const resposta = await fetch(`${API}/trends/MLB/${encodeURIComponent(categoryId)}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!resposta.ok) {
-    throw await erroMercadoLivre(resposta, "Falha ao consultar as tendências da categoria no Mercado Livre");
-  }
-
-  const corpo = (await resposta.json()) as TendenciaBruta[];
-  return corpo.map((t) => ({ termo: t.keyword, url: t.url }));
+interface BuscaCatalogoResposta {
+  paging?: { total?: number };
+  results?: ProdutoBruto[];
 }
 
 /**
@@ -148,17 +101,65 @@ export async function buscarTendenciasCategoria(categoryId: string): Promise<Ten
  * O ML devolve no máximo 10000.
  */
 export async function contarProdutosCatalogo(termo: string): Promise<number> {
-  const token = await obterAccessTokenValido();
   const params = new URLSearchParams({ status: "active", site_id: "MLB", q: termo, limit: "1" });
-
-  const resposta = await fetch(`${API}/products/search?${params}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!resposta.ok) {
-    throw await erroMercadoLivre(resposta, "Falha ao contar produtos de catálogo no Mercado Livre");
-  }
-
-  const corpo = (await resposta.json()) as { paging?: { total?: number } };
+  const corpo = await getMl<BuscaCatalogoResposta>(
+    `/products/search?${params}`,
+    "Falha ao contar produtos de catálogo no Mercado Livre"
+  );
   return corpo.paging?.total ?? 0;
+}
+
+/**
+ * Produtos de catálogo para um termo, em ordem de relevância do ML. O filtro
+ * `category` é ignorado pelo ML; para restringir use `dominioId`
+ * (specs/033 research #5).
+ */
+export async function buscarProdutosCatalogo(
+  termo: string,
+  opcoes: { limite: number; dominioId?: string }
+): Promise<ProdutoCatalogo[]> {
+  const params = new URLSearchParams({ status: "active", site_id: "MLB", q: termo, limit: String(opcoes.limite) });
+  if (opcoes.dominioId) params.set("domain_id", opcoes.dominioId);
+
+  const corpo = await getMl<BuscaCatalogoResposta>(
+    `/products/search?${params}`,
+    "Falha ao buscar produtos no catálogo do Mercado Livre"
+  );
+  return (corpo.results ?? []).map(produtoDoBruto);
+}
+
+interface DominioBruto {
+  domain_id: string;
+  category_id: string;
+}
+
+/** Domínios (tipos de produto) e categorias sugeridos pelo ML para um termo (`domain_discovery`). */
+export async function descobrirDominios(termo: string): Promise<Array<{ dominioId: string; categoriaId: string }>> {
+  const params = new URLSearchParams({ q: termo, limit: "8" });
+  const corpo = await getMl<DominioBruto[]>(
+    `/sites/MLB/domain_discovery/search?${params}`,
+    "Falha ao identificar o tipo de produto no Mercado Livre"
+  );
+  return corpo.map((d) => ({ dominioId: d.domain_id, categoriaId: d.category_id }));
+}
+
+interface CategoriaBruta {
+  id: string;
+  name: string;
+  path_from_root?: Array<{ id: string; name: string }>;
+  children_categories?: Array<{ id: string; name: string }>;
+}
+
+/** Categoria com o caminho desde a raiz e as filhas diretas (`GET /categories/{id}`). */
+export async function obterCategoriaNavegavel(id: string): Promise<CategoriaNavegavel> {
+  const bruta = await getMl<CategoriaBruta>(
+    `/categories/${encodeURIComponent(id)}`,
+    "Falha ao consultar a categoria no Mercado Livre"
+  );
+  return {
+    id: bruta.id,
+    nome: bruta.name,
+    caminho: (bruta.path_from_root ?? []).map((c) => ({ id: c.id, nome: c.name })),
+    filhas: (bruta.children_categories ?? []).map((c) => ({ id: c.id, nome: c.name })),
+  };
 }

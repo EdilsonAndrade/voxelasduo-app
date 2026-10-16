@@ -1,13 +1,9 @@
-import TendenciasBusca from "@/components/admin/TendenciasBusca";
-import styles from "@/components/admin/admin.module.css";
+import ProdutosAlta from "@/components/admin/ProdutosAlta";
 
-export default function TendenciasPage() {
+export default function ProdutosAltaPage() {
   return (
     <div className="container">
-      <div className={styles.bar}>
-        <h1>Descoberta de tendências (Mercado Livre)</h1>
-      </div>
-      <TendenciasBusca />
+      <ProdutosAlta />
     </div>
   );
 }

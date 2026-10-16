@@ -1,0 +1,417 @@
+/*
+ * Produtos em alta: mesma linguagem do admin (cartões de 18px, borda de 2px,
+ * Baloo nos títulos). A assinatura é o selo de posição em cima da foto — o
+ * único dado de "quanto vende" que o ML libera — laranja para mais vendido,
+ * roxo para mais buscado e amarelo no pódio (1º a 3º).
+ */
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.5rem 0 3rem;
+}
+
+.cabecalho h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3.2vw, 2.4rem);
+  line-height: 1.05;
+  margin: 0 0 0.35rem;
+}
+
+.cabecalho p {
+  margin: 0;
+  max-width: 64ch;
+  color: var(--texto-soft);
+  font-size: 0.95rem;
+}
+
+.filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 18px;
+  padding: 1rem 1.15rem 1.15rem;
+}
+
+.busca {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.busca input {
+  flex: 1;
+  min-width: 0;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--preto);
+}
+
+.busca input:focus-visible {
+  outline: 3px solid var(--turquesa);
+  outline-offset: 1px;
+}
+
+.ordem {
+  display: inline-flex;
+  width: fit-content;
+  border: 2px solid var(--preto);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ordem button {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  padding: 0.4rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--preto);
+  cursor: pointer;
+}
+
+.ordem button + button {
+  border-left: 2px solid var(--preto);
+}
+
+.ordem button[aria-pressed="true"] {
+  background: var(--preto);
+  color: var(--creme);
+}
+
+.ordem button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.grupos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.1rem;
+}
+
+.grupo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.grupoNome {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-soft);
+}
+
+.chip,
+.chipSub {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  color: var(--preto);
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--roxo);
+  border-color: var(--roxo);
+  color: #fff;
+}
+
+.chipSub {
+  border-style: dashed;
+}
+
+.chipSub:hover,
+.chip:hover {
+  border-color: var(--roxo);
+}
+
+.chip:focus-visible,
+.chipSub:focus-visible,
+.ordem button:focus-visible,
+.trilhaLink:focus-visible,
+.linkBotao:focus-visible,
+.link:focus-visible {
+  outline: 3px solid var(--turquesa);
+  outline-offset: 2px;
+}
+
+.sub {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 0.8rem;
+  border-top: 2px dashed var(--surface-line);
+}
+
+.trilha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.trilha > * + *::before {
+  content: "›";
+  margin-right: 0.3rem;
+  color: var(--texto-soft);
+}
+
+.trilhaLink {
+  font: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--roxo);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.filhas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1.2rem;
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+}
+
+.status > span:first-child {
+  font-weight: 700;
+  color: var(--preto);
+}
+
+.linkBotao {
+  font: inherit;
+  font-weight: 700;
+  color: var(--roxo);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.aviso {
+  margin: 0;
+  font-size: 0.85rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--amarelo) 22%, var(--surface));
+  border: 2px solid var(--amarelo);
+}
+
+.aviso ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.erro {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #c23a3a;
+}
+
+.vazio,
+.nota {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+}
+
+.grade {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 1rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 18px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--roxo);
+  transform: translateY(-2px);
+}
+
+/* Fotos do ML vêm em fundo branco — fundo branco também no escuro para não recortar. */
+.foto {
+  position: relative;
+  aspect-ratio: 1;
+  background: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0.6rem;
+}
+
+.semFoto {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  color: #d9cdbd;
+}
+
+.posicao {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.15rem 0.65rem 0.1rem;
+  border-radius: 999px;
+  background: var(--laranja);
+  color: #fff;
+  box-shadow: 0 2px 0 rgba(17, 17, 17, 0.18);
+}
+
+.card[data-origem="procurado"] .posicao {
+  background: var(--roxo);
+}
+
+.posicao[data-topo="sim"] {
+  background: var(--amarelo);
+  color: #4a3600;
+}
+
+.card[data-origem="procurado"] .posicao[data-topo="sim"] {
+  background: var(--amarelo);
+}
+
+.posicao b {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.posicao small {
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.85rem 0.5rem;
+  flex: 1;
+}
+
+.titulo {
+  font-size: 0.9rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card[data-origem="procurado"] .titulo {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  text-transform: capitalize;
+}
+
+.tituloVazio {
+  font-weight: 400;
+  font-style: italic;
+  color: var(--texto-soft);
+}
+
+.exemplo,
+.categoriaCard {
+  font-size: 0.75rem;
+  color: var(--texto-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.categoriaCard {
+  font-weight: 700;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0 0.85rem 0.85rem;
+}
+
+.link {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 2px solid var(--surface-line);
+  color: var(--preto);
+  text-decoration: none;
+}
+
+a.link:hover {
+  border-color: var(--preto);
+}
+
+.link[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .busca {
+    flex-direction: column;
+  }
+
+  .grade {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+}

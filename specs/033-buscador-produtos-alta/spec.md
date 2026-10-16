@@ -119,6 +119,7 @@ A mesma categoria/ordenação/busca repetida em menos de 24h usa o resultado gua
 - **FR-010**: Todos os textos da tela MUST seguir o padrão de i18n existente do projeto.
 - **FR-011**: A tela MUST ser acessível só para usuários autenticados no admin.
 - **FR-012**: A nova tela MUST substituir a atual "Tendências (ML)" no menu do admin, mantendo o mesmo endereço.
+- **FR-013**: Ao selecionar uma categoria, a tela MUST permitir descer para as subcategorias dela (chips + caminho clicável para voltar); mais vendidos, mais procurados e busca valem para o nível escolhido. Motivo (teste ao vivo): no nível de cima os mais vendidos não são peças 3D (Banheiros traz chuveiros e toalhas), já em "Suportes para Papel Higiênico" os 20 são suportes.
 
 ### Key Entities
 
@@ -139,7 +140,8 @@ A mesma categoria/ordenação/busca repetida em menos de 24h usa o resultado gua
 ## Assumptions
 
 - Usuário único/avaliador no admin já autenticado; mesma conta do Mercado Livre já conectada nas outras telas.
-- A lista das 16 categorias é a mesma já usada na Pesquisa de nichos e não muda nesta feature.
+- A lista das 16 categorias é a mesma já usada na Pesquisa de nichos e não muda nesta feature; as subcategorias vêm do próprio Mercado Livre.
+- Cerca de 15% dos itens do ranking são anúncios de outros vendedores que o ML não deixa ler: aparecem sem nome/foto, só com a posição e o link para o ML.
 - Shopee e MakerWorld entram só como links de busca; dados da Shopee (vendas, preço) ficam na EDI-129.
 - A busca por nome em "Todas" usa o catálogo de produtos do Mercado Livre (o mesmo usado para medir concorrência na Pesquisa de nichos), não a busca de anúncios, que é bloqueada.
 - A nova tela substitui a "Descoberta de tendências" atual (EDI-107), que já mostrava ranking e tendências gerais sem foto; nada se perde, pois os mesmos dados passam a aparecer em cards.
