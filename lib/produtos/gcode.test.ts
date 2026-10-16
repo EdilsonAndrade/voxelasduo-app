@@ -7,6 +7,11 @@ describe("segundosDeDuracao", () => {
     expect(segundosDeDuracao("35m 30s")).toBe(2130);
     expect(segundosDeDuracao("sem tempo")).toBe(0);
   });
+
+  it("aceita o formato colado do Bambu (12h7m27s)", () => {
+    expect(segundosDeDuracao("12h7m27s")).toBe(43647);
+    expect(segundosDeDuracao("12h7m")).toBe(43620);
+  });
 });
 
 describe("interpretarCabecalhoGcode", () => {

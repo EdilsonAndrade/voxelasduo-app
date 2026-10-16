@@ -23,7 +23,7 @@ export interface MesaLida {
 export function segundosDeDuracao(texto: string): number {
   const unidades: Record<string, number> = { d: 86400, h: 3600, m: 60, s: 1 };
   let total = 0;
-  for (const [, valor, unidade] of texto.matchAll(/(\d+(?:\.\d+)?)\s*([dhms])\b/gi)) {
+  for (const [, valor, unidade] of texto.matchAll(/(\d+(?:\.\d+)?)\s*([dhms])(?![a-z])/gi)) {
     total += Number(valor) * unidades[unidade.toLowerCase()];
   }
   return Math.round(total);
