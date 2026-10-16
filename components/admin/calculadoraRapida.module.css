@@ -696,8 +696,17 @@
 
 .tempo {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+/* Input com unidade nunca força a largura da coluna (o input nativo tem largura mínima própria). */
+.campoUnidade {
+  min-width: 0;
+}
+
+.campoUnidade input {
+  width: 100%;
 }
 
 /* Listas de filamentos e extras. */

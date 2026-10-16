@@ -208,10 +208,10 @@ export default function SecaoImpressao({
           dica="Material, energia e desgaste da mesa são divididos por elas."
         />
         <div className={styles.field}>
-          <span className={calc.rotuloGrupo}>Tempo de impressão da mesa</span>
+          <label htmlFor="tempoHoras">Tempo da mesa</label>
           <div className={calc.tempo}>
             <div className={calc.campoUnidade}>
-              <input aria-label="Horas" inputMode="numeric" placeholder="Horas" value={impressao.tempoHoras} onChange={(e) => alterar({ tempoHoras: e.target.value.replace(/\D/g, "") })} />
+              <input id="tempoHoras" aria-label="Horas" inputMode="numeric" placeholder="Horas" value={impressao.tempoHoras} onChange={(e) => alterar({ tempoHoras: e.target.value.replace(/\D/g, "") })} />
               <span>h</span>
             </div>
             <div className={calc.campoUnidade}>
