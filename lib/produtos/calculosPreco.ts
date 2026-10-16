@@ -52,7 +52,7 @@ export function validarCalculoPreco(payload: unknown): { dados?: DadosCalculoPre
   if (
     typeof valores !== "object" ||
     valores === null ||
-    typeof valores.custo !== "object" ||
+    (typeof valores.custo !== "object" && typeof valores.impressao !== "object") ||
     typeof valores.canais !== "object" ||
     typeof valores.producao !== "object"
   ) {

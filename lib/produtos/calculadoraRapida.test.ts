@@ -171,3 +171,32 @@ describe("compararComConcorrente", () => {
     expect(c.precoEmpateCentavos).toBe(1429);
   });
 });
+
+describe("imposto sobre o preço", () => {
+  it("entra no divisor do preço e sai do lucro", () => {
+    // 1000 / (1 − 0,20 − 0,06 − 0,25) = 2040,8 → 2041
+    const preco = calcularPrecoPorMargem({
+      custoCentavos: 1000,
+      faixas: faixaUnica(20, 0),
+      margemPrecoPercentual: 25,
+      anuncioPercentual: 0,
+      impostoPercentual: 6,
+    });
+    expect(preco).toBe(2041);
+    const venda = detalharVenda({
+      precoCentavos: 2041,
+      faixas: faixaUnica(20, 0),
+      custoCentavos: 1000,
+      anuncioPercentual: 0,
+      impostoPercentual: 6,
+    });
+    expect(venda.impostoCentavos).toBe(122);
+    expect(venda.lucroCentavos).toBe(2041 - 408 - 122 - 1000);
+  });
+
+  it("sem imposto informado vale 0", () => {
+    const venda = detalharVenda({ precoCentavos: 1000, faixas: faixaUnica(10, 0), custoCentavos: 500, anuncioPercentual: 0 });
+    expect(venda.impostoCentavos).toBe(0);
+    expect(venda.lucroCentavos).toBe(400);
+  });
+});

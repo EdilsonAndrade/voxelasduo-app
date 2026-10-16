@@ -1,5 +1,5 @@
-import type { AnuncioCalculadoraValores, CalculadoraValores } from "@/lib/models/calculoPreco";
-import { VAZIO_CUSTO_PRODUCAO } from "./custoProducaoFormulario";
+import type { AnuncioCalculadoraValores, CalculadoraValoresV2 } from "@/lib/models/calculoPreco";
+import { valoresPadraoV2 } from "./calculadoraValores";
 
 /**
  * Valores iniciais da calculadora de preço. Ficam fora de `CalculadoraRapida.tsx`
@@ -8,17 +8,6 @@ import { VAZIO_CUSTO_PRODUCAO } from "./custoProducaoFormulario";
  */
 export const ANUNCIO_PADRAO: AnuncioCalculadoraValores = { modo: "sem", roasMeta: "8", verbaMesReais: "" };
 
-export function valoresPadrao(): CalculadoraValores {
-  return {
-    // Filamento é digitado por kg: o carretel de referência fica fixo em 1000 g.
-    custo: { ...VAZIO_CUSTO_PRODUCAO, pesoCarreteGramas: "1000", margemPerdaPercentual: "0" },
-    margemMinimaPrecoPercentual: "25",
-    anuncio: ANUNCIO_PADRAO,
-    canais: {
-      shopee: { taxaPercentual: "20", taxaFixaReais: "4.50", taxaPorFaixa: true },
-      mercadoLivre: { taxaPercentual: "14", taxaFixaReais: "6.50" },
-    },
-    producao: { pecasPorMesa: "", horasMesaCheia: "", horasPorDia: "20", diasPorMes: "30" },
-    pecasPorMes: "",
-  };
+export function valoresPadrao(): CalculadoraValoresV2 {
+  return valoresPadraoV2();
 }

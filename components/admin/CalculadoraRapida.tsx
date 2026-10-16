@@ -6,179 +6,29 @@ import { useRouter } from "next/navigation";
 import styles from "./admin.module.css";
 import calc from "./calculadoraRapida.module.css";
 import type { TaxasCanaisConfig } from "@/lib/models/configuracao";
-import type { AnuncioCalculadoraValores, CalculadoraValores, ModoAnuncio } from "@/lib/models/calculoPreco";
-import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
+import type {
+  AnuncioCalculadoraValores,
+  CalculadoraValores,
+  CalculadoraValoresV2,
+  CanalCalculadoraValores,
+  ImpressaoCalculadora,
+  PrecificacaoCalculadora,
+  VendaDiretaCalculadora,
+} from "@/lib/models/calculoPreco";
 import { ANUNCIO_PADRAO, valoresPadrao } from "@/lib/produtos/calculadoraPadrao";
-import {
-  VAZIO_CUSTO_PRODUCAO,
-  montarCustoProducao,
-  type CustoProducaoFormValores,
-} from "@/lib/produtos/custoProducaoFormulario";
-import {
-  calcularCustoKit,
-  calcularCustoMaximo,
-  calcularLimiteAnuncio,
-  calcularPrecoPorMargem,
-  calcularProducaoMensal,
-  calcularRetornoVerba,
-  compararComConcorrente,
-  detalharVenda,
-  faixaUnica,
-  type DetalheVenda,
-  type FaixaTaxa,
-  type LimiteAnuncio,
-} from "@/lib/produtos/calculadoraRapida";
-import { faixasDoCanal as faixasDoCanalSalvo, type Marketplace } from "@/lib/produtos/orcamento";
-
-
-const NOME_MARKETPLACE: Record<Marketplace, string> = {
-  shopee: "Shopee",
-  mercadoLivre: "Mercado Livre",
-};
-
-const MODOS_ANUNCIO: Array<{ modo: ModoAnuncio; rotulo: string; explicacao: string }> = [
-  { modo: "sem", rotulo: "Sem anúncio", explicacao: "Preço só com custo, taxa e o seu lucro." },
-  {
-    modo: "embutido",
-    rotulo: "Embutido no preço",
-    explicacao: "O preço sobe para pagar o anúncio. Quem paga o anúncio é o comprador.",
-  },
-  {
-    modo: "bolso",
-    rotulo: "Do meu bolso",
-    explicacao: "O preço fica sem anúncio e você investe uma verba à parte. Mostra se ela volta com lucro.",
-  },
-];
-
-type CanalForm = CalculadoraValores["canais"]["shopee"];
-
-function numero(texto: string): number {
-  return Number(texto.trim().replace(",", "."));
-}
-
-function reais(centavos: number): string {
-  return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-/** ROAS com uma casa, arredondado para cima — a meta nunca fica abaixo do necessário. */
-function formatarRoas(roas: number): string {
-  return (Math.ceil(roas * 10) / 10).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
-/** ACOS (usado no Mercado Livre) = 100 ÷ ROAS, arredondado para baixo — o teto nunca fica acima do permitido. */
-function formatarAcos(roas: number): string {
-  return `${(Math.floor((100 / roas) * 10) / 10).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
-}
-
-function descreverFaixa(faixa: FaixaTaxa): string {
-  return faixa.fixaCentavos > 0 ? `${faixa.percentual}% + ${reais(faixa.fixaCentavos)}` : `${faixa.percentual}%`;
-}
-
-/** Campo numérico curto: rótulo, valor e unidade ao lado. Aceita só dígitos, vírgula e ponto. */
-function Campo({
-  id,
-  rotulo,
-  unidade,
-  valor,
-  onChange,
-  dica,
-  desabilitado,
-}: {
-  id: string;
-  rotulo: string;
-  unidade?: string;
-  valor: string;
-  onChange: (valor: string) => void;
-  dica?: string;
-  desabilitado?: boolean;
-}) {
-  return (
-    <div className={styles.field}>
-      <label htmlFor={id}>{rotulo}</label>
-      <div className={calc.campoUnidade}>
-        <input
-          id={id}
-          inputMode="decimal"
-          value={valor}
-          disabled={desabilitado}
-          onChange={(e) => onChange(e.target.value.replace(/[^\d.,]/g, ""))}
-        />
-        {unidade && <span>{unidade}</span>}
-      </div>
-      {dica && <span className={styles.mlLinkAviso}>{dica}</span>}
-    </div>
-  );
-}
-
-/**
- * O que digitar na tela de criar campanha: a meta (ROAS na Shopee, ACOS no
- * Mercado Livre) e o orçamento diário em R$ — um valor de teste para começar e
- * o teto que vende a produção do mês inteira pelo anúncio (acima disso falta peça).
- */
-function PreencherCampanha({
-  ehMl,
-  roas,
-  custoPorVendaCentavos,
-  pecasMes,
-  diasMes,
-  verbaMesCentavos,
-  onUsarVerba,
-}: {
-  ehMl: boolean;
-  roas: number;
-  custoPorVendaCentavos: number;
-  pecasMes: number;
-  diasMes: number;
-  /** Verba do bolso já informada — quando houver, vira o orçamento diário. */
-  verbaMesCentavos?: number;
-  onUsarVerba?: (reais: string) => void;
-}) {
-  const dias = diasMes > 0 ? diasMes : 30;
-  const tetoMensalCentavos = pecasMes > 0 ? custoPorVendaCentavos * pecasMes : 0;
-  const tetoDiarioCentavos = Math.round(tetoMensalCentavos / dias);
-  const inicioDiarioCentavos = tetoDiarioCentavos > 0 ? Math.min(1500, tetoDiarioCentavos) : 1000;
-  const verbaDiariaCentavos = verbaMesCentavos ? Math.round(verbaMesCentavos / dias) : 0;
-  const plataforma = ehMl ? "Mercado Ads" : "Shopee Ads";
-
-  return (
-    <div className={calc.verbaSugerida}>
-      <strong>O que digitar ao criar a campanha no {plataforma}:</strong>
-      <ol className={calc.passosCampanha}>
-        <li>
-          No campo <em>{ehMl ? "ACOS objetivo" : "Meta de ROAS"}</em>, digite{" "}
-          <strong className={calc.valorCampanha}>{ehMl ? formatarAcos(roas) : formatarRoas(roas)}</strong>
-        </li>
-        <li>
-          No campo <em>Orçamento diário</em>, digite{" "}
-          {verbaDiariaCentavos > 0 ? (
-            <>
-              <strong className={calc.valorCampanha}>{reais(verbaDiariaCentavos)}</strong> (sua verba de{" "}
-              {reais(verbaMesCentavos!)} ÷ {dias} dias)
-            </>
-          ) : (
-            <>
-              <strong className={calc.valorCampanha}>{reais(inicioDiarioCentavos)}</strong> para começar
-            </>
-          )}
-        </li>
-      </ol>
-      <span className={styles.mlLinkAviso}>
-        Cada venda pelo anúncio gasta ~{reais(custoPorVendaCentavos)}.
-        {tetoDiarioCentavos > 0 &&
-          ` Depois de 7 a 15 dias, se o ROAS real estiver no verde, pode subir o orçamento até ${reais(tetoDiarioCentavos)}/dia (${reais(tetoMensalCentavos)}/mês) — é o que vende as ${pecasMes} peças do mês. Mais que isso falta peça.`}
-      </span>
-      {onUsarVerba && tetoMensalCentavos > 0 && (
-        <button
-          type="button"
-          className={styles.btnGhost}
-          onClick={() => onUsarVerba(((inicioDiarioCentavos * dias) / 100).toFixed(2))}
-        >
-          Usar {reais(inicioDiarioCentavos)}/dia ({reais(inicioDiarioCentavos * dias)}/mês) como verba
-        </button>
-      )}
-    </div>
-  );
-}
+import { normalizarValores } from "@/lib/produtos/calculadoraValores";
+import { detalharVenda, faixaUnica } from "@/lib/produtos/calculadoraRapida";
+import type { CanalVenda } from "@/lib/produtos/canaisCalculadora";
+import { paraCustoProducao } from "@/lib/produtos/custoCalculadora";
+import { calcularResultado } from "@/lib/produtos/resultadoCalculadora";
+import Resumo from "./calculadora/Resumo";
+import SecaoCanalVenda from "./calculadora/SecaoCanalVenda";
+import SecaoCustosExtras from "./calculadora/SecaoCustosExtras";
+import SecaoImpressao from "./calculadora/SecaoImpressao";
+import SecaoModelo from "./calculadora/SecaoModelo";
+import SecaoPrecificacao from "./calculadora/SecaoPrecificacao";
+import { SecaoAds, SecaoConcorrente, SecaoProducao } from "./calculadora/SecoesEstrategia";
+import { numero, reais } from "./calculadora/formato";
 
 /** Cálculo salvo reaberto na calculadora — ausente = cálculo novo. */
 export interface CalculoInicial {
@@ -191,28 +41,10 @@ export interface CalculoInicial {
   produtoId?: string;
 }
 
-function producaoDe(producao: CalculadoraValores["producao"]) {
-  return calcularProducaoMensal({
-    pecasPorMesa: numero(producao.pecasPorMesa),
-    horasMesaCheia: numero(producao.horasMesaCheia),
-    horasPorDia: numero(producao.horasPorDia),
-    diasPorMes: numero(producao.diasPorMes),
-  });
-}
-
 async function mensagemDeErro(resposta: Response): Promise<string> {
   const dados = await resposta.json().catch(() => ({}));
   const campos = dados.campos ? ` ${Object.values(dados.campos).join(" ")}` : "";
-  return `${dados.erro ?? `Erro ${resposta.status} ao salvar.`}${campos}`;
-}
-
-/** Resultado de um canal no preço praticado (com ou sem anúncio embutido). */
-interface ResultadoCanal {
-  precoCentavos: number;
-  /** Preço sem nenhum anúncio — referência no modo "embutido". */
-  precoSemAnuncioCentavos: number | null;
-  venda: DetalheVenda;
-  limite: LimiteAnuncio;
+  return `${dados.erro ?? `Erro ${resposta.status} ao salvar.`}${campos} (status ${resposta.status})`;
 }
 
 export default function CalculadoraRapida({
@@ -223,16 +55,10 @@ export default function CalculadoraRapida({
   calculoInicial?: CalculoInicial;
 }) {
   const router = useRouter();
-  const inicial = calculoInicial?.valores ?? valoresPadrao();
-  const [custo, setCusto] = useState<CustoProducaoFormValores>(inicial.custo);
-  const [alturaCm, setAlturaCm] = useState(inicial.alturaCm ?? "");
-  const [margem, setMargem] = useState(inicial.margemMinimaPrecoPercentual ?? "25");
-  const [anuncio, setAnuncio] = useState<AnuncioCalculadoraValores>(inicial.anuncio ?? ANUNCIO_PADRAO);
-  const [precoConcorrente, setPrecoConcorrente] = useState(inicial.precoConcorrenteReais ?? "");
-  const [precoOferta, setPrecoOferta] = useState(inicial.precoConcorrenteOfertaReais ?? "");
-  const [vendasConcorrente, setVendasConcorrente] = useState(inicial.vendasConcorrenteMes ?? "");
-  const [canais, setCanais] = useState<Record<Marketplace, CanalForm>>(inicial.canais);
-  const [producao, setProducao] = useState(inicial.producao);
+  const [valores, setValores] = useState<CalculadoraValoresV2>(() =>
+    calculoInicial ? normalizarValores(calculoInicial.valores) : valoresPadrao()
+  );
+  const [aba, setAba] = useState<CanalVenda>("shopee");
   const [nome, setNome] = useState(calculoInicial?.nome ?? "");
   const [linkModelo, setLinkModelo] = useState(calculoInicial?.linkModelo3d ?? "");
   const [linkShopee, setLinkShopee] = useState(calculoInicial?.linkShopee ?? "");
@@ -247,127 +73,55 @@ export default function CalculadoraRapida({
   const [duplicando, setDuplicando] = useState(false);
   const [erroDuplicar, setErroDuplicar] = useState<string | null>(null);
 
-  const alterarCusto = (chave: keyof CustoProducaoFormValores) => (valor: string) =>
-    setCusto((atual) => ({ ...atual, [chave]: valor }));
-  const alterarCanal = (canal: Marketplace, chave: "taxaPercentual" | "taxaFixaReais") => (valor: string) =>
-    setCanais((atual) => ({ ...atual, [canal]: { ...atual[canal], [chave]: valor } }));
-  const alterarProducao = (chave: keyof typeof producao) => (valor: string) =>
-    setProducao((atual) => ({ ...atual, [chave]: valor }));
-  const alterarAnuncio = (chave: "roasMeta" | "verbaMesReais") => (valor: string) =>
-    setAnuncio((atual) => ({ ...atual, [chave]: valor }));
+  const mudar = (parcial: Partial<CalculadoraValoresV2>) => setValores((atual) => ({ ...atual, ...parcial }));
+  const alterarImpressao = (parcial: Partial<ImpressaoCalculadora>) =>
+    setValores((atual) => ({ ...atual, impressao: { ...atual.impressao, ...parcial } }));
+  const alterarPrecificacao = (parcial: Partial<PrecificacaoCalculadora>) =>
+    setValores((atual) => ({ ...atual, precificacao: { ...atual.precificacao, ...parcial } }));
+  const alterarDireta = (parcial: Partial<VendaDiretaCalculadora>) =>
+    setValores((atual) => ({ ...atual, vendaDireta: { ...atual.vendaDireta, ...parcial } }));
+  const alterarCanal = (canal: "shopee" | "mercadoLivre", parcial: Partial<CanalCalculadoraValores>) =>
+    setValores((atual) => ({ ...atual, canais: { ...atual.canais, [canal]: { ...atual.canais[canal], ...parcial } } }));
+  const alterarAnuncio = (parcial: Partial<AnuncioCalculadoraValores>) =>
+    setValores((atual) => ({ ...atual, anuncio: { ...(atual.anuncio ?? ANUNCIO_PADRAO), ...parcial } }));
+  const alterarProducao = (chave: "horasPorDia" | "diasPorMes") => (valor: string) =>
+    setValores((atual) => ({ ...atual, producao: { ...atual.producao, [chave]: valor } }));
 
-  const custoProducao = montarCustoProducao(custo);
-  const cogs = custoProducao ? calcularCustoProducao(custoProducao) : null;
-  const margemNumero = numero(margem);
-  const margemValida = margem.trim() !== "" && Number.isFinite(margemNumero) && margemNumero >= 0 && margemNumero < 100;
-
-  const roas = numero(anuncio.roasMeta);
-  const roasValido = Number.isFinite(roas) && roas > 0;
-  const verbaCentavos = Math.round((numero(anuncio.verbaMesReais) || 0) * 100);
-  const anuncioEmbutidoPercentual = anuncio.modo === "embutido" && roasValido ? 100 / roas : 0;
-
-  const producaoMensal = producaoDe(producao);
-  const pecasAuto = producaoMensal?.pecasPorMes ?? null;
+  const taxaSite = { percentual: taxasGlobais.siteTaxaPercentual, fixaCentavos: taxasGlobais.siteTaxaFixaCentavos };
+  const res = calcularResultado(valores, taxaSite);
+  const anuncio = valores.anuncio ?? ANUNCIO_PADRAO;
 
   // "Peças no mês" segue o cálculo automático sempre que ele muda, mas pode ser digitado por cima.
   // Ao reabrir um cálculo salvo, mantém o valor que estava gravado.
-  const [pecasMes, setPecasMes] = useState(
-    calculoInicial ? inicial.pecasPorMes : pecasAuto !== null ? String(pecasAuto) : ""
-  );
+  const pecasAuto = res.producao?.pecasPorMes ?? null;
   const [pecasAutoAnterior, setPecasAutoAnterior] = useState<number | null>(pecasAuto);
   if (pecasAuto !== pecasAutoAnterior) {
     setPecasAutoAnterior(pecasAuto);
-    setPecasMes(pecasAuto !== null ? String(pecasAuto) : "");
+    mudar({ pecasPorMes: pecasAuto !== null ? String(pecasAuto) : "" });
   }
-  const pecasMesNumero = Math.max(0, Math.floor(numero(pecasMes) || 0));
-
-  const faixasDoCanal = (canal: Marketplace): FaixaTaxa[] | null => faixasDoCanalSalvo(canal, canais);
-
-  function resultadoCanal(canal: Marketplace): ResultadoCanal | null {
-    const faixas = faixasDoCanal(canal);
-    if (!cogs || !margemValida || !faixas) return null;
-    const base = { custoCentavos: cogs.totalCentavos, faixas, margemPrecoPercentual: margemNumero };
-    const precoSemAnuncioCentavos = calcularPrecoPorMargem({ ...base, anuncioPercentual: 0 });
-    const precoCentavos =
-      anuncioEmbutidoPercentual > 0
-        ? calcularPrecoPorMargem({ ...base, anuncioPercentual: anuncioEmbutidoPercentual })
-        : precoSemAnuncioCentavos;
-    if (precoCentavos === null) return null;
-
-    const venda = detalharVenda({
-      precoCentavos,
-      faixas,
-      custoCentavos: cogs.totalCentavos,
-      anuncioPercentual: anuncioEmbutidoPercentual,
-    });
-    const limite = calcularLimiteAnuncio({
-      precoCentavos,
-      taxaCentavos: venda.taxaCentavos,
-      custoCentavos: cogs.totalCentavos,
-      margemMinimaPrecoPercentual: margemNumero,
-    });
-    return { precoCentavos, precoSemAnuncioCentavos, venda, limite };
-  }
-
-  const resultados: Record<Marketplace, ResultadoCanal | null> = {
-    shopee: resultadoCanal("shopee"),
-    mercadoLivre: resultadoCanal("mercadoLivre"),
-  };
-
-  // Venda direta (em mãos, WhatsApp, feira): sem taxa de plataforma e sem anúncio — só custo + lucro.
-  const precoDiretoCentavos =
-    cogs && margemValida
-      ? calcularPrecoPorMargem({
-          custoCentavos: cogs.totalCentavos,
-          faixas: faixaUnica(0, 0),
-          margemPrecoPercentual: margemNumero,
-          anuncioPercentual: 0,
-        })
-      : null;
-
-  // Preço do site no produto: mesmo lucro em % do preço, com a taxa do site próprio e sem anúncio.
-  const precoSiteCentavos =
-    cogs && margemValida
-      ? calcularPrecoPorMargem({
-          custoCentavos: cogs.totalCentavos,
-          faixas: faixaUnica(taxasGlobais.siteTaxaPercentual, taxasGlobais.siteTaxaFixaCentavos),
-          margemPrecoPercentual: margemNumero,
-          anuncioPercentual: 0,
-        })
-      : null;
 
   const podeSalvarCalculo = nome.trim() !== "" && !salvando;
-  const podeCriarProduto = podeSalvarCalculo && custoProducao !== null && precoSiteCentavos !== null && !produtoId;
+  const podeCriarProduto = podeSalvarCalculo && res.custo !== null && res.precoSiteCentavos !== null && !produtoId;
 
   /** O que está na tela agora, no formato gravado do cálculo. */
   function valoresAtuais(): CalculadoraValores {
-    return {
-      custo,
-      alturaCm: alturaCm.trim(),
-      margemMinimaPrecoPercentual: margem,
-      anuncio,
-      canais,
-      producao,
-      pecasPorMes: pecasMes,
-      precoConcorrenteReais: precoConcorrente,
-      precoConcorrenteOfertaReais: precoOferta.trim(),
-      vendasConcorrenteMes: vendasConcorrente.trim(),
-    };
+    return { ...valores, alturaCm: (valores.alturaCm ?? "").trim() };
+  }
+
+  function corpoLinks() {
+    return { linkModelo3d: linkModelo.trim(), linkShopee: linkShopee.trim(), linkMercadoLivre: linkMercadoLivre.trim() };
   }
 
   /** Grava (cria ou atualiza) o cálculo — `false` se a API recusar (o erro já fica na tela). */
   async function gravarCalculo(produtoCriadoId?: string): Promise<boolean> {
-    const valores = valoresAtuais();
     const resposta = await fetch(calculoId ? `/api/admin/calculos-preco/${calculoId}` : "/api/admin/calculos-preco", {
       method: calculoId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nome: nome.trim(),
-        linkModelo3d: linkModelo.trim(),
-        linkShopee: linkShopee.trim(),
-        linkMercadoLivre: linkMercadoLivre.trim(),
+        ...corpoLinks(),
         produtoId: produtoCriadoId ?? produtoId ?? undefined,
-        valores,
+        valores: valoresAtuais(),
       }),
     });
     if (!resposta.ok) {
@@ -393,17 +147,11 @@ export default function CalculadoraRapida({
       const resposta = await fetch("/api/admin/calculos-preco", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: nomeCopia.trim(),
-          linkModelo3d: linkModelo.trim(),
-          linkShopee: linkShopee.trim(),
-          linkMercadoLivre: linkMercadoLivre.trim(),
-          // A cópia ainda não é produto: fica sem o vínculo do original.
-          valores: valoresAtuais(),
-        }),
+        // A cópia ainda não é produto: fica sem o vínculo do original.
+        body: JSON.stringify({ nome: nomeCopia.trim(), ...corpoLinks(), valores: valoresAtuais() }),
       });
       if (!resposta.ok) {
-        setErroDuplicar(`${await mensagemDeErro(resposta)} (status ${resposta.status})`);
+        setErroDuplicar(await mensagemDeErro(resposta));
         return;
       }
       const { calculo } = await resposta.json();
@@ -431,24 +179,27 @@ export default function CalculadoraRapida({
   }
 
   async function criarProduto() {
-    if (!podeCriarProduto || !custoProducao || !cogs || precoSiteCentavos === null) return;
+    if (!podeCriarProduto || !res.custo || res.precoSiteCentavos === null) return;
     setSalvando(true);
     setErroSalvar(null);
     setAviso(null);
     try {
       const precosCanais: { shopee?: number; mercadoLivre?: number } = {};
-      if (resultados.shopee) precosCanais.shopee = resultados.shopee.precoCentavos;
-      if (resultados.mercadoLivre) precosCanais.mercadoLivre = resultados.mercadoLivre.precoCentavos;
+      const shopee = res.canais.shopee?.precoCentavos;
+      const mercadoLivre = res.canais.mercadoLivre?.precoCentavos;
+      if (shopee != null) precosCanais.shopee = shopee;
+      if (mercadoLivre != null) precosCanais.mercadoLivre = mercadoLivre;
 
       // O cadastro guarda a margem sobre o custo: converte o lucro do preço do site.
       const vendaSite = detalharVenda({
-        precoCentavos: precoSiteCentavos,
-        faixas: faixaUnica(taxasGlobais.siteTaxaPercentual, taxasGlobais.siteTaxaFixaCentavos),
-        custoCentavos: cogs.totalCentavos,
+        precoCentavos: res.precoSiteCentavos,
+        faixas: faixaUnica(taxaSite.percentual, taxaSite.fixaCentavos),
+        custoCentavos: res.custo.totalCentavos,
         anuncioPercentual: 0,
+        impostoPercentual: res.impostoPercentual,
       });
       const margemSobreCusto =
-        cogs.totalCentavos > 0 ? Math.max(0, Math.round((vendaSite.lucroCentavos / cogs.totalCentavos) * 100)) : 0;
+        res.custo.totalCentavos > 0 ? Math.max(0, Math.round((vendaSite.lucroCentavos / res.custo.totalCentavos) * 100)) : 0;
 
       const resposta = await fetch("/api/produtos", {
         method: "POST",
@@ -456,12 +207,12 @@ export default function CalculadoraRapida({
         body: JSON.stringify({
           nome: nome.trim(),
           descricao: "Rascunho criado pela calculadora de preço — completar a descrição.",
-          preco: precoSiteCentavos,
+          preco: res.precoSiteCentavos,
           estoque: 0,
           fotos: [],
-          custoProducao,
+          custoProducao: paraCustoProducao(valores.impressao, res.custo),
           taxasCanais: {
-            shopeeTaxaPercentual: resultados.shopee?.venda.faixa.percentual ?? numero(canais.shopee.taxaPercentual),
+            shopeeTaxaPercentual: res.canais.shopee?.venda?.faixa.percentual ?? numero(valores.canais.shopee.taxaPercentual),
             margemDesejadaPercentual: margemSobreCusto,
           },
           precosCanais,
@@ -485,801 +236,149 @@ export default function CalculadoraRapida({
     }
   }
 
+  const custo = res.custo;
+  const extrasCentavos = custo ? custo.embalagemCentavos + custo.acabamentoCentavos + custo.maoDeObraCentavos + custo.outrosCentavos : 0;
+
+  const rodape = (
+    <div className={calc.salvar}>
+      <button type="button" className={styles.btnPrimary} disabled={!podeSalvarCalculo} onClick={salvarCalculo}>
+        {salvando ? "Salvando…" : calculoId ? "Salvar alterações" : "Salvar cálculo"}
+      </button>
+      <span className={styles.mlLinkAviso}>
+        {nome.trim() === "" ? "Dê um nome ao produto (em Modelo) para salvar." : "Fica em \"Cálculos salvos\" para você voltar e ajustar. Ainda não vira produto."}
+      </span>
+      {aviso && <span className={styles.formSuccess}>{aviso}</span>}
+      {erroSalvar && <span className={styles.fieldError}>{erroSalvar}</span>}
+
+      {calculoId &&
+        (nomeCopia === null ? (
+          <button
+            type="button"
+            className={styles.btnGhost}
+            onClick={() => {
+              setErroDuplicar(null);
+              setNomeCopia(`${nome.trim()} (cópia)`);
+            }}
+          >
+            Duplicar com outro nome
+          </button>
+        ) : (
+          <div className={calc.duplicar}>
+            <div className={styles.field}>
+              <label htmlFor="nomeCopia">Nome da cópia</label>
+              <input
+                id="nomeCopia"
+                value={nomeCopia}
+                autoFocus
+                onChange={(e) => setNomeCopia(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") duplicarCalculo();
+                  if (e.key === "Escape") setNomeCopia(null);
+                }}
+                placeholder="Ex: Gato 10 cm"
+              />
+            </div>
+            <span className={styles.mlLinkAviso}>
+              Copia tudo o que está na tela (mesmo o que não foi salvo) e abre a cópia para você ajustar tempo, filamento e
+              altura. Este cálculo continua como está.
+            </span>
+            <div className={calc.opcoes}>
+              <button type="button" className={styles.btnPrimary} disabled={nomeCopia.trim() === "" || duplicando} onClick={duplicarCalculo}>
+                {duplicando ? "Duplicando…" : "Criar cópia"}
+              </button>
+              <button type="button" className={styles.btnGhost} onClick={() => setNomeCopia(null)}>
+                Cancelar
+              </button>
+            </div>
+            {erroDuplicar && <span className={styles.fieldError}>{erroDuplicar}</span>}
+          </div>
+        ))}
+
+      {produtoId ? (
+        <span className={styles.formSuccess}>
+          Já virou produto: <Link href={`/admin/produtos/${produtoId}/editar`}>abrir o rascunho do produto</Link>
+        </span>
+      ) : (
+        <>
+          <button type="button" className={styles.btnGhost} disabled={!podeCriarProduto} onClick={criarProduto}>
+            Transformar em produto rascunho
+          </button>
+          {res.precoSiteCentavos !== null && (
+            <span className={styles.mlLinkAviso}>
+              Cria o produto (fora da loja) com custo, margem e preços da Shopee e do Mercado Livre. Preço no site:{" "}
+              {reais(res.precoSiteCentavos)}.
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div className={calc.grade}>
       <div className={calc.entradas}>
-        <section className={calc.bloco}>
-          <h2>Custo da peça</h2>
-          <div className={calc.campos3}>
-            <Campo id="tempo" rotulo="Tempo de impressão" unidade="h" valor={custo.tempoImpressaoHoras} onChange={alterarCusto("tempoImpressaoHoras")} dica="De 1 peça. Ex: 1.5" />
-            <Campo id="peso" rotulo="Filamento usado" unidade="g" valor={custo.pesoPecaGramas} onChange={alterarCusto("pesoPecaGramas")} />
-            <Campo id="altura" rotulo="Altura da peça (opcional)" unidade="cm" valor={alturaCm} onChange={setAlturaCm} dica="Para separar tamanhos: gato 5 cm, 10 cm…" />
-            <Campo id="perda" rotulo="Perda" unidade="%" valor={custo.margemPerdaPercentual} onChange={alterarCusto("margemPerdaPercentual")} dica="Purga, suportes, falhas" />
-            <Campo id="filamento" rotulo="Preço do filamento" unidade="R$/kg" valor={custo.precoCarreteReais} onChange={alterarCusto("precoCarreteReais")} />
-            <Campo id="energia" rotulo="Luz" unidade="R$/kWh" valor={custo.tarifaEnergiaReais} onChange={alterarCusto("tarifaEnergiaReais")} />
-            <Campo id="embalagem" rotulo="Embalagem" unidade="R$" valor={custo.custoEmbalagemReais} onChange={alterarCusto("custoEmbalagemReais")} dica="Saquinho, caixa…" />
-          </div>
-          <details className={calc.ajustes}>
-            <summary>Impressora e mão de obra (já preenchidos)</summary>
-            <div className={calc.campos3}>
-              <Campo id="consumo" rotulo="Consumo da impressora" unidade="kW" valor={custo.consumoEletricoKwh} onChange={alterarCusto("consumoEletricoKwh")} />
-              <Campo id="impressora" rotulo="Preço da impressora" unidade="R$" valor={custo.precoImpressoraReais} onChange={alterarCusto("precoImpressoraReais")} />
-              <Campo id="vida" rotulo="Vida útil" unidade="h" valor={custo.vidaUtilImpressoraHoras} onChange={alterarCusto("vidaUtilImpressoraHoras")} />
-              <Campo id="maoObra" rotulo="Mão de obra por peça" unidade="h" valor={custo.tempoMaoDeObraHoras} onChange={alterarCusto("tempoMaoDeObraHoras")} />
-              <Campo id="valorHora" rotulo="Valor da hora" unidade="R$" valor={custo.valorHoraTrabalhoReais} onChange={alterarCusto("valorHoraTrabalhoReais")} />
-            </div>
-          </details>
-          <p className={calc.custoTotal}>
-            {cogs ? (
-              <>
-                Custo por peça: <strong>{reais(cogs.totalCentavos)}</strong>
-                <span className={styles.mlLinkAviso}>
-                  {" "}
-                  filamento {reais(cogs.custoFilamentoCentavos)} · luz {reais(cogs.custoEnergiaCentavos)} · embalagem{" "}
-                  {reais(cogs.custoEmbalagemCentavos)} · impressora {reais(cogs.custoDepreciacaoCentavos)} · mão de obra{" "}
-                  {reais(cogs.custoMaoDeObraCentavos)}
-                </span>
-              </>
-            ) : (
-              <span className={styles.mlLinkAviso}>Preencha tempo e filamento usado para ver o custo.</span>
-            )}
-          </p>
-        </section>
-
-        <section className={calc.bloco}>
-          <h2>Lucro e anúncio</h2>
-          <Campo
-            id="margem"
-            rotulo="Quero ganhar"
-            unidade="% do preço"
-            valor={margem}
-            onChange={setMargem}
-            dica="Quanto de cada venda fica para você, já pagos custo, taxa e anúncio. Ex: 25 = R$ 10 numa venda de R$ 40."
-          />
-
-          <div className={styles.field}>
-            <label>Como vai pagar o anúncio (Ads)?</label>
-            <div className={calc.opcoes}>
-              {MODOS_ANUNCIO.map(({ modo, rotulo }) => (
-                <button
-                  key={modo}
-                  type="button"
-                  className={anuncio.modo === modo ? styles.btnPrimary : styles.btnGhost}
-                  aria-pressed={anuncio.modo === modo}
-                  onClick={() => setAnuncio((atual) => ({ ...atual, modo }))}
-                >
-                  {rotulo}
-                </button>
-              ))}
-            </div>
-            <span className={styles.mlLinkAviso}>
-              {MODOS_ANUNCIO.find((m) => m.modo === anuncio.modo)?.explicacao}
-            </span>
-          </div>
-
-          {anuncio.modo !== "sem" && (
-            <div className={calc.campos3}>
-              <Campo
-                id="roasMeta"
-                rotulo="Meta de ROAS"
-                unidade="x"
-                valor={anuncio.roasMeta}
-                onChange={alterarAnuncio("roasMeta")}
-                dica={
-                  roasValido
-                    ? `R$ ${formatarRoas(roas)} vendidos a cada R$ 1 de anúncio (${formatarAcos(roas)} da venda vai para o anúncio).`
-                    : "Ex: 8"
-                }
-              />
-              {anuncio.modo === "bolso" && (
-                <Campo
-                  id="verbaMes"
-                  rotulo="Verba do bolso por mês"
-                  unidade="R$"
-                  valor={anuncio.verbaMesReais}
-                  onChange={alterarAnuncio("verbaMesReais")}
-                  dica="Dinheiro que você separa para anúncio, fora do preço."
-                />
-              )}
-            </div>
-          )}
-
-          <div className={calc.linhaCanal}>
-            <strong>Shopee</strong>
-            <label className={canais.shopee.taxaPorFaixa !== false ? calc.checkFaixa : calc.checkFaixaCurto}>
-              <input
-                type="checkbox"
-                checked={canais.shopee.taxaPorFaixa !== false}
-                onChange={(e) =>
-                  setCanais((atual) => ({ ...atual, shopee: { ...atual.shopee, taxaPorFaixa: e.target.checked } }))
-                }
-              />
-              Taxa automática pela faixa de preço
-            </label>
-            {canais.shopee.taxaPorFaixa === false && (
-              <>
-                <Campo id="taxa-shopee" rotulo="Comissão" unidade="%" valor={canais.shopee.taxaPercentual} onChange={alterarCanal("shopee", "taxaPercentual")} />
-                <Campo id="fixa-shopee" rotulo="Taxa fixa por venda" unidade="R$" valor={canais.shopee.taxaFixaReais} onChange={alterarCanal("shopee", "taxaFixaReais")} />
-              </>
-            )}
-          </div>
-          {canais.shopee.taxaPorFaixa !== false && (
-            <>
-              <label className={calc.checkFaixaCurto}>
-                <input
-                  type="checkbox"
-                  checked={canais.shopee.cpfAcima450Pedidos === true}
-                  onChange={(e) =>
-                    setCanais((atual) => ({ ...atual, shopee: { ...atual.shopee, cpfAcima450Pedidos: e.target.checked } }))
-                  }
-                />
-                Conta CPF com mais de 450 pedidos em 90 dias (+ R$ 3 por item)
-              </label>
-              <span className={styles.mlLinkAviso}>
-                Até R$ 79,99: 20% + R$ 4,50 · R$ 80–99,99: 14% + R$ 16 · R$ 100–199,99: 14% + R$ 20 · R$ 200+: 14% +
-                R$ 26. Já inclui frete grátis e taxa de transação (tabela de 01/10/2026).
-              </span>
-            </>
-          )}
-          <div className={calc.linhaCanal}>
-            <strong>Mercado Livre</strong>
-            <Campo id="taxa-mercadoLivre" rotulo="Comissão" unidade="%" valor={canais.mercadoLivre.taxaPercentual} onChange={alterarCanal("mercadoLivre", "taxaPercentual")} dica="Clássico ~14% · Premium ~19%" />
-            <Campo id="fixa-mercadoLivre" rotulo="Custo fixo abaixo de R$ 79" unidade="R$" valor={canais.mercadoLivre.taxaFixaReais} onChange={alterarCanal("mercadoLivre", "taxaFixaReais")} dica="Por unidade, varia com o peso" />
-          </div>
-        </section>
-
-        <section className={calc.bloco}>
-          <h2>Concorrente</h2>
-          <div className={calc.campos3}>
-            <Campo
-              id="precoConcorrente"
-              rotulo="Preço normal dele (opcional)"
-              unidade="R$"
-              valor={precoConcorrente}
-              onChange={setPrecoConcorrente}
-              dica="O preço de 1 unidade do mesmo produto, fora de promoção."
-            />
-            <Campo
-              id="precoOferta"
-              rotulo="Preço na oferta relâmpago (se tiver)"
-              unidade="R$"
-              valor={precoOferta}
-              onChange={setPrecoOferta}
-              dica="Quanto ele cobra quando entra em oferta relâmpago."
-            />
-            <Campo
-              id="vendasConcorrente"
-              rotulo="Vendas dele no mês (opcional)"
-              unidade="un"
-              valor={vendasConcorrente}
-              onChange={(v) => setVendasConcorrente(v.replace(/\D/g, ""))}
-              dica={(() => {
-                const vendas = Number(vendasConcorrente);
-                const preco = numero(precoConcorrente);
-                return vendas > 0 && preco > 0
-                  ? `Ele fatura ~${reais(Math.round(preco * 100) * vendas)} por mês com esse produto.`
-                  : "Quantas unidades ele vendeu no mês, como aparece no anúncio.";
-              })()}
-            />
-          </div>
-        </section>
-
-        <section className={calc.bloco}>
-          <h2>Produção no mês</h2>
-          <div className={calc.campos3}>
-            <Campo id="pecasMesa" rotulo="Peças por mesa" unidade="un" valor={producao.pecasPorMesa} onChange={alterarProducao("pecasPorMesa")} dica="Quantas cabem na mesa cheia" />
-            <Campo id="horasMesa" rotulo="Tempo da mesa cheia" unidade="h" valor={producao.horasMesaCheia} onChange={alterarProducao("horasMesaCheia")} />
-            <Campo id="horasDia" rotulo="Horas de impressão por dia" unidade="h" valor={producao.horasPorDia} onChange={alterarProducao("horasPorDia")} />
-            <Campo id="diasMes" rotulo="Dias no mês" unidade="dias" valor={producao.diasPorMes} onChange={alterarProducao("diasPorMes")} />
-            <Campo
-              id="pecasMes"
-              rotulo="Peças no mês"
-              unidade="un"
-              valor={pecasMes}
-              onChange={setPecasMes}
-              dica={
-                producaoMensal
-                  ? `Automático: ${producaoMensal.mesasPorDia} mesas/dia = ${producaoMensal.pecasPorDia} peças/dia. Pode alterar.`
-                  : "Calculado pela mesa, ou digite."
-              }
-            />
-          </div>
-        </section>
+        <p className={calc.introducao}>
+          Preencha a peça, os custos e como vai vender: o preço aparece no resumo na hora.
+        </p>
+        <SecaoModelo
+          nome={nome}
+          setNome={setNome}
+          linkModelo={linkModelo}
+          setLinkModelo={setLinkModelo}
+          linkShopee={linkShopee}
+          setLinkShopee={setLinkShopee}
+          linkMercadoLivre={linkMercadoLivre}
+          setLinkMercadoLivre={setLinkMercadoLivre}
+          alturaCm={valores.alturaCm ?? ""}
+          setAlturaCm={(alturaCm) => mudar({ alturaCm })}
+        />
+        <SecaoImpressao
+          impressao={valores.impressao}
+          alterar={alterarImpressao}
+          resumo={custo ? `${reais(custo.totalCentavos)} por unidade` : "faltam dados"}
+        />
+        <SecaoCustosExtras impressao={valores.impressao} alterar={alterarImpressao} resumo={custo ? reais(extrasCentavos) : undefined} />
+        <SecaoPrecificacao
+          precificacao={valores.precificacao}
+          alterar={alterarPrecificacao}
+          margem={valores.margemMinimaPrecoPercentual ?? ""}
+          setMargem={(margemMinimaPrecoPercentual) => mudar({ margemMinimaPrecoPercentual })}
+          precoConcorrenteReais={valores.precoConcorrenteReais ?? ""}
+          resumo={valores.precificacao.modo === "alvo" ? "Preço alvo" : `Margem de ${valores.margemMinimaPrecoPercentual || "?"}%`}
+        />
+        <SecaoCanalVenda valores={valores} aba={aba} setAba={setAba} alterarDireta={alterarDireta} alterarCanal={alterarCanal} />
+        <SecaoAds anuncio={anuncio} alterar={alterarAnuncio} />
+        <SecaoConcorrente
+          preco={valores.precoConcorrenteReais ?? ""}
+          oferta={valores.precoConcorrenteOfertaReais ?? ""}
+          vendas={valores.vendasConcorrenteMes ?? ""}
+          setPreco={(precoConcorrenteReais) => mudar({ precoConcorrenteReais })}
+          setOferta={(precoConcorrenteOfertaReais) => mudar({ precoConcorrenteOfertaReais })}
+          setVendas={(vendasConcorrenteMes) => mudar({ vendasConcorrenteMes })}
+        />
+        <SecaoProducao
+          horasPorDia={valores.producao.horasPorDia}
+          diasPorMes={valores.producao.diasPorMes}
+          pecasMes={valores.pecasPorMes}
+          setHorasPorDia={alterarProducao("horasPorDia")}
+          setDiasPorMes={alterarProducao("diasPorMes")}
+          setPecasMes={(pecasPorMes) => mudar({ pecasPorMes })}
+          producao={res.producao}
+        />
       </div>
 
-      <aside className={calc.resultado} aria-live="polite">
-        {(Object.keys(NOME_MARKETPLACE) as Marketplace[]).map((canal) => {
-          const r = resultados[canal];
-          const ehMl = canal === "mercadoLivre";
-          const retorno =
-            r && anuncio.modo === "bolso" && roasValido
-              ? calcularRetornoVerba({
-                  verbaCentavos,
-                  roas,
-                  precoCentavos: r.precoCentavos,
-                  lucroPorPecaCentavos: r.venda.lucroCentavos,
-                })
-              : null;
-          const lucroMesCentavos = r
-            ? r.venda.lucroCentavos * pecasMesNumero - (anuncio.modo === "bolso" ? verbaCentavos : 0)
-            : 0;
-
-          return (
-            <div key={canal} className={calc.cartaoCanal}>
-              <span className={calc.nomeCanal}>{NOME_MARKETPLACE[canal]}</span>
-              {!cogs || !margemValida ? (
-                <span className={styles.mlLinkAviso}>Preencha o custo da peça e quanto quer ganhar.</span>
-              ) : !r ? (
-                <span className={styles.fieldError}>
-                  Não existe preço que pague taxa{anuncio.modo === "embutido" ? ", anúncio" : ""} e {margemNumero}% de
-                  lucro. Baixe o lucro{anuncio.modo === "embutido" ? " ou suba a meta de ROAS" : ""}.
-                </span>
-              ) : (
-                <>
-                  <span className={calc.preco}>{reais(r.precoCentavos)}</span>
-                  <span className={calc.precoLegenda}>
-                    venda por esse preço
-                    {anuncio.modo === "embutido" &&
-                      r.precoSemAnuncioCentavos !== null &&
-                      ` · sem anúncio seria ${reais(r.precoSemAnuncioCentavos)}`}
-                  </span>
-                  <dl className={calc.conta}>
-                    <dt>Taxa ({descreverFaixa(r.venda.faixa)})</dt>
-                    <dd>− {reais(r.venda.taxaCentavos)}</dd>
-                    {anuncio.modo === "embutido" && (
-                      <>
-                        <dt>Anúncio (Ads)</dt>
-                        <dd>− {reais(r.venda.anuncioCentavos)}</dd>
-                      </>
-                    )}
-                    <dt>Custo da peça</dt>
-                    <dd>− {reais(cogs.totalCentavos)}</dd>
-                    <dt className={calc.lucro}>Seu lucro por peça</dt>
-                    <dd className={calc.lucro}>
-                      {reais(r.venda.lucroCentavos)} ({r.venda.margemPrecoPercentual.toFixed(0)}%)
-                    </dd>
-                  </dl>
-                  {canal === "shopee" && canais.shopee.taxaPorFaixa !== false && r.precoCentavos < 1200 && (
-                    <span className={styles.fieldWarning}>
-                      Abaixo de R$ 12 a Shopee cobra uma taxa por item menor (regressiva). A conta usa a padrão, então
-                      o lucro real fica um pouco maior.
-                    </span>
-                  )}
-
-                  {anuncio.modo === "embutido" && roasValido && (
-                    <div className={calc.anuncio}>
-                      <strong>Anúncio pago pelo comprador (já está no preço)</strong>
-                      <PreencherCampanha
-                        ehMl={ehMl}
-                        roas={roas}
-                        custoPorVendaCentavos={r.venda.anuncioCentavos}
-                        pecasMes={pecasMesNumero}
-                        diasMes={numero(producao.diasPorMes)}
-                      />
-                      <div className={calc.tabelaRoas}>
-                        <strong>Quer um preço menor? Suba a Meta de ROAS</strong>
-                        <span className={styles.mlLinkAviso}>
-                          ROAS maior = menos anúncio por venda = preço menor. Mas a {ehMl ? "plataforma" : "Shopee"}{" "}
-                          mostra menos o produto.
-                        </span>
-                        {[5, 8, 10, 15, 20].map((opcao) => {
-                          const preco = calcularPrecoPorMargem({
-                            custoCentavos: cogs.totalCentavos,
-                            faixas: faixasDoCanal(canal)!,
-                            margemPrecoPercentual: margemNumero,
-                            anuncioPercentual: 100 / opcao,
-                          });
-                          if (preco === null) return null;
-                          return (
-                            <button
-                              key={opcao}
-                              type="button"
-                              className={opcao === roas ? calc.opcaoRoasAtual : calc.opcaoRoas}
-                              onClick={() => setAnuncio((atual) => ({ ...atual, roasMeta: String(opcao) }))}
-                            >
-                              <span>{ehMl ? `ACOS ${formatarAcos(opcao)}` : `ROAS ${opcao}`}</span>
-                              <strong>{reais(preco)}</strong>
-                            </button>
-                          );
-                        })}
-                        {r.precoSemAnuncioCentavos !== null && (
-                          <span className={styles.mlLinkAviso}>Sem anúncio: {reais(r.precoSemAnuncioCentavos)}</span>
-                        )}
-                      </div>
-                      <strong>Depois, confira o ROAS real no painel:</strong>
-                      <span className={calc.semaforoVerde}>
-                        ROAS real {formatarRoas(roas)} ou mais: você ganha {margemNumero}% ou mais
-                      </span>
-                      {r.limite.roasPrejuizo !== null && (
-                        <>
-                          <span className={calc.semaforoAmarelo}>
-                            Entre {formatarRoas(r.limite.roasPrejuizo)} e {formatarRoas(roas)}: lucra, mas menos de{" "}
-                            {margemNumero}%
-                          </span>
-                          <span className={calc.roasPrejuizo}>
-                            Abaixo de {formatarRoas(r.limite.roasPrejuizo)}: prejuízo. Pause o anúncio.
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {anuncio.modo === "bolso" && retorno && (
-                    <div className={calc.anuncio}>
-                      <strong>Anúncio pago do seu bolso</strong>
-                      <PreencherCampanha
-                        ehMl={ehMl}
-                        roas={roas}
-                        custoPorVendaCentavos={Math.round(r.precoCentavos / roas)}
-                        pecasMes={pecasMesNumero}
-                        diasMes={numero(producao.diasPorMes)}
-                        verbaMesCentavos={verbaCentavos}
-                        onUsarVerba={alterarAnuncio("verbaMesReais")}
-                      />
-                      <span>
-                        Cada venda pelo anúncio custa ~{reais(Math.round(r.precoCentavos / roas))} e deixa ~
-                        <strong>{reais(r.venda.lucroCentavos - Math.round(r.precoCentavos / roas))}</strong> de lucro
-                      </span>
-                      {verbaCentavos > 0 ? (
-                        <>
-                          <span>
-                            {reais(verbaCentavos)} devem trazer ~<strong>{retorno.vendas} vendas</strong> (
-                            {reais(retorno.receitaCentavos)})
-                          </span>
-                          <span className={retorno.saldoCentavos >= 0 ? calc.semaforoVerde : calc.roasPrejuizo}>
-                            Lucro dessas vendas {reais(retorno.lucroVendasCentavos)} − verba {reais(verbaCentavos)} ={" "}
-                            {reais(retorno.saldoCentavos)}
-                          </span>
-                          {retorno.vendas > pecasMesNumero && pecasMesNumero > 0 && (
-                            <span className={calc.semaforoAmarelo}>
-                              Mais vendas que a sua produção do mês ({pecasMesNumero} peças).
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span className={styles.mlLinkAviso}>Informe a verba do mês para ver o retorno.</span>
-                      )}
-                      {retorno.roasEquilibrio !== null && (
-                        <span className={calc.roasPrejuizo}>
-                          ROAS real abaixo de {formatarRoas(retorno.roasEquilibrio)}: o anúncio não se paga. Pause.
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {(() => {
-                    const faixas = faixasDoCanal(canal)!;
-                    const concorrenteCentavos = Math.round((numero(precoConcorrente) || 0) * 100);
-                    const embalagemCentavos = cogs.custoEmbalagemCentavos;
-                    const kits = [2, 3, 4].map((unidades) => ({
-                      unidades,
-                      preco: calcularPrecoPorMargem({
-                        custoCentavos: calcularCustoKit(cogs.totalCentavos, embalagemCentavos, unidades),
-                        faixas,
-                        margemPrecoPercentual: margemNumero,
-                        anuncioPercentual: anuncioEmbutidoPercentual,
-                      }),
-                    }));
-
-                    let concorrente = null;
-                    if (concorrenteCentavos > 0) {
-                      const vendaNoPreco = detalharVenda({
-                        precoCentavos: concorrenteCentavos,
-                        faixas,
-                        custoCentavos: cogs.totalCentavos,
-                        anuncioPercentual: anuncioEmbutidoPercentual,
-                      });
-                      const custoMaximo = calcularCustoMaximo({
-                        precoCentavos: concorrenteCentavos,
-                        faixas,
-                        anuncioPercentual: anuncioEmbutidoPercentual,
-                        margemPrecoPercentual: margemNumero,
-                      });
-                      const precoMinimo = calcularPrecoPorMargem({
-                        custoCentavos: cogs.totalCentavos,
-                        faixas,
-                        margemPrecoPercentual: 0,
-                        anuncioPercentual: anuncioEmbutidoPercentual,
-                      });
-                      const kitQueBate = kits.find(
-                        (k) => k.preco !== null && Math.ceil(k.preco / k.unidades) <= concorrenteCentavos
-                      );
-                      concorrente = (
-                        <div className={calc.concorrente}>
-                          <strong>Contra o concorrente ({reais(concorrenteCentavos)})</strong>
-                          {(() => {
-                            // Comparativo sempre pagando o anúncio na meta de ROAS (mesmo no modo "sem anúncio").
-                            const roasComparar = roasValido ? roas : 8;
-                            const ofertaCentavos = Math.round((numero(precoOferta) || 0) * 100);
-                            const precosDele = [
-                              { rotulo: "Normal", centavos: concorrenteCentavos },
-                              ...(ofertaCentavos > 0 ? [{ rotulo: "Oferta relâmpago", centavos: ofertaCentavos }] : []),
-                            ];
-                            return (
-                              <div className={calc.comparativo}>
-                                <span className={styles.mlLinkAviso}>
-                                  Comparativo pagando anúncio com {ehMl ? `ACOS ${formatarAcos(roasComparar)}` : `ROAS ${formatarRoas(roasComparar)}`}
-                                  {anuncio.modo === "embutido" ? "" : " (a sua meta, mesmo sem anúncio escolhido)"}.
-                                </span>
-                                <div className={calc.tabelaKitsRolagem}>
-                                  <table className={calc.tabelaKits}>
-                                    <thead>
-                                      <tr>
-                                        <th scope="col">Preço dele</th>
-                                        <th scope="col">Nosso com {margemNumero}%</th>
-                                        <th scope="col">Para igualar o dele</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {precosDele.map((p) => {
-                                        const c = compararComConcorrente({
-                                          precoConcorrenteCentavos: p.centavos,
-                                          custoCentavos: cogs.totalCentavos,
-                                          faixas,
-                                          roas: roasComparar,
-                                          margemPrecoPercentual: margemNumero,
-                                        });
-                                        const ganhamos = c.diferencaCentavos !== null && c.diferencaCentavos <= 0;
-                                        return (
-                                          <tr key={p.rotulo}>
-                                            <th scope="row">
-                                              {reais(p.centavos)}
-                                              <span className={calc.cadaUm}>{p.rotulo}</span>
-                                            </th>
-                                            <td>
-                                              {c.nossoPrecoCentavos !== null ? reais(c.nossoPrecoCentavos) : "impossível"}
-                                              {c.diferencaCentavos !== null && (
-                                                <span className={ganhamos ? calc.ganhamos : calc.perdemos}>
-                                                  {ganhamos
-                                                    ? `${reais(-c.diferencaCentavos)} mais barato`
-                                                    : `${reais(c.diferencaCentavos)} mais caro`}
-                                                </span>
-                                              )}
-                                            </td>
-                                            <td>
-                                              {ganhamos ? (
-                                                <span className={calc.ganhamos}>
-                                                  Já ganhamos. No preço dele a margem sobe para{" "}
-                                                  {c.margemNoPrecoDelePercentual.toFixed(0)}%
-                                                </span>
-                                              ) : c.lucroNoPrecoDeleCentavos > 0 ? (
-                                                <span>
-                                                  Baixar a margem para{" "}
-                                                  <strong>{Math.floor(c.margemNoPrecoDelePercentual)}%</strong> (
-                                                  {reais(c.lucroNoPrecoDeleCentavos)} por peça)
-                                                </span>
-                                              ) : (
-                                                <span className={calc.perdemos}>
-                                                  Não dá: com esse anúncio o mínimo sem lucro é{" "}
-                                                  {c.precoEmpateCentavos !== null ? reais(c.precoEmpateCentavos) : "impossível"}.
-                                                  Suba o ROAS ou baixe o custo.
-                                                </span>
-                                              )}
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                          <span className={vendaNoPreco.lucroCentavos >= 0 ? undefined : calc.roasPrejuizo}>
-                            Vendendo por {reais(concorrenteCentavos)} você{" "}
-                            {vendaNoPreco.lucroCentavos >= 0 ? "ganha" : "perde"}{" "}
-                            <strong>{reais(Math.abs(vendaNoPreco.lucroCentavos))}</strong> por peça (
-                            {vendaNoPreco.margemPrecoPercentual.toFixed(0)}%)
-                          </span>
-                          {(() => {
-                            const ofertaCentavos = Math.round((numero(precoOferta) || 0) * 100);
-                            if (ofertaCentavos <= 0) return null;
-                            const vendaNaOferta = detalharVenda({
-                              precoCentavos: ofertaCentavos,
-                              faixas,
-                              custoCentavos: cogs.totalCentavos,
-                              anuncioPercentual: anuncioEmbutidoPercentual,
-                            });
-                            return (
-                              <span className={vendaNaOferta.lucroCentavos >= 0 ? calc.semaforoAmarelo : calc.roasPrejuizo}>
-                                Na oferta relâmpago dele ({reais(ofertaCentavos)}) você{" "}
-                                {vendaNaOferta.lucroCentavos >= 0 ? "ainda ganharia" : "perderia"}{" "}
-                                <strong>{reais(Math.abs(vendaNaOferta.lucroCentavos))}</strong> por peça (
-                                {vendaNaOferta.margemPrecoPercentual.toFixed(0)}%)
-                              </span>
-                            );
-                          })()}
-                          {precoMinimo !== null && <span>Abaixo de {reais(precoMinimo)} você tem prejuízo.</span>}
-                          {(() => {
-                            // Quanto de anúncio cabe vendendo no preço dele e ainda ganhando a margem.
-                            const vendaSemAnuncio = detalharVenda({
-                              precoCentavos: concorrenteCentavos,
-                              faixas,
-                              custoCentavos: cogs.totalCentavos,
-                              anuncioPercentual: 0,
-                            });
-                            const limite = calcularLimiteAnuncio({
-                              precoCentavos: concorrenteCentavos,
-                              taxaCentavos: vendaSemAnuncio.taxaCentavos,
-                              custoCentavos: cogs.totalCentavos,
-                              margemMinimaPrecoPercentual: margemNumero,
-                            });
-                            return limite.roasMinimo !== null ? (
-                              <span className={calc.semaforoVerde}>
-                                Vendendo no preço dele com {margemNumero}% de lucro, dá para anunciar com{" "}
-                                {ehMl ? `ACOS objetivo até ${formatarAcos(limite.roasMinimo)}` : `Meta de ROAS ${formatarRoas(limite.roasMinimo)}`}{" "}
-                                (até {reais(limite.tetoAnuncioCentavos)} de anúncio por venda).
-                              </span>
-                            ) : (
-                              <span className={calc.semaforoAmarelo}>
-                                No preço dele não sobra nada para anúncio com {margemNumero}% de lucro.
-                              </span>
-                            );
-                          })()}
-                          <span>
-                            Para ganhar {margemNumero}% nesse preço, sua peça teria que custar{" "}
-                            {custoMaximo > 0 ? (
-                              <>
-                                no máximo <strong>{reais(custoMaximo)}</strong> (hoje custa {reais(cogs.totalCentavos)})
-                              </>
-                            ) : (
-                              <strong>menos que zero — impossível</strong>
-                            )}
-                          </span>
-                          {r.precoCentavos > concorrenteCentavos && (
-                            <span className={kitQueBate ? calc.semaforoVerde : calc.semaforoAmarelo}>
-                              {kitQueBate
-                                ? `Kit com ${kitQueBate.unidades} sai ${reais(Math.ceil(kitQueBate.preco! / kitQueBate.unidades))} cada, com seus ${margemNumero}% — mais barato que ele por unidade.`
-                                : "Nem em kit fica mais barato que ele por unidade. Concorra com qualidade, fotos e cores, não com preço."}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <>
-                        {concorrente}
-                        <div className={calc.kits}>
-                          <strong>Avulso ou em kit? (kit usa uma embalagem só)</strong>
-                          <span className={styles.mlLinkAviso}>
-                            Mês = as {pecasMesNumero} peças da produção vendidas desse jeito
-                            {anuncio.modo === "bolso" && verbaCentavos > 0 ? ", já tirando a verba do bolso" : ""}.
-                          </span>
-                          <div className={calc.tabelaKitsRolagem}>
-                            <table className={calc.tabelaKits}>
-                              <thead>
-                                <tr>
-                                  <th scope="col">Venda</th>
-                                  <th scope="col">Preço</th>
-                                  <th scope="col">Lucro / pedido</th>
-                                  <th scope="col">Lucro / peça</th>
-                                  <th scope="col">Bruto no mês</th>
-                                  <th scope="col">Líquido no mês</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {[{ unidades: 1, preco: r.precoCentavos }, ...kits].map((k) => {
-                                  if (k.preco === null) return null;
-                                  const custoPedido = calcularCustoKit(cogs.totalCentavos, embalagemCentavos, k.unidades);
-                                  const lucroPedido = detalharVenda({
-                                    precoCentavos: k.preco,
-                                    faixas,
-                                    custoCentavos: custoPedido,
-                                    anuncioPercentual: anuncioEmbutidoPercentual,
-                                  }).lucroCentavos;
-                                  const pedidosMes = Math.floor(pecasMesNumero / k.unidades);
-                                  const liquidoMes =
-                                    lucroPedido * pedidosMes - (anuncio.modo === "bolso" ? verbaCentavos : 0);
-                                  return (
-                                    <tr key={k.unidades}>
-                                      <th scope="row">{k.unidades === 1 ? "Avulso" : `Kit ${k.unidades}`}</th>
-                                      <td>
-                                        {reais(k.preco)}
-                                        {k.unidades > 1 && (
-                                          <span className={calc.cadaUm}>{reais(Math.ceil(k.preco / k.unidades))} cada</span>
-                                        )}
-                                      </td>
-                                      <td>{reais(lucroPedido)}</td>
-                                      <td>{reais(Math.round(lucroPedido / k.unidades))}</td>
-                                      <td>{reais(k.preco * pedidosMes)}</td>
-                                      <td className={liquidoMes < 0 ? calc.roasPrejuizo : undefined}>
-                                        <strong>{reais(liquidoMes)}</strong>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
-
-                  <div className={calc.mes}>
-                    <span>Vendendo {pecasMesNumero} peças no mês</span>
-                    <span>
-                      Faturamento bruto <strong>{reais(r.precoCentavos * pecasMesNumero)}</strong>
-                    </span>
-                    <span>
-                      Lucro líquido{anuncio.modo === "bolso" && verbaCentavos > 0 ? " (− verba)" : ""}{" "}
-                      <strong>{reais(lucroMesCentavos)}</strong>
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })}
-
-        <div className={`${calc.cartaoCanal} ${calc.cartaoDireta}`}>
-          <span className={calc.nomeCanal}>Venda direta · sem taxa</span>
-          <span className={calc.avisoDireta}>
-            Só para vender fora dos marketplaces: em mãos, WhatsApp, Instagram ou feira. Não use este preço na Shopee nem
-            no Mercado Livre — lá a taxa sai do seu lucro.
-          </span>
-          {!cogs || !margemValida || precoDiretoCentavos === null ? (
-            <span className={styles.mlLinkAviso}>Preencha o custo da peça e quanto quer ganhar.</span>
-          ) : (
-            <>
-              <span className={calc.preco}>{reais(precoDiretoCentavos)}</span>
-              <span className={calc.precoLegenda}>sem taxa de plataforma e sem anúncio</span>
-              <dl className={calc.conta}>
-                <dt>Taxa</dt>
-                <dd>R$ 0,00</dd>
-                <dt>Custo da peça</dt>
-                <dd>− {reais(cogs.totalCentavos)}</dd>
-                <dt className={calc.lucro}>Seu lucro por peça</dt>
-                <dd className={calc.lucro}>
-                  {reais(precoDiretoCentavos - cogs.totalCentavos)} (
-                  {(((precoDiretoCentavos - cogs.totalCentavos) / precoDiretoCentavos) * 100).toFixed(0)}%)
-                </dd>
-              </dl>
-              <span className={styles.mlLinkAviso}>
-                O custo inclui a embalagem ({reais(cogs.custoEmbalagemCentavos)}). Se entregar sem embalagem, dá para
-                cobrar um pouco menos.
-              </span>
-              <div className={calc.mes}>
-                <span>Vendendo {pecasMesNumero} peças no mês</span>
-                <span>
-                  Faturamento bruto <strong>{reais(precoDiretoCentavos * pecasMesNumero)}</strong>
-                </span>
-                <span>
-                  Lucro líquido <strong>{reais((precoDiretoCentavos - cogs.totalCentavos) * pecasMesNumero)}</strong>
-                </span>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className={calc.salvar}>
-          <div className={styles.field}>
-            <label htmlFor="nomeRascunho">Nome do produto</label>
-            <input id="nomeRascunho" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Vaso geométrico" />
-          </div>
-          <div className={styles.field}>
-            <label htmlFor="linkModelo">Link do modelo (MakerWorld)</label>
-            <input
-              id="linkModelo"
-              type="url"
-              value={linkModelo}
-              onChange={(e) => setLinkModelo(e.target.value)}
-              placeholder="https://makerworld.com/..."
-            />
-            {/^https?:\/\/\S+$/.test(linkModelo.trim()) && (
-              <a href={linkModelo.trim()} target="_blank" rel="noopener noreferrer" className={styles.mlLinkAviso}>
-                Abrir modelo ↗
-              </a>
-            )}
-          </div>
-          <div className={styles.field}>
-            <label htmlFor="linkShopee">Mesmo produto na Shopee (opcional)</label>
-            <input
-              id="linkShopee"
-              type="url"
-              value={linkShopee}
-              onChange={(e) => setLinkShopee(e.target.value)}
-              placeholder="https://shopee.com.br/..."
-            />
-            {linkShopee.trim() && (
-              <a href={linkShopee.trim()} target="_blank" rel="noopener noreferrer" className={styles.mlLinkAviso}>
-                Abrir anúncio ↗
-              </a>
-            )}
-          </div>
-          <div className={styles.field}>
-            <label htmlFor="linkMercadoLivre">Mesmo produto no Mercado Livre (opcional)</label>
-            <input
-              id="linkMercadoLivre"
-              type="url"
-              value={linkMercadoLivre}
-              onChange={(e) => setLinkMercadoLivre(e.target.value)}
-              placeholder="https://www.mercadolivre.com.br/..."
-            />
-            {linkMercadoLivre.trim() && (
-              <a href={linkMercadoLivre.trim()} target="_blank" rel="noopener noreferrer" className={styles.mlLinkAviso}>
-                Abrir anúncio ↗
-              </a>
-            )}
-          </div>
-          <button type="button" className={styles.btnPrimary} disabled={!podeSalvarCalculo} onClick={salvarCalculo}>
-            {salvando ? "Salvando…" : calculoId ? "Salvar alterações" : "Salvar cálculo"}
-          </button>
-          <span className={styles.mlLinkAviso}>
-            Fica em &quot;Cálculos salvos&quot; para você voltar e ajustar. Ainda não vira produto.
-          </span>
-          {aviso && <span className={styles.formSuccess}>{aviso}</span>}
-          {erroSalvar && <span className={styles.fieldError}>{erroSalvar}</span>}
-
-          {calculoId &&
-            (nomeCopia === null ? (
-              <button
-                type="button"
-                className={styles.btnGhost}
-                onClick={() => {
-                  setErroDuplicar(null);
-                  setNomeCopia(`${nome.trim()} (cópia)`);
-                }}
-              >
-                Duplicar com outro nome
-              </button>
-            ) : (
-              <div className={calc.duplicar}>
-                <div className={styles.field}>
-                  <label htmlFor="nomeCopia">Nome da cópia</label>
-                  <input
-                    id="nomeCopia"
-                    value={nomeCopia}
-                    autoFocus
-                    onChange={(e) => setNomeCopia(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") duplicarCalculo();
-                      if (e.key === "Escape") setNomeCopia(null);
-                    }}
-                    placeholder="Ex: Gato 10 cm"
-                  />
-                </div>
-                <span className={styles.mlLinkAviso}>
-                  Copia tudo o que está na tela (mesmo o que não foi salvo) e abre a cópia para você ajustar tempo,
-                  filamento e altura. Este cálculo continua como está.
-                </span>
-                <div className={calc.opcoes}>
-                  <button
-                    type="button"
-                    className={styles.btnPrimary}
-                    disabled={nomeCopia.trim() === "" || duplicando}
-                    onClick={duplicarCalculo}
-                  >
-                    {duplicando ? "Duplicando…" : "Criar cópia"}
-                  </button>
-                  <button type="button" className={styles.btnGhost} onClick={() => setNomeCopia(null)}>
-                    Cancelar
-                  </button>
-                </div>
-                {erroDuplicar && <span className={styles.fieldError}>{erroDuplicar}</span>}
-              </div>
-            ))}
-
-          {produtoId ? (
-            <span className={styles.formSuccess}>
-              Já virou produto: <Link href={`/admin/produtos/${produtoId}/editar`}>abrir o rascunho do produto</Link>
-            </span>
-          ) : (
-            <>
-              <button type="button" className={styles.btnGhost} disabled={!podeCriarProduto} onClick={criarProduto}>
-                Transformar em produto rascunho
-              </button>
-              {precoSiteCentavos !== null && (
-                <span className={styles.mlLinkAviso}>
-                  Quando estiver pronto: cria o produto (fora da loja) com custo, margem e preços da Shopee e do
-                  Mercado Livre. Preço no site: {reais(precoSiteCentavos)}.
-                </span>
-              )}
-            </>
-          )}
-        </div>
-      </aside>
+      <Resumo
+        res={res}
+        aba={aba}
+        setAba={setAba}
+        anuncio={anuncio}
+        diasMes={numero(valores.producao.diasPorMes)}
+        precoConcorrenteReais={valores.precoConcorrenteReais ?? ""}
+        precoOfertaReais={valores.precoConcorrenteOfertaReais ?? ""}
+        onEscolherRoas={(roasMeta) => alterarAnuncio({ roasMeta })}
+        onUsarVerba={(verbaMesReais) => alterarAnuncio({ verbaMesReais })}
+        rodape={rodape}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { CalculadoraValores } from "@/lib/models/calculoPreco";
 import type { ModeloSugerido } from "@/lib/models/nicho";
 import { valoresPadrao } from "@/lib/produtos/calculadoraPadrao";
+import { separarHoras } from "@/lib/produtos/calculadoraValores";
 
 export interface CalculoDoModelo {
   nome: string;
@@ -13,9 +14,8 @@ export interface CalculoDoModelo {
 /**
  * Corpo do `POST /api/admin/calculos-preco` para um modelo da pesquisa de
  * nichos (specs/030, US2): valores padrão da calculadora com tempo e gramas
- * do perfil. Perfil de uma mesa também preenche a produção (1 peça por mesa,
- * para o usuário ajustar); com várias mesas a produção fica em branco e o
- * nome avisa para conferir, porque não dá para saber quantas peças saem.
+ * do perfil como uma mesa de 1 peça, para o usuário ajustar; com várias mesas
+ * o nome avisa para conferir, porque não dá para saber quantas peças saem.
  */
 export function montarCalculoDoModelo(entrada: {
   termo: string;
@@ -25,13 +25,17 @@ export function montarCalculoDoModelo(entrada: {
 }): CalculoDoModelo {
   const { termo, modelo, linkShopee, linkMercadoLivre } = entrada;
   const { segundos, gramas, mesas } = modelo.perfil;
-  const horas = String(Math.round(segundos / 36) / 100);
 
   const padrao = valoresPadrao();
+  // O perfil inteiro vira uma "mesa" de 1 peça: com várias mesas o nome avisa para conferir.
   const valores: CalculadoraValores = {
     ...padrao,
-    custo: { ...padrao.custo, tempoImpressaoHoras: horas, pesoPecaGramas: String(Math.round(gramas)) },
-    producao: mesas === 1 ? { ...padrao.producao, pecasPorMesa: "1", horasMesaCheia: horas } : padrao.producao,
+    impressao: {
+      ...padrao.impressao,
+      pecasPorMesa: "1",
+      ...separarHoras(segundos / 3600),
+      pesoGramas: String(Math.round(gramas)),
+    },
   };
 
   const titulo = termo.trim().charAt(0).toUpperCase() + termo.trim().slice(1);

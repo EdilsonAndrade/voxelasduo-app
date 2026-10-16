@@ -74,8 +74,8 @@ export function faixaDoPreco(faixas: FaixaTaxa[], precoCentavos: number): FaixaT
 }
 
 /**
- * Menor preço que paga custo + taxa da faixa + anúncio (% do preço) e ainda deixa
- * `margemPrecoPercentual` do preço de lucro: `(custo + fixa) / (1 − taxa% − anúncio% − margem%)`.
+ * Menor preço que paga custo + taxa da faixa + anúncio + imposto (% do preço) e ainda deixa
+ * `margemPrecoPercentual` do preço de lucro: `(custo + fixa) / (1 − taxa% − anúncio% − imposto% − margem%)`.
  * Percorre as faixas da mais barata para a mais cara — se o preço calculado
  * passa do teto da faixa, tenta a seguinte (cujo piso já garante a margem, pois
  * o lucro cresce com o preço dentro da faixa). `null` = não existe preço possível.
@@ -85,12 +85,14 @@ export function calcularPrecoPorMargem(entrada: {
   faixas: FaixaTaxa[];
   margemPrecoPercentual: number;
   anuncioPercentual: number;
+  /** Imposto sobre o preço de venda, em % — ausente = 0. */
+  impostoPercentual?: number;
 }): number | null {
-  const { custoCentavos, faixas, margemPrecoPercentual, anuncioPercentual } = entrada;
+  const { custoCentavos, faixas, margemPrecoPercentual, anuncioPercentual, impostoPercentual = 0 } = entrada;
   let pisoCentavos = 0;
 
   for (const faixa of faixas) {
-    const divisor = 1 - (faixa.percentual + anuncioPercentual + margemPrecoPercentual) / 100;
+    const divisor = 1 - (faixa.percentual + anuncioPercentual + impostoPercentual + margemPrecoPercentual) / 100;
     if (divisor > 0) {
       const preco = Math.max(Math.ceil((custoCentavos + faixa.fixaCentavos) / divisor), pisoCentavos);
       if (faixa.ateCentavos === null || preco <= faixa.ateCentavos) return preco;
@@ -106,6 +108,7 @@ export interface DetalheVenda {
   faixa: FaixaTaxa;
   taxaCentavos: number;
   anuncioCentavos: number;
+  impostoCentavos: number;
   lucroCentavos: number;
   /** Lucro em % do preço de venda. */
   margemPrecoPercentual: number;
@@ -116,16 +119,19 @@ export function detalharVenda(entrada: {
   faixas: FaixaTaxa[];
   custoCentavos: number;
   anuncioPercentual: number;
+  impostoPercentual?: number;
 }): DetalheVenda {
-  const { precoCentavos, faixas, custoCentavos, anuncioPercentual } = entrada;
+  const { precoCentavos, faixas, custoCentavos, anuncioPercentual, impostoPercentual = 0 } = entrada;
   const faixa = faixaDoPreco(faixas, precoCentavos);
   const taxaCentavos = Math.round((precoCentavos * faixa.percentual) / 100) + faixa.fixaCentavos;
   const anuncioCentavos = Math.round((precoCentavos * anuncioPercentual) / 100);
-  const lucroCentavos = precoCentavos - taxaCentavos - anuncioCentavos - custoCentavos;
+  const impostoCentavos = Math.round((precoCentavos * impostoPercentual) / 100);
+  const lucroCentavos = precoCentavos - taxaCentavos - anuncioCentavos - impostoCentavos - custoCentavos;
   return {
     faixa,
     taxaCentavos,
     anuncioCentavos,
+    impostoCentavos,
     lucroCentavos,
     margemPrecoPercentual: precoCentavos > 0 ? (lucroCentavos / precoCentavos) * 100 : 0,
   };
@@ -212,10 +218,11 @@ export function calcularCustoMaximo(entrada: {
   faixas: FaixaTaxa[];
   anuncioPercentual: number;
   margemPrecoPercentual: number;
+  impostoPercentual?: number;
 }): number {
-  const { precoCentavos, faixas, anuncioPercentual, margemPrecoPercentual } = entrada;
-  const { taxaCentavos, anuncioCentavos } = detalharVenda({ precoCentavos, faixas, custoCentavos: 0, anuncioPercentual });
-  return precoCentavos - taxaCentavos - anuncioCentavos - Math.round((precoCentavos * margemPrecoPercentual) / 100);
+  const { precoCentavos, faixas, anuncioPercentual, margemPrecoPercentual, impostoPercentual } = entrada;
+  const { lucroCentavos } = detalharVenda({ precoCentavos, faixas, custoCentavos: 0, anuncioPercentual, impostoPercentual });
+  return lucroCentavos - Math.round((precoCentavos * margemPrecoPercentual) / 100);
 }
 
 /** Custo de um kit com `unidades` peças: as peças somadas, mas uma embalagem só. */
@@ -242,16 +249,18 @@ export function compararComConcorrente(entrada: {
   faixas: FaixaTaxa[];
   roas: number;
   margemPrecoPercentual: number;
+  impostoPercentual?: number;
 }): ComparacaoConcorrente {
-  const { precoConcorrenteCentavos, custoCentavos, faixas, roas, margemPrecoPercentual } = entrada;
+  const { precoConcorrenteCentavos, custoCentavos, faixas, roas, margemPrecoPercentual, impostoPercentual } = entrada;
   const anuncioPercentual = 100 / roas;
-  const nossoPrecoCentavos = calcularPrecoPorMargem({ custoCentavos, faixas, margemPrecoPercentual, anuncioPercentual });
-  const venda = detalharVenda({ precoCentavos: precoConcorrenteCentavos, faixas, custoCentavos, anuncioPercentual });
+  const base = { custoCentavos, faixas, anuncioPercentual, impostoPercentual };
+  const nossoPrecoCentavos = calcularPrecoPorMargem({ ...base, margemPrecoPercentual });
+  const venda = detalharVenda({ ...base, precoCentavos: precoConcorrenteCentavos });
   return {
     nossoPrecoCentavos,
     diferencaCentavos: nossoPrecoCentavos !== null ? nossoPrecoCentavos - precoConcorrenteCentavos : null,
     lucroNoPrecoDeleCentavos: venda.lucroCentavos,
     margemNoPrecoDelePercentual: venda.margemPrecoPercentual,
-    precoEmpateCentavos: calcularPrecoPorMargem({ custoCentavos, faixas, margemPrecoPercentual: 0, anuncioPercentual }),
+    precoEmpateCentavos: calcularPrecoPorMargem({ ...base, margemPrecoPercentual: 0 }),
   };
 }

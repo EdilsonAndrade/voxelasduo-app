@@ -4,6 +4,7 @@ import CalculadoraRapida from "@/components/admin/CalculadoraRapida";
 import CalculosSalvos from "@/components/admin/CalculosSalvos";
 import styles from "@/components/admin/admin.module.css";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
+import { normalizarValores } from "@/lib/produtos/calculadoraValores";
 import { buscarCalculoPreco, listarCalculosPreco } from "@/lib/produtos/calculosPreco";
 
 // Precisa do padrão global de taxas atual — não pode ser pré-renderizada no build.
@@ -55,7 +56,8 @@ export default async function CalculadoraPrecoPage({ searchParams }: { searchPar
                 linkModelo3d: calculo.linkModelo3d,
                 linkShopee: calculo.linkShopee,
                 linkMercadoLivre: calculo.linkMercadoLivre,
-                valores: calculo.valores,
+                // Cálculos antigos (custo por peça) chegam já convertidos para a versão 2.
+                valores: normalizarValores(calculo.valores),
                 produtoId: calculo.produtoId,
               }
             : undefined

@@ -1,45 +1,67 @@
 import { describe, expect, it } from "vitest";
 import type { CalculadoraValores } from "@/lib/models/calculoPreco";
 import { valoresPadrao } from "./calculadoraPadrao";
-import { calcularCustoProducao } from "./custoProducao";
-import { montarCustoProducao } from "./custoProducaoFormulario";
+import { normalizarValores } from "./calculadoraValores";
+import { calcularCustoUnidade } from "./custoCalculadora";
 import { calcularCustoKit, calcularPrecoPorMargem, faixasShopee } from "./calculadoraRapida";
-import { faixasDoCanal, idsDaQuery, montarOrcamentoProduto } from "./orcamento";
+import { idsDaQuery, montarOrcamentoProduto } from "./orcamento";
 
+/** Mesa de 4 peças em 5 h, 200 g. */
 function valores(extra: Partial<CalculadoraValores> = {}): CalculadoraValores {
   const padrao = valoresPadrao();
   return {
     ...padrao,
-    custo: { ...padrao.custo, tempoImpressaoHoras: "2", pesoPecaGramas: "50" },
-    producao: { pecasPorMesa: "4", horasMesaCheia: "5", horasPorDia: "20", diasPorMes: "30" },
+    impressao: { ...padrao.impressao, pecasPorMesa: "4", tempoHoras: "5", tempoMinutos: "0", pesoGramas: "200" },
     pecasPorMes: "",
     ...extra,
   };
+}
+
+function custoDe(v: CalculadoraValores) {
+  return calcularCustoUnidade(normalizarValores(v).impressao)!;
 }
 
 describe("montarOrcamentoProduto", () => {
   it("avulso e kit no preço que embute o anúncio na meta de ROAS (padrão 8)", () => {
     const v = valores();
     const o = montarOrcamentoProduto(v, "shopee", 3);
-    const cogs = calcularCustoProducao(montarCustoProducao(v.custo)!);
+    const custo = custoDe(v);
 
-    expect(o.custoPecaCentavos).toBe(cogs.totalCentavos);
+    expect(o.custoPecaCentavos).toBe(custo.totalCentavos);
     expect(o.roas).toBe(8);
     expect(o.linhas.map((l) => l.unidades)).toEqual([1, 3]);
     expect(o.linhas[0].precoCentavos).toBe(
       calcularPrecoPorMargem({
-        custoCentavos: cogs.totalCentavos,
+        custoCentavos: custo.totalCentavos,
         faixas: faixasShopee(false),
         margemPrecoPercentual: 25,
         anuncioPercentual: 12.5,
       })
     );
-    expect(o.linhas[1].custoPedidoCentavos).toBe(calcularCustoKit(cogs.totalCentavos, cogs.custoEmbalagemCentavos, 3));
+    expect(o.linhas[1].custoPedidoCentavos).toBe(calcularCustoKit(custo.totalCentavos, custo.embalagemCentavos, 3));
     // 4 mesas/dia × 4 peças × 30 dias = 480 peças → 160 kits de 3
     expect(o.pecasMes).toBe(480);
     expect(o.linhas[1].pedidosMes).toBe(160);
     expect(o.linhas[0].lucroMesCentavos).toBe(o.linhas[0].lucroPedidoCentavos * 480);
     expect(Math.round(o.linhas[0].margemPercentual)).toBe(25);
+  });
+
+  it("abre cálculo antigo (custo por peça) convertido", () => {
+    const padrao = valoresPadrao();
+    const antigo: CalculadoraValores = {
+      ...padrao,
+      versao: undefined,
+      impressao: undefined,
+      custo: {
+        pesoPecaGramas: "50", tempoImpressaoHoras: "2", tempoMaoDeObraHoras: "1", precoCarreteReais: "100", pesoCarreteGramas: "1000",
+        margemPerdaPercentual: "0", taxaFalhaPercentual: "", precoImpressoraReais: "3070", vidaUtilImpressoraHoras: "4000",
+        consumoEletricoKwh: "0.15", tarifaEnergiaReais: "0.90", valorHoraTrabalhoReais: "1", custoEmbalagemReais: "5", custoAcessoriosReais: "",
+      },
+      producao: { pecasPorMesa: "", horasMesaCheia: "", horasPorDia: "20", diasPorMes: "30" },
+    };
+    const o = montarOrcamentoProduto(antigo, "shopee", 2);
+    expect(o.custoPecaCentavos).toBeGreaterThan(0);
+    expect(o.pecasPorMesa).toBe(1);
   });
 
   it("usa a meta de ROAS e as peças no mês gravadas no cálculo", () => {
@@ -63,33 +85,27 @@ describe("montarOrcamentoProduto", () => {
 
   it("custo incompleto → sem linhas", () => {
     const v = valores();
-    const o = montarOrcamentoProduto({ ...v, custo: { ...v.custo, pesoPecaGramas: "" } }, "shopee", 2);
+    const o = montarOrcamentoProduto({ ...v, impressao: { ...v.impressao!, pesoGramas: "" } }, "shopee", 2);
     expect(o.custoPecaCentavos).toBeNull();
     expect(o.linhas).toEqual([]);
   });
 
-  it("sem produção → mês em branco", () => {
-    const o = montarOrcamentoProduto(
-      valores({ producao: { pecasPorMesa: "", horasMesaCheia: "", horasPorDia: "20", diasPorMes: "30" } }),
-      "shopee",
-      2
-    );
+  it("sem horas por dia → mês em branco", () => {
+    const o = montarOrcamentoProduto(valores({ producao: { horasPorDia: "", diasPorMes: "30" } }), "shopee", 2);
     expect(o.pecasMes).toBeNull();
     expect(o.linhas[0].lucroMesCentavos).toBeNull();
+  });
+
+  it("imposto entra na conta do preço", () => {
+    const v = valores();
+    const sem = montarOrcamentoProduto(v, "shopee", 2).linhas[0].precoCentavos!;
+    const com = montarOrcamentoProduto({ ...v, precificacao: { ...v.precificacao!, impostoPercentual: "6" } }, "shopee", 2).linhas[0].precoCentavos!;
+    expect(com).toBeGreaterThan(sem);
   });
 
   it("margem impossível → sem preço", () => {
     const o = montarOrcamentoProduto(valores({ margemMinimaPrecoPercentual: "90" }), "shopee", 2);
     expect(o.linhas[0].precoCentavos).toBeNull();
-  });
-});
-
-describe("faixasDoCanal", () => {
-  it("Mercado Livre com custo fixo só abaixo de R$ 79", () => {
-    expect(faixasDoCanal("mercadoLivre", valoresPadrao().canais)).toEqual([
-      { ateCentavos: 7899, percentual: 14, fixaCentavos: 650 },
-      { ateCentavos: null, percentual: 14, fixaCentavos: 0 },
-    ]);
   });
 });
 

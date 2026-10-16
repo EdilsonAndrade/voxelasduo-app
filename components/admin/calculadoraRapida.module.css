@@ -1,7 +1,7 @@
-/* Calculadora rápida de preço: entradas à esquerda, preço por marketplace fixo à direita. */
+/* Calculadora de preço: seções recolhíveis à esquerda, resumo por canal fixo à direita (specs/032). */
 .grade {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
   gap: 1.5rem;
   align-items: start;
   padding-bottom: 3rem;
@@ -64,130 +64,6 @@
   white-space: nowrap;
 }
 
-.ajustes summary {
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--roxo);
-  margin-bottom: 0.8rem;
-}
-
-.custoTotal {
-  margin: 0;
-  padding-top: 0.8rem;
-  border-top: 2px dashed var(--surface-line);
-}
-
-.custoTotal strong {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-}
-
-.linhaCanal {
-  display: grid;
-  grid-template-columns: 110px repeat(3, minmax(0, 1fr));
-  gap: 0.9rem;
-  align-items: end;
-}
-
-.linhaCanal > strong {
-  padding-bottom: 0.75rem;
-}
-
-.resultado {
-  position: sticky;
-  top: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.cartaoCanal {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  background: var(--surface);
-  border: 2px solid var(--surface-line);
-  border-top: 6px solid var(--roxo);
-  border-radius: 18px;
-  padding: 1rem 1.2rem;
-}
-
-.cartaoCanal:first-child {
-  border-top-color: var(--laranja);
-}
-
-.nomeCanal {
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--texto-soft);
-}
-
-.preco {
-  font-family: var(--font-display);
-  font-size: 2.2rem;
-  font-weight: 800;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
-.precoLegenda {
-  font-size: 0.78rem;
-  color: var(--texto-soft);
-}
-
-/* Conta do preço até o lucro, como um cupom. */
-.conta {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.25rem 0.75rem;
-  margin: 0.7rem 0 0;
-  font-size: 0.88rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.conta dt {
-  color: var(--texto-soft);
-}
-
-.conta dd {
-  margin: 0;
-  text-align: right;
-}
-
-.conta .lucro {
-  padding-top: 0.35rem;
-  border-top: 2px dashed var(--surface-line);
-  font-weight: 800;
-  color: var(--preto);
-}
-
-.mes {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  margin-top: 0.7rem;
-  padding: 0.6rem 0.75rem;
-  border-radius: 12px;
-  background: var(--creme);
-  font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.mes span:first-child {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--texto-soft);
-}
-
-.mes span {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
 .salvar {
   display: flex;
   flex-direction: column;
@@ -197,31 +73,6 @@
 .salvar button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-@media (max-width: 960px) {
-  .grade {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .resultado {
-    position: static;
-  }
-}
-
-@media (max-width: 640px) {
-  .campos3 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .linhaCanal {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .linhaCanal > strong {
-    grid-column: 1 / -1;
-    padding-bottom: 0;
-  }
 }
 
 /* Cálculos salvos: estudos de preço que ainda não viraram produto. */
@@ -284,12 +135,6 @@
   border: 2px solid var(--turquesa);
   border-radius: 12px;
   font-size: 0.85rem;
-}
-
-.roasMeta strong {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  color: var(--roxo);
 }
 
 .roasPrejuizo {
@@ -450,23 +295,6 @@
   color: var(--texto-soft);
 }
 
-/* Venda direta: cartão separado, com borda tracejada para não ser confundido com os marketplaces. */
-.cartaoDireta {
-  border-style: dashed;
-  border-top-style: solid;
-  border-top-color: var(--turquesa);
-}
-
-.avisoDireta {
-  margin: 0.2rem 0 0.4rem;
-  padding: 0.5rem 0.7rem;
-  border-radius: 10px;
-  background: var(--creme);
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
 /* Duplicar o cálculo com outro nome (specs/031). */
 .duplicar {
   display: flex;
@@ -524,4 +352,925 @@
 
 .perdemos {
   color: #c23a3a;
+}
+
+/* ---------- Calculadora no modelo do curso (specs/032) ---------- */
+
+.introducao {
+  margin: 0;
+  color: var(--texto-soft);
+  font-size: 0.92rem;
+}
+
+.campos2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.campoUnidade .prefixo {
+  padding: 0 0 0 0.8rem;
+}
+
+.campoDesabilitado {
+  opacity: 0.5;
+}
+
+.rotuloGrupo {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.textoApoio {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+  line-height: 1.45;
+}
+
+.linkAcao {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--roxo);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Seção recolhível: cada uma com a cor da marca no ícone. */
+.secao {
+  --cor-secao: var(--roxo);
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 18px;
+}
+
+.secao[data-icone="impressao"] { --cor-secao: var(--turquesa); }
+.secao[data-icone="extras"] { --cor-secao: var(--laranja); }
+.secao[data-icone="canal"] { --cor-secao: var(--rosa); }
+.secao[data-icone="ads"] { --cor-secao: var(--amarelo); }
+.secao[data-icone="concorrente"] { --cor-secao: var(--laranja); }
+.secao[data-icone="producao"] { --cor-secao: var(--turquesa); }
+
+.secaoTopo {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.9rem 1.1rem;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 16px;
+}
+
+.secaoTopo::-webkit-details-marker {
+  display: none;
+}
+
+.secaoTopo:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+.secaoTopo h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.secaoIcone {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cor-secao) 22%, var(--surface));
+  color: color-mix(in srgb, var(--cor-secao) 70%, var(--preto));
+}
+
+.secaoIcone svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.secaoResumo {
+  margin-left: auto;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--texto-soft);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.secaoSeta {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex-shrink: 0;
+  margin-left: 0.4rem;
+  border-right: 2px solid var(--texto-soft);
+  border-bottom: 2px solid var(--texto-soft);
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.secaoTopo h2 + .secaoSeta {
+  margin-left: auto;
+}
+
+.secao[open] .secaoSeta {
+  transform: rotate(-135deg);
+}
+
+.secaoCorpo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.2rem 1.25rem 1.3rem;
+}
+
+.divisor {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto-soft);
+}
+
+.divisor::before,
+.divisor::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: var(--surface-line);
+}
+
+/* Cartões de opção (escolha única). */
+.cartoesOpcao {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.cartaoOpcao,
+.cartaoOpcaoAtivo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 4rem;
+  padding: 0.7rem 0.8rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--preto);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cartaoOpcao strong,
+.cartaoOpcaoAtivo strong {
+  font-size: 0.95rem;
+}
+
+.cartaoOpcao span,
+.cartaoOpcaoAtivo span {
+  font-size: 0.78rem;
+  color: var(--texto-soft);
+  line-height: 1.3;
+}
+
+.cartaoOpcao:hover {
+  border-color: color-mix(in srgb, var(--roxo) 45%, var(--surface-line));
+}
+
+.cartaoOpcaoAtivo {
+  border-color: var(--roxo);
+  background: color-mix(in srgb, var(--roxo) 10%, var(--surface));
+}
+
+.cartaoOpcaoAtivo strong,
+.cartaoOpcaoAtivo span {
+  color: color-mix(in srgb, var(--roxo) 80%, var(--preto));
+}
+
+.cartaoOpcao:focus-visible,
+.cartaoOpcaoAtivo:focus-visible,
+.aba:focus-visible,
+.abaAtiva:focus-visible,
+.chip:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+/* Interruptor (liga/desliga). */
+.interruptorBloco {
+  border: 2px solid var(--surface-line);
+  border-radius: 14px;
+}
+
+.interruptor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+}
+
+.interruptor > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.interruptor small {
+  font-size: 0.78rem;
+  color: var(--texto-soft);
+}
+
+.interruptor input {
+  appearance: none;
+  flex-shrink: 0;
+  width: 2.6rem;
+  height: 1.45rem;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--surface-line);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.interruptor input::after {
+  content: "";
+  position: absolute;
+  top: 0.18rem;
+  left: 0.18rem;
+  width: 1.09rem;
+  height: 1.09rem;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  transition: transform 0.2s ease;
+}
+
+.interruptor input:checked {
+  background: var(--roxo);
+}
+
+.interruptor input:checked::after {
+  transform: translateX(1.15rem);
+}
+
+.interruptor input:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+.interruptorConteudo {
+  padding: 0 0.9rem 0.9rem;
+}
+
+.checkLinha {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* G-code. */
+.dropzone {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 2px dashed color-mix(in srgb, var(--turquesa) 60%, var(--surface-line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--turquesa) 6%, var(--surface));
+}
+
+.dropzone > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.dropzone span {
+  font-size: 0.78rem;
+  color: var(--texto-soft);
+}
+
+.dropzoneAtiva {
+  border-style: solid;
+  background: color-mix(in srgb, var(--turquesa) 18%, var(--surface));
+}
+
+.gcodeLido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: var(--creme);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tempo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+/* Listas de filamentos e extras. */
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.listaLinha {
+  display: grid;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.listaFilamento {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(0, 0.9fr) 2.4rem;
+}
+
+.listaExtra {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 0.6fr) minmax(0, 0.9fr) minmax(0, 1.1fr) 2.4rem;
+}
+
+.listaCabecalho span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--texto-soft);
+}
+
+.listaLinha input,
+.listaLinha select {
+  width: 100%;
+  min-width: 0;
+}
+
+.corCampo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.amostraCor {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--surface-line);
+}
+
+.remover {
+  height: 2.4rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--texto-soft);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.remover:hover {
+  color: #c23a3a;
+  border-color: #c23a3a;
+}
+
+.adicionar {
+  align-self: flex-start;
+  padding: 0.6rem 1rem;
+  border: 2px dashed var(--surface-line);
+  border-radius: 12px;
+  background: none;
+  color: var(--preto);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.adicionar:hover {
+  border-color: var(--roxo);
+  color: var(--roxo);
+}
+
+.rapidos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+}
+
+.chip {
+  padding: 0.35rem 0.8rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--preto);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--laranja);
+}
+
+/* Abas de canal (configuração e resumo). */
+.abas {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 14px;
+  overflow-x: auto;
+}
+
+.aba,
+.abaAtiva {
+  flex: 1;
+  padding: 0.5rem 0.8rem;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--preto);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.aba:hover {
+  background: var(--creme);
+}
+
+.abaAtiva {
+  background: var(--roxo);
+  color: #fff;
+}
+
+.tabelaFaixas {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabelaFaixas th,
+.tabelaFaixas td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--surface-line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tabelaFaixas thead th {
+  font-size: 0.75rem;
+  color: var(--texto-soft);
+}
+
+.tabelaFaixas tbody tr:last-child > * {
+  border-bottom: none;
+}
+
+/* Resumo. */
+.resumo {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.1rem 1.2rem 1.3rem;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 18px;
+}
+
+.resumoTopo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.resumoTopo h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.statusPronto,
+.statusPendente {
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.statusPronto {
+  background: color-mix(in srgb, #2f8f52 15%, var(--surface));
+  color: #2f8f52;
+}
+
+.statusPendente {
+  background: var(--creme);
+  color: var(--texto-soft);
+}
+
+.resumoVazio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem;
+  border: 2px dashed var(--surface-line);
+  border-radius: 14px;
+  font-size: 0.88rem;
+}
+
+.resumoVazio span {
+  color: var(--texto-soft);
+}
+
+.comparaCanais {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparaCanais caption {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texto-soft);
+  padding-bottom: 0.3rem;
+}
+
+.comparaCanais th,
+.comparaCanais td {
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--surface-line);
+  text-align: right;
+}
+
+.comparaCanais th:first-child {
+  text-align: left;
+}
+
+.comparaCanais thead th {
+  font-size: 0.7rem;
+  color: var(--texto-soft);
+}
+
+.comparaCanais tbody tr {
+  cursor: pointer;
+}
+
+.comparaAtual > * {
+  background: color-mix(in srgb, var(--roxo) 8%, var(--surface));
+  font-weight: 800;
+}
+
+.precoConsumidor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.precoConsumidor > span {
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+}
+
+.precoConsumidor > strong {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.05;
+  color: color-mix(in srgb, var(--roxo) 85%, var(--preto));
+  font-variant-numeric: tabular-nums;
+}
+
+.precoConsumidor small {
+  font-size: 0.82rem;
+  color: var(--texto-soft);
+}
+
+.precoConsumidor small b {
+  color: var(--preto);
+}
+
+.precoConsumidor > strong.precoPrejuizo,
+.precoPrejuizo {
+  color: #c23a3a;
+}
+
+.estatisticas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.estatistica {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.7rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 12px;
+  background: var(--creme);
+  min-width: 0;
+}
+
+.estatistica > span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--texto-soft);
+}
+
+.estatistica > strong {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.estatisticaBoa {
+  border-color: color-mix(in srgb, #2f8f52 45%, var(--surface-line));
+  background: color-mix(in srgb, #2f8f52 8%, var(--surface));
+}
+
+.estatisticaBoa > strong {
+  color: #2f8f52;
+}
+
+.estatisticaRuim {
+  border-color: color-mix(in srgb, #c23a3a 45%, var(--surface-line));
+  background: color-mix(in srgb, #c23a3a 8%, var(--surface));
+}
+
+.estatisticaRuim > strong {
+  color: #c23a3a;
+}
+
+.chipMargem {
+  align-self: flex-start;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.cardTaxas {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.3rem 0.8rem;
+  padding: 0.8rem 0.9rem;
+  border: 2px solid color-mix(in srgb, var(--rosa) 45%, var(--surface-line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--rosa) 8%, var(--surface));
+}
+
+.cardTaxas > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.cardTaxas > div span {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.cardTaxas > div small {
+  font-size: 0.72rem;
+  color: var(--texto-soft);
+}
+
+.cardTaxas > strong {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: color-mix(in srgb, var(--rosa) 70%, var(--preto));
+  font-variant-numeric: tabular-nums;
+}
+
+.cardTaxas ul {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.4rem 0 0;
+  list-style: none;
+  border-top: 2px dashed color-mix(in srgb, var(--rosa) 30%, var(--surface-line));
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardTaxas li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.1rem 0;
+}
+
+.cardTaxas li span:first-child {
+  color: var(--texto-soft);
+}
+
+/* Composição do custo: uma barra em camadas, como as camadas de uma impressão. */
+.composicao {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.camadas {
+  display: flex;
+  height: 1.4rem;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-line);
+}
+
+.camadas span {
+  min-width: 3px;
+  background-image: repeating-linear-gradient(0deg, transparent 0 3px, rgb(255 255 255 / 0.22) 3px 4px);
+  transition: flex-grow 0.3s ease;
+}
+
+.camadas span + span {
+  border-left: 2px solid var(--surface);
+}
+
+.legendaCamadas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.legendaCamadas li {
+  display: grid;
+  grid-template-columns: 0.75rem 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legendaCamadas i {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 3px;
+}
+
+.legendaCamadas small {
+  color: var(--texto-soft);
+}
+
+.legendaCamadas strong {
+  min-width: 4.5rem;
+  text-align: right;
+}
+
+.legendaCamadas .legendaTotal {
+  grid-template-columns: 1fr auto;
+  margin-top: 0.25rem;
+  padding-top: 0.35rem;
+  border-top: 2px dashed var(--surface-line);
+  font-weight: 800;
+}
+
+.potencial {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--turquesa) 12%, var(--surface));
+  border: 2px solid color-mix(in srgb, var(--turquesa) 45%, var(--surface-line));
+}
+
+.potencial > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+
+.potencial > div > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.potencial > div > div > span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--texto-soft);
+}
+
+.potencial strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: color-mix(in srgb, var(--turquesa) 45%, var(--preto));
+  font-variant-numeric: tabular-nums;
+}
+
+.potencial small {
+  font-size: 0.72rem;
+  color: var(--texto-soft);
+}
+
+@media (max-width: 1100px) {
+  .grade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .resumo {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 640px) {
+  .campos3,
+  .campos2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cartoesOpcao {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .estatisticas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dropzone {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .listaFilamento,
+  .listaExtra {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 2.4rem;
+  }
+
+  .listaLinha > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .listaCabecalho {
+    display: none;
+  }
+
+  .secaoResumo {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .secaoSeta,
+  .camadas span,
+  .interruptor input,
+  .interruptor input::after {
+    transition: none;
+  }
 }

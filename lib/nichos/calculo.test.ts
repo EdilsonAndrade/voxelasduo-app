@@ -25,15 +25,15 @@ describe("montarCalculoDoModelo", () => {
     expect(c.linkModelo3d).toBe("https://makerworld.com/pt/models/1-modern-pencil-holder#profileId-2");
     expect(c.linkShopee).toBe("https://shopee.com.br/x-i.1.2");
     expect(c.linkMercadoLivre).toBeUndefined();
-    expect(c.valores.custo).toMatchObject({ tempoImpressaoHoras: "4.28", pesoPecaGramas: "135", precoCarreteReais: "100.00" });
-    expect(c.valores.producao).toMatchObject({ pecasPorMesa: "1", horasMesaCheia: "4.28", horasPorDia: "20" });
+    expect(c.valores.versao).toBe(2);
+    expect(c.valores.impressao).toMatchObject({ tempoHoras: "4", tempoMinutos: "17", pesoGramas: "135", pecasPorMesa: "1" });
+    expect(c.valores.producao).toMatchObject({ horasPorDia: "20" });
     expect(c.valores.margemMinimaPrecoPercentual).toBe("25");
   });
 
-  it("com várias mesas deixa a produção em branco e avisa no nome", () => {
+  it("com várias mesas avisa no nome", () => {
     const c = montarCalculoDoModelo({ termo: "vaso", modelo: modelo(3) });
     expect(c.nome).toContain("3 mesas");
-    expect(c.valores.producao.pecasPorMesa).toBe("");
   });
 
   it("passa na validação do cálculo salvo", () => {

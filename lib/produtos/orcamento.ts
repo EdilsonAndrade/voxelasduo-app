@@ -1,15 +1,12 @@
 import type { CalculadoraValores } from "@/lib/models/calculoPreco";
-import { calcularCustoProducao } from "./custoProducao";
-import { montarCustoProducao } from "./custoProducaoFormulario";
+import { horasDaMesa, normalizarValores } from "./calculadoraValores";
+import { montarCanal } from "./canaisCalculadora";
+import { calcularCustoUnidade } from "./custoCalculadora";
 import {
   calcularCustoKit,
   calcularPrecoPorMargem,
   calcularProducaoMensal,
   detalharVenda,
-  faixaUnica,
-  faixasMercadoLivre,
-  faixasShopee,
-  type FaixaTaxa,
 } from "./calculadoraRapida";
 
 export type Marketplace = "shopee" | "mercadoLivre";
@@ -22,21 +19,6 @@ export const MAX_IDS_IMPRESSAO = 60;
 
 function numero(texto: string | undefined): number {
   return Number((texto ?? "").trim().replace(",", "."));
-}
-
-/**
- * Faixas de taxa do canal com o que foi digitado na calculadora: Shopee pela
- * tabela por faixa de preço (com o adicional de CPF) ou taxa digitada;
- * Mercado Livre com o custo fixo só abaixo de R$ 79. `null` = taxa inválida.
- */
-export function faixasDoCanal(canal: Marketplace, canais: CalculadoraValores["canais"]): FaixaTaxa[] | null {
-  const c = canais[canal];
-  if (canal === "shopee" && c.taxaPorFaixa !== false) return faixasShopee(c.cpfAcima450Pedidos === true);
-  const taxa = numero(c.taxaPercentual);
-  const fixa = c.taxaFixaReais.trim() === "" ? 0 : numero(c.taxaFixaReais);
-  if (![taxa, fixa].every((n) => Number.isFinite(n) && n >= 0)) return null;
-  const fixaCentavos = Math.round(fixa * 100);
-  return canal === "mercadoLivre" ? faixasMercadoLivre(taxa, fixaCentavos) : faixaUnica(taxa, fixaCentavos);
 }
 
 /** Uma forma de vender o produto (avulso ou kit) no preço que paga o anúncio. */
@@ -82,21 +64,22 @@ function positivoOuNull(texto: string | undefined): number | null {
  * do cálculo — o preço para anunciar —, qualquer que seja o modo salvo.
  */
 export function montarOrcamentoProduto(
-  valores: CalculadoraValores,
+  valoresSalvos: CalculadoraValores,
   canal: Marketplace,
   unidadesKit: number
 ): OrcamentoProduto {
+  const valores = normalizarValores(valoresSalvos);
   const roasSalvo = numero(valores.anuncio?.roasMeta);
   const roas = Number.isFinite(roasSalvo) && roasSalvo > 0 ? roasSalvo : ROAS_PADRAO;
   const margemSalva = numero(valores.margemMinimaPrecoPercentual ?? "25");
   const margemPercentual = Number.isFinite(margemSalva) && margemSalva >= 0 && margemSalva < 100 ? margemSalva : 25;
 
   const producao = valores.producao;
-  const pecasPorMesa = positivoOuNull(producao.pecasPorMesa);
-  const horasMesaCheia = positivoOuNull(producao.horasMesaCheia);
+  const pecasPorMesa = positivoOuNull(valores.impressao.pecasPorMesa);
+  const horasMesaCheia = horasDaMesa(valores.impressao);
   const automatico = calcularProducaoMensal({
-    pecasPorMesa: numero(producao.pecasPorMesa),
-    horasMesaCheia: numero(producao.horasMesaCheia),
+    pecasPorMesa: numero(valores.impressao.pecasPorMesa),
+    horasMesaCheia: horasMesaCheia ?? 0,
     horasPorDia: numero(producao.horasPorDia),
     diasPorMes: numero(producao.diasPorMes),
   });
@@ -118,20 +101,25 @@ export function montarOrcamentoProduto(
     vendasConcorrenteMes: positivoOuNull(valores.vendasConcorrenteMes) !== null ? Math.floor(numero(valores.vendasConcorrenteMes)) : null,
   };
 
-  const custoProducao = montarCustoProducao(valores.custo);
-  const faixas = faixasDoCanal(canal, valores.canais);
-  if (!custoProducao || !faixas) return { ...base, custoPecaCentavos: null, linhas: [] };
+  const custo = calcularCustoUnidade(valores.impressao);
+  const canalMontado = montarCanal(canal, valores);
+  if (!custo || !canalMontado) return { ...base, custoPecaCentavos: null, linhas: [] };
 
-  const cogs = calcularCustoProducao(custoProducao);
+  const faixas = canalMontado.faixas;
   const anuncioPercentual = 100 / roas;
+  const impostoNumero = numero(valores.precificacao.impostoPercentual);
+  const impostoPercentual = Number.isFinite(impostoNumero) && impostoNumero > 0 && impostoNumero < 100 ? impostoNumero : 0;
 
   const linhas = [1, unidadesKit].map((unidades): LinhaOrcamento => {
-    const custoPedidoCentavos = calcularCustoKit(cogs.totalCentavos, cogs.custoEmbalagemCentavos, unidades);
+    // Kit: uma embalagem só e o frete/cupom uma vez por pedido.
+    const custoPedidoCentavos =
+      calcularCustoKit(custo.totalCentavos, custo.embalagemCentavos, unidades) + canalMontado.custoVendaCentavos;
     const precoCentavos = calcularPrecoPorMargem({
       custoCentavos: custoPedidoCentavos,
       faixas,
       margemPrecoPercentual: margemPercentual,
       anuncioPercentual,
+      impostoPercentual,
     });
     if (precoCentavos === null) {
       return {
@@ -147,13 +135,13 @@ export function montarOrcamentoProduto(
         lucroMesCentavos: null,
       };
     }
-    const venda = detalharVenda({ precoCentavos, faixas, custoCentavos: custoPedidoCentavos, anuncioPercentual });
+    const venda = detalharVenda({ precoCentavos, faixas, custoCentavos: custoPedidoCentavos, anuncioPercentual, impostoPercentual });
     const pedidosMes = pecasMes !== null ? Math.floor(pecasMes / unidades) : null;
     return {
       unidades,
       custoPedidoCentavos,
       precoCentavos,
-      taxaCentavos: venda.taxaCentavos,
+      taxaCentavos: venda.taxaCentavos + venda.impostoCentavos + canalMontado.custoVendaCentavos,
       anuncioCentavos: venda.anuncioCentavos,
       lucroPedidoCentavos: venda.lucroCentavos,
       margemPercentual: venda.margemPrecoPercentual,
@@ -163,7 +151,7 @@ export function montarOrcamentoProduto(
     };
   });
 
-  return { ...base, custoPecaCentavos: cogs.totalCentavos, linhas };
+  return { ...base, custoPecaCentavos: custo.totalCentavos, linhas };
 }
 
 /** Ids da query `?ids=a,b,c`: sem vazios nem repetidos, na ordem, no máximo `MAX_IDS_IMPRESSAO`. */
