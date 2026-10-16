@@ -211,11 +211,11 @@ export default function SecaoImpressao({
           <label htmlFor="tempoHoras">Tempo da mesa</label>
           <div className={calc.tempo}>
             <div className={calc.campoUnidade}>
-              <input id="tempoHoras" aria-label="Horas" inputMode="numeric" placeholder="Horas" value={impressao.tempoHoras} onChange={(e) => alterar({ tempoHoras: e.target.value.replace(/\D/g, "") })} />
+              <input id="tempoHoras" aria-label="Horas" size={1} inputMode="numeric" placeholder="Horas" value={impressao.tempoHoras} onChange={(e) => alterar({ tempoHoras: e.target.value.replace(/\D/g, "") })} />
               <span>h</span>
             </div>
             <div className={calc.campoUnidade}>
-              <input aria-label="Minutos" inputMode="numeric" placeholder="Min" value={impressao.tempoMinutos} onChange={(e) => alterar({ tempoMinutos: e.target.value.replace(/\D/g, "") })} />
+              <input aria-label="Minutos" size={1} inputMode="numeric" placeholder="Min" value={impressao.tempoMinutos} onChange={(e) => alterar({ tempoMinutos: e.target.value.replace(/\D/g, "") })} />
               <span>min</span>
             </div>
           </div>

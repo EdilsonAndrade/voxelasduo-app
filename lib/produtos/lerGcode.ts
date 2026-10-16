@@ -10,6 +10,8 @@ import { interpretarCabecalhoGcode, interpretarSliceInfo, type MesaLida } from "
 const INICIO_GCODE = 256 * 1024;
 const FIM_GCODE = 512 * 1024;
 const SLICE_INFO = "Metadata/slice_info.config";
+const NAO_FATIADO =
+  "Esse .3mf é um projeto ainda não fatiado (como os baixados do MakerWorld). No Bambu Studio, clique em Fatiar placa e depois salve o projeto (Ctrl+S) ou use Arquivo → Exportar → Exportar arquivo de placa fatiada (.gcode.3mf).";
 
 async function textoDe(blob: Blob): Promise<string> {
   return new TextDecoder("utf-8").decode(await blob.arrayBuffer());
@@ -72,9 +74,9 @@ export async function lerGcode(arquivo: File): Promise<MesaLida[]> {
   let mesas: MesaLida[];
   if (nome.endsWith(".3mf")) {
     const xml = await arquivoDoZip(arquivo, SLICE_INFO);
-    if (xml === null) {
-      throw new Error("Esse .3mf não está fatiado. No Bambu Studio, fatie e use Exportar → arquivo fatiado (.gcode.3mf).");
-    }
+    if (xml === null) throw new Error(NAO_FATIADO);
+    // Projeto do MakerWorld (ou salvo antes de fatiar): o slice_info vem só com o cabeçalho, sem nenhuma mesa.
+    if (!xml.includes("<plate>")) throw new Error(NAO_FATIADO);
     mesas = interpretarSliceInfo(xml);
   } else if (nome.endsWith(".gcode")) {
     mesas = await lerGcodeTexto(arquivo);
