@@ -277,6 +277,79 @@ describe("impressões que não contam como peça", () => {
   });
 });
 
+describe("impressões tiradas do custo", () => {
+  it("saem da média de peso e tempo, mas continuam como peça produzida", () => {
+    const a = apurarProduto(
+      produto(),
+      [vinculo()],
+      [
+        impressao({ gramas: 1200, foraDoCusto: true }), // placa de teste
+        impressao({ gramas: 720 }),
+      ]
+    );
+
+    expect(a.partes[0].gramasPorUnidade).toBe(120);
+    expect(a.unidadesAcabadas).toBe(12);
+    expect(a.partes[0].impressoes.filter((i) => i.foraDoCusto)).toHaveLength(1);
+  });
+
+  it("falha tirada do custo não entra na taxa de falha nem nos gramas perdidos", () => {
+    const a = apurarProduto(
+      produto(),
+      [vinculo()],
+      [impressao(), impressao({ resultado: "interrompida", gramas: 300, foraDoCusto: true })]
+    );
+
+    expect(a.taxaFalhaObservada).toBe(0);
+    expect(a.gramasPerdidosEmFalhas).toBe(0);
+  });
+
+  it("com todas as impressões fora do custo não há custo apurado", () => {
+    const a = apurarProduto(produto(), [vinculo()], [impressao({ foraDoCusto: true })]);
+
+    expect(a.custoApuradoCentavos).toBeUndefined();
+    expect(a.unidadesAcabadas).toBe(6);
+  });
+});
+
+describe("tempos de impressão", () => {
+  const base = vinculo({ nomeArquivo: "vaso_base", parte: "Base", rendimentoPorPlaca: 5 });
+  const tampa = vinculo({
+    nomeArquivo: "vaso_tampa",
+    parte: "Tampa",
+    rendimentoPorPlaca: 2,
+    horarioTermino: "06:00",
+  });
+
+  it("soma a média de uma placa de cada parte e o total impresso no custo", () => {
+    const a = apurarProduto(
+      produto(),
+      [base, tampa],
+      [
+        impressao({ nomeArquivo: "vaso_base", duracaoSegundos: 10 * 3600 }),
+        impressao({ nomeArquivo: "vaso_base", duracaoSegundos: 8 * 3600 }),
+        impressao({ nomeArquivo: "vaso_tampa", duracaoSegundos: 2 * 3600 }),
+        impressao({ nomeArquivo: "vaso_tampa", duracaoSegundos: 50 * 3600, foraDoCusto: true }),
+      ]
+    );
+
+    expect(a.partes.find((p) => p.parte === "Base")!.horasPorPlaca).toBe(9);
+    expect(a.horasRodadaCompleta).toBe(11); // 9h + 2h
+    expect(a.horasTotaisImpressas).toBe(20); // a de teste fica fora
+  });
+
+  it("leva o horário de término da placa para cada impressão", () => {
+    const a = apurarProduto(
+      produto(),
+      [base, tampa],
+      [impressao({ nomeArquivo: "vaso_base" }), impressao({ nomeArquivo: "vaso_tampa" })]
+    );
+
+    expect(a.partes.find((p) => p.parte === "Tampa")!.impressoes[0].horarioTermino).toBe("06:00");
+    expect(a.partes.find((p) => p.parte === "Base")!.impressoes[0].horarioTermino).toBeUndefined();
+  });
+});
+
 describe("indicadores de falha e perda", () => {
   it("calcula a taxa de falha observada e sinaliza amostra pequena", () => {
     const a = apurarProduto(

@@ -1,16 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import { HORARIO_TERMINO_PADRAO } from "@/lib/models/producao";
+import { horasEMinutos, inicioMaximo } from "@/lib/producao/agenda";
 import styles from "./producao.module.css";
+
+export interface ImpressaoDaParte {
+  id: string;
+  nomeArquivo: string;
+  horarioTermino?: string;
+  inicio: string;
+  resultado: "concluida" | "interrompida" | "em_andamento";
+  gramas?: number;
+  duracaoSegundos?: number;
+  rendimentoPorPlaca: number;
+  foraDoCusto: boolean;
+}
 
 export interface ParteApurada {
   parte: string;
   unidadesProduzidas: number;
   gramasPorUnidade?: number;
   horasPorUnidade?: number;
+  horasPorPlaca?: number;
   custoParteCentavos?: number;
   excedente: number;
   saldoLancavel: number;
+  impressoes: ImpressaoDaParte[];
 }
 
 export interface ProdutoApurado {
@@ -19,6 +35,8 @@ export interface ProdutoApurado {
   unidadesAcabadas: number;
   gramasPorPeca?: number;
   horasPorPeca?: number;
+  horasRodadaCompleta?: number;
+  horasTotaisImpressas: number;
   custoApuradoCentavos?: number;
   custoCadastradoCentavos?: number;
   diferencaCentavos?: number;
@@ -43,7 +61,19 @@ export interface ResumoProducao {
 
 function reais(centavos?: number): string {
   if (centavos === undefined) return "—";
-  return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return (centavos / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
+function dataHora(iso: string): string {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function comSinal(centavos: number): string {
@@ -90,24 +120,34 @@ export default function ApuracaoProdutos({
         </p>
       ) : (
         produtos.map((produto) => (
-          <Produto key={produto.produtoId} produto={produto} onAlterado={onAlterado} />
+          <ProdutoApuradoCard key={produto.produtoId} produto={produto} onAlterado={onAlterado} />
         ))
       )}
     </section>
   );
 }
 
-function Produto({
+/**
+ * O card de um produto. `comAcoes={false}` na edição do produto: lá o
+ * formulário tem o próprio estado de estoque e custo, e lançar ou aplicar por
+ * aqui seria desfeito no próximo "Salvar" do formulário.
+ */
+export function ProdutoApuradoCard({
   produto,
   onAlterado,
+  comAcoes = true,
 }: {
   produto: ProdutoApurado;
   onAlterado: () => void;
+  comAcoes?: boolean;
 }) {
   const [conjuntos, setConjuntos] = useState(String(produto.conjuntosLancaveis));
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [escolhendo, setEscolhendo] = useState(!comAcoes); // na edição do produto já abre listado
+  /** Horário digitado e ainda não salvo, por placa. */
+  const [terminos, setTerminos] = useState<Record<string, string>>({});
 
   async function aplicarAoCadastro() {
     setEnviando(true);
@@ -156,7 +196,10 @@ function Produto({
       const resposta = await fetch("/api/producao/lancamentos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ produtoId: produto.produtoId, quantidade: Number(conjuntos) }),
+        body: JSON.stringify({
+          produtoId: produto.produtoId,
+          quantidade: Number(conjuntos),
+        }),
       });
       const dados = await resposta.json().catch(() => ({}) as Record<string, string>);
 
@@ -174,7 +217,68 @@ function Produto({
     }
   }
 
+  async function alternarNoCusto(impressao: ImpressaoDaParte) {
+    setEnviando(true);
+    setErro(null);
+    setAviso(null);
+
+    try {
+      const resposta = await fetch(`/api/producao/impressoes/${impressao.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ foraDoCusto: !impressao.foraDoCusto }),
+      });
+
+      if (!resposta.ok) {
+        const dados = await resposta.json().catch(() => ({}));
+        setErro(dados.erro ?? `Falha ao atualizar a impressão (HTTP ${resposta.status}).`);
+        return;
+      }
+
+      onAlterado();
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "Falha de rede ao atualizar a impressão.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function salvarTermino(nomeArquivo: string) {
+    setEnviando(true);
+    setErro(null);
+    setAviso(null);
+
+    try {
+      const resposta = await fetch(`/api/producao/vinculos/${encodeURIComponent(nomeArquivo)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ horarioTermino: terminos[nomeArquivo] }),
+      });
+
+      if (!resposta.ok) {
+        const dados = await resposta.json().catch(() => ({}));
+        setErro(dados.erro ?? `Falha ao salvar o horário (HTTP ${resposta.status}).`);
+        return;
+      }
+
+      setTerminos((atual) => {
+        const resto = { ...atual };
+        delete resto[nomeArquivo];
+        return resto;
+      });
+      setAviso("Horário de término salvo.");
+      onAlterado();
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "Falha de rede ao salvar o horário.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   const multiparte = produto.partes.length > 1;
+  const impressoes = produto.partes.flatMap((p) => p.impressoes ?? []);
+  const noCusto = impressoes.filter((i) => i.resultado !== "em_andamento" && !i.foraDoCusto).length;
+  const finalizadas = impressoes.filter((i) => i.resultado !== "em_andamento").length;
 
   return (
     <article className={styles.produto}>
@@ -190,9 +294,7 @@ function Produto({
           </span>
         )}
         {produto.semCustoCadastrado && (
-          <span className={`${styles.selo} ${styles.seloAmostra}`}>
-            sem custo no cadastro
-          </span>
+          <span className={`${styles.selo} ${styles.seloAmostra}`}>sem custo no cadastro</span>
         )}
       </div>
 
@@ -200,15 +302,11 @@ function Produto({
         <div className={styles.regua}>
           <div>
             <span className={styles.valorApuradoRotulo}>Apurado por peça</span>
-            <strong className={styles.valorApurado}>
-              {reais(produto.custoApuradoCentavos)}
-            </strong>
+            <strong className={styles.valorApurado}>{reais(produto.custoApuradoCentavos)}</strong>
           </div>
           <div>
             <span className={styles.valorCadastradoRotulo}>No cadastro</span>
-            <span className={styles.valorCadastrado}>
-              {reais(produto.custoCadastradoCentavos)}
-            </span>
+            <span className={styles.valorCadastrado}>{reais(produto.custoCadastradoCentavos)}</span>
           </div>
           {produto.diferencaCentavos !== undefined && (
             <span
@@ -241,9 +339,21 @@ function Produto({
         <span>
           Impressão:{" "}
           <span className={styles.metricaValor}>
-            {produto.horasPorPeca !== undefined
-              ? `${produto.horasPorPeca.toFixed(2)} h/peça`
+            {produto.horasPorPeca !== undefined ? `${produto.horasPorPeca.toFixed(2)} h/peça` : "—"}
+          </span>
+        </span>
+        <span>
+          {multiparte ? "Uma placa de cada parte" : "Por placa"}:{" "}
+          <span className={styles.metricaValor}>
+            {produto.horasRodadaCompleta !== undefined
+              ? horasEMinutos(produto.horasRodadaCompleta)
               : "—"}
+          </span>
+        </span>
+        <span>
+          Total impresso:{" "}
+          <span className={styles.metricaValor}>
+            {horasEMinutos(produto.horasTotaisImpressas ?? 0)}
           </span>
         </span>
         <span>
@@ -283,54 +393,163 @@ function Produto({
                   ? `${parte.gramasPorUnidade.toFixed(1)} g/un.`
                   : "sem peso"}
               </span>
+              <span>
+                {parte.horasPorUnidade !== undefined
+                  ? `${parte.horasPorUnidade.toFixed(2)} h/un.`
+                  : "sem tempo"}
+              </span>
               <span>{reais(parte.custoParteCentavos)}</span>
-              {parte.excedente > 0 && (
-                <span>{parte.excedente} un. adiantadas (sem par)</span>
-              )}
+              {parte.excedente > 0 && <span>{parte.excedente} un. adiantadas (sem par)</span>}
             </li>
           ))}
         </ul>
       )}
 
-      <div className={styles.acoesProduto}>
-        {produto.conjuntosLancaveis > 0 && (
-          <>
-            <label className={`${styles.campo} ${styles.campoCurto}`}>
-              <span className={styles.rotulo}>
-                {multiparte ? "Conjuntos completos" : "Unidades"}
-              </span>
-              <input
-                className={styles.entrada}
-                value={conjuntos}
-                onChange={(e) => setConjuntos(e.target.value)}
-                inputMode="numeric"
-              />
-            </label>
-            <button
-              type="button"
-              className={styles.botao}
-              onClick={lancarConjuntos}
-              disabled={enviando}
-            >
-              Lançar no estoque
-            </button>
-            <span className={styles.pendenteDados}>
-              {produto.conjuntosLancaveis} disponíveis
-            </span>
-          </>
-        )}
-
-        {produto.custoApuradoCentavos !== undefined && (
+      {impressoes.length > 0 && (
+        <div className={styles.escolhaImpressoes}>
           <button
             type="button"
-            className={`${styles.botao} ${styles.botaoSecundario}`}
-            onClick={aplicarAoCadastro}
-            disabled={enviando}
+            className={styles.botaoTexto}
+            onClick={() => setEscolhendo((v) => !v)}
+            aria-expanded={escolhendo}
           >
-            Aplicar ao cadastro
-          </button>
-        )}
-      </div>
+            {escolhendo ? "Fechar impressões" : "Impressões e horários"}
+          </button>{" "}
+          <span className={styles.pendenteDados}>
+            {noCusto} de {finalizadas} no cálculo
+          </span>
+          {escolhendo &&
+            produto.partes.map((parte) => (
+              <fieldset key={parte.parte} className={styles.grupoImpressoes}>
+                {multiparte && <legend className={styles.parteNome}>{parte.parte}</legend>}
+                {parte.impressoes.map((impressao) => {
+                  const salvo = impressao.horarioTermino ?? HORARIO_TERMINO_PADRAO;
+                  const termino = terminos[impressao.nomeArquivo] ?? salvo;
+                  const alterado = termino !== salvo;
+                  const planejavel =
+                    !impressao.foraDoCusto &&
+                    impressao.resultado === "concluida" &&
+                    (impressao.duracaoSegundos ?? 0) > 0;
+                  const inicio = planejavel
+                    ? inicioMaximo(termino, impressao.duracaoSegundos!)
+                    : null;
+
+                  return (
+                    <div
+                      key={impressao.id}
+                      className={`${styles.linhaImpressao} ${
+                        impressao.foraDoCusto ? styles.linhaForaDoCusto : ""
+                      }`}
+                    >
+                      <label className={styles.marcaImpressao}>
+                        <input
+                          type="checkbox"
+                          checked={!impressao.foraDoCusto}
+                          disabled={enviando || impressao.resultado === "em_andamento"}
+                          onChange={() => alternarNoCusto(impressao)}
+                        />
+                        <span>{dataHora(impressao.inicio)}</span>
+                      </label>
+                      <span>
+                        {impressao.resultado === "concluida"
+                          ? `${impressao.rendimentoPorPlaca} un.`
+                          : impressao.resultado === "interrompida"
+                            ? "falhou"
+                            : "imprimindo"}
+                      </span>
+                      <span>
+                        {impressao.gramas !== undefined
+                          ? `${impressao.gramas.toFixed(1)} g`
+                          : "sem peso"}
+                      </span>
+                      <span>
+                        {impressao.duracaoSegundos !== undefined
+                          ? horasEMinutos(impressao.duracaoSegundos / 3600)
+                          : "sem duração"}
+                      </span>
+
+                      {planejavel && (
+                        <span className={styles.agendaImpressao}>
+                          terminar às
+                          <input
+                            type="time"
+                            className={styles.entradaHorario}
+                            value={termino}
+                            aria-label="Horário de término desta placa"
+                            onChange={(e) =>
+                              setTerminos((t) => ({
+                                ...t,
+                                [impressao.nomeArquivo]: e.target.value,
+                              }))
+                            }
+                          />
+                          {inicio && (
+                            <span>
+                              → iniciar até{" "}
+                              <strong className={styles.metricaValor}>{inicio.horario}</strong>
+                              {inicio.diasAntes === 1 && " da véspera"}
+                              {inicio.diasAntes > 1 && ` (${inicio.diasAntes} dias antes)`}
+                            </span>
+                          )}
+                          {alterado && (
+                            <button
+                              type="button"
+                              className={styles.botaoTexto}
+                              onClick={() => salvarTermino(impressao.nomeArquivo)}
+                              disabled={enviando || !inicio}
+                            >
+                              Salvar horário
+                            </button>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </fieldset>
+            ))}
+        </div>
+      )}
+
+      {comAcoes && (
+        <div className={styles.acoesProduto}>
+          {produto.conjuntosLancaveis > 0 && (
+            <>
+              <label className={`${styles.campo} ${styles.campoCurto}`}>
+                <span className={styles.rotulo}>
+                  {multiparte ? "Conjuntos completos" : "Unidades"}
+                </span>
+                <input
+                  className={styles.entrada}
+                  value={conjuntos}
+                  onChange={(e) => setConjuntos(e.target.value)}
+                  inputMode="numeric"
+                />
+              </label>
+              <button
+                type="button"
+                className={styles.botao}
+                onClick={lancarConjuntos}
+                disabled={enviando}
+              >
+                Lançar no estoque
+              </button>
+              <span className={styles.pendenteDados}>{produto.conjuntosLancaveis} disponíveis</span>
+            </>
+          )}
+
+          {produto.custoApuradoCentavos !== undefined && (
+            <button
+              type="button"
+              className={`${styles.botao} ${styles.botaoSecundario}`}
+              onClick={aplicarAoCadastro}
+              disabled={enviando}
+            >
+              Aplicar ao cadastro
+            </button>
+          )}
+        </div>
+      )}
 
       {aviso && <p className={styles.ok}>{aviso}</p>}
       {erro && <p className={styles.erro}>{erro}</p>}

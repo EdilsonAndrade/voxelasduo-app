@@ -510,6 +510,64 @@
   min-width: 7rem;
 }
 
+/* Escolha das impressões que entram no custo (placas de teste ficam de fora). */
+.escolhaImpressoes {
+  margin-top: 0.7rem;
+}
+
+.grupoImpressoes {
+  border: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+
+.linhaImpressao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.9rem;
+  color: var(--texto-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.marcaImpressao {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.marcaImpressao input {
+  accent-color: var(--roxo);
+}
+
+/* Planejamento: até quando a placa pode começar para terminar no horário. */
+.agendaImpressao {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.entradaHorario {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--surface-line);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--preto);
+}
+
+.linhaForaDoCusto span {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
 .acoesProduto {
   display: flex;
   flex-wrap: wrap;
@@ -696,4 +754,9 @@
     flex: 1 1 100%;
     min-width: 0;
   }
+}
+
+/* Mesmo bloco, dentro da edição do produto (abaixo do formulário). */
+.blocoNoProduto {
+  margin-top: 1.6rem;
 }

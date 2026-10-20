@@ -5,6 +5,20 @@ import type { Impressao, VinculoArquivoProduto } from "@/lib/models/producao";
 /** Abaixo disto a taxa de falha observada não é conclusão, é ruído (FR-024). */
 export const AMOSTRA_MINIMA = 10;
 
+/** Uma impressão da parte, para o vendedor escolher o que entra no custo. */
+export interface ImpressaoDaParte {
+  id: string;
+  /** Placa de onde saiu — é nela que o horário de término é salvo. */
+  nomeArquivo: string;
+  horarioTermino?: string;
+  inicio: Date;
+  resultado: Impressao["resultado"];
+  gramas?: number;
+  duracaoSegundos?: number;
+  rendimentoPorPlaca: number;
+  foraDoCusto: boolean;
+}
+
 export interface ApuracaoParte {
   nomeArquivo: string;
   parte: string;
@@ -18,10 +32,14 @@ export interface ApuracaoParte {
   horasPorUnidade?: number;
   /** Filamento + depreciação + energia por unidade **da parte**, em centavos. */
   custoParteCentavos?: number;
+  /** Duração média de uma placa desta parte (só impressões no custo). */
+  horasPorPlaca?: number;
   /** Unidades da parte que sobraram além dos conjuntos completos. */
   excedente: number;
   /** Quanto ainda pode virar estoque nesta parte (FR-034). */
   saldoLancavel: number;
+  /** Da mais recente para a mais antiga. */
+  impressoes: ImpressaoDaParte[];
 }
 
 export interface ApuracaoProduto {
@@ -30,6 +48,10 @@ export interface ApuracaoProduto {
   unidadesAcabadas: number;
   gramasPorPeca?: number;
   horasPorPeca?: number;
+  /** Uma impressão de cada parte, uma atrás da outra (média das placas). */
+  horasRodadaCompleta?: number;
+  /** Soma das durações das impressões finalizadas que estão no custo. */
+  horasTotaisImpressas: number;
   custoApuradoCentavos?: number;
   custoCadastradoCentavos?: number;
   diferencaCentavos?: number;
@@ -194,8 +216,11 @@ export function apurarProduto(
     const concluidas = daParte.filter((i) => i.impressao.resultado === "concluida");
     const interrompidas = daParte.filter((i) => i.impressao.resultado === "interrompida");
 
-    const comGramas = concluidas.filter((i) => (i.impressao.gramas ?? 0) > 0);
-    const comDuracao = concluidas.filter((i) => (i.impressao.duracaoSegundos ?? 0) > 0);
+    // Impressão tirada do custo pelo vendedor (teste, calibração) continua
+    // sendo peça produzida, mas não entra na média de peso e tempo.
+    const noCusto = concluidas.filter((i) => !i.impressao.foraDoCusto);
+    const comGramas = noCusto.filter((i) => (i.impressao.gramas ?? 0) > 0);
+    const comDuracao = noCusto.filter((i) => (i.impressao.duracaoSegundos ?? 0) > 0);
 
     const gramasPorUnidade =
       comGramas.length > 0
@@ -210,6 +235,11 @@ export function apurarProduto(
           somar(comDuracao.map((i) => i.vinculo.rendimentoPorPlaca))
         : undefined;
 
+    const horasPorPlaca =
+      comDuracao.length > 0
+        ? somar(comDuracao.map((i) => i.impressao.duracaoSegundos!)) / 3600 / comDuracao.length
+        : undefined;
+
     const [principal] = grupo.vinculos;
     return {
       nomeArquivo: principal.nomeArquivo,
@@ -221,11 +251,25 @@ export function apurarProduto(
       impressoesInterrompidas: interrompidas.length,
       gramasPorUnidade,
       horasPorUnidade,
+      horasPorPlaca,
       custoParteCentavos: cadastro
         ? custoDaParte(cadastro, gramasPorUnidade, horasPorUnidade)
         : undefined,
       excedente: 0, // preenchido abaixo, quando as unidades acabadas são conhecidas
       saldoLancavel: somar(daParte.map((i) => saldoLancavel(i.impressao, i.vinculo))),
+      impressoes: daParte
+        .map(({ impressao, vinculo }) => ({
+          id: impressao._id!.toString(),
+          nomeArquivo: vinculo.nomeArquivo,
+          horarioTermino: vinculo.horarioTermino,
+          inicio: impressao.inicio,
+          resultado: impressao.resultado,
+          gramas: impressao.gramas,
+          duracaoSegundos: impressao.duracaoSegundos,
+          rendimentoPorPlaca: vinculo.rendimentoPorPlaca,
+          foraDoCusto: impressao.foraDoCusto === true,
+        }))
+        .sort((a, b) => b.inicio.getTime() - a.inicio.getTime()),
     };
   });
 
@@ -277,12 +321,15 @@ export function apurarProduto(
   /*
    * Trabalho ainda em curso não é peça produzida nem falha: contá-lo na
    * amostra afundaria a taxa de falha observada enquanto a impressora roda.
+   * Impressão tirada do custo também fica fora: teste não é falha de produção.
    */
-  const finalizadas = impressoes.filter((i) => i.resultado !== "em_andamento");
+  const finalizadas = impressoes.filter(
+    (i) => i.resultado !== "em_andamento" && !i.foraDoCusto
+  );
   const totalImpressoes = finalizadas.length;
   const interrompidasTotal = finalizadas.filter((i) => i.resultado === "interrompida").length;
   const gramasPerdidosEmFalhas = somar(
-    impressoes.filter((i) => i.resultado === "interrompida").map((i) => i.gramas ?? 0)
+    finalizadas.filter((i) => i.resultado === "interrompida").map((i) => i.gramas ?? 0)
   );
 
   const perdaObservadaPercentual =
@@ -296,6 +343,11 @@ export function apurarProduto(
     unidadesAcabadas,
     gramasPorPeca,
     horasPorPeca,
+    horasRodadaCompleta:
+      temTodasAsPartes && partes.every((p) => p.horasPorPlaca !== undefined)
+        ? somar(partes.map((p) => p.horasPorPlaca!))
+        : undefined,
+    horasTotaisImpressas: somar(finalizadas.map((i) => i.duracaoSegundos ?? 0)) / 3600,
     custoApuradoCentavos,
     custoCadastradoCentavos,
     diferencaCentavos:

@@ -5,6 +5,9 @@ export const VINCULOS_PRODUCAO_COLLECTION = "vinculosProducao";
 export const LANCAMENTOS_PRODUCAO_COLLECTION = "lancamentosProducao";
 export const IMPORTACOES_PRODUCAO_COLLECTION = "importacoesProducao";
 
+/** Término desejado de uma placa quando o vendedor ainda não escolheu outro. */
+export const HORARIO_TERMINO_PADRAO = "07:30";
+
 /**
  * Resultado de um trabalho de impressão (EDI-127). A origem usa `status` 2
  * para concluída e 3 para interrompida; qualquer outro valor é trabalho ainda
@@ -80,6 +83,13 @@ export interface Impressao {
   quantidadeLancada: number;
   /** Quanto o vendedor declarou como perda (peça quebrada na remoção, FR-033). */
   quantidadePerdida: number;
+  /**
+   * `true` quando o vendedor tirou esta impressão do custo apurado (ex.: placa
+   * de teste). Sai de gramas, horas e taxa de falha; as peças continuam
+   * contando como produzidas e lançáveis. Só é escrito pela tela — a
+   * importação nunca o toca.
+   */
+  foraDoCusto?: boolean;
   importadoEm: Date;
 }
 
@@ -100,6 +110,11 @@ export interface VinculoArquivoProduto {
   rendimentoPorPlaca: number;
   /** Unidades desta parte que compõem um produto acabado — inteiro >= 1. */
   unidadesPorProduto: number;
+  /**
+   * Hora em que o vendedor quer que a placa termine ("HH:MM"), para a tela
+   * dizer até quando ela pode começar. Ausente = padrão `HORARIO_TERMINO_PADRAO`.
+   */
+  horarioTermino?: string;
   criadoEm: Date;
   atualizadoEm: Date;
 }

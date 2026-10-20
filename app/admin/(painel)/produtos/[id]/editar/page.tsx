@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import ProdutoForm from "@/components/admin/ProdutoForm";
+import ProducaoDoProduto from "@/components/admin/producao/ProducaoDoProduto";
 import { buscarProdutoPorId } from "@/lib/produtos/repository";
 import { produtoParaFormulario } from "@/lib/produtos/produtoFormulario";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
@@ -32,6 +33,7 @@ export default async function EditarProdutoPage({
         categorias={categorias}
         valoresIniciais={produtoParaFormulario(produto, id)}
       />
+      <ProducaoDoProduto produtoId={id} />
     </div>
   );
 }

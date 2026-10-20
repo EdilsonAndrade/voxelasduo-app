@@ -376,6 +376,17 @@ export async function consumirSaldoImpressao(
   return resultado !== null;
 }
 
+/** Inclui ou tira uma impressão do custo apurado. `false` se ela não existe. */
+export async function definirForaDoCusto(id: string, foraDoCusto: boolean): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  const colecao = await colecaoImpressoes();
+  const resultado = await colecao.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { foraDoCusto } }
+  );
+  return resultado.matchedCount > 0;
+}
+
 // ------------------------------------------------------------------ vínculos
 
 export async function listarVinculos(): Promise<VinculoArquivoProduto[]> {
@@ -423,6 +434,21 @@ export async function salvarVinculo(dados: {
   );
 
   return resultado!;
+}
+
+/** Grava (ou volta ao padrão, com `null`) o horário de término da placa. */
+export async function definirHorarioTermino(
+  nomeArquivo: string,
+  horarioTermino: string | null
+): Promise<boolean> {
+  const colecao = await colecaoVinculos();
+  const resultado = await colecao.updateOne(
+    { nomeArquivo },
+    horarioTermino === null
+      ? { $unset: { horarioTermino: "" }, $set: { atualizadoEm: new Date() } }
+      : { $set: { horarioTermino, atualizadoEm: new Date() } }
+  );
+  return resultado.matchedCount > 0;
 }
 
 export async function removerVinculo(nomeArquivo: string): Promise<boolean> {
