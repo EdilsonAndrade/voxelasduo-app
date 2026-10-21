@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HORARIO_TERMINO_PADRAO } from "@/lib/models/producao";
 import { horasEMinutos, inicioMaximo } from "@/lib/producao/agenda";
 import styles from "./producao.module.css";
@@ -27,6 +27,7 @@ export interface ParteApurada {
   excedente: number;
   saldoLancavel: number;
   impressoes: ImpressaoDaParte[];
+  arquivos: string[];
 }
 
 export interface ProdutoApurado {
@@ -148,6 +149,24 @@ export function ProdutoApuradoCard({
   const [escolhendo, setEscolhendo] = useState(!comAcoes); // na edição do produto já abre listado
   /** Horário digitado e ainda não salvo, por placa. */
   const [terminos, setTerminos] = useState<Record<string, string>>({});
+  /**
+   * Marcação "fora do custo" já clicada e ainda não refletida no recarregamento.
+   * A caixa muda na hora, as outras continuam clicáveis e o recarregamento só
+   * acontece quando a última gravação termina — recarregar a cada clique fazia
+   * a lista piscar e uma resposta antiga desfazer o clique seguinte.
+   */
+  const [foraLocal, setForaLocal] = useState<Record<string, boolean>>({});
+  const gravando = useRef(new Set<string>());
+
+  useEffect(() => {
+    // Dados novos chegaram: só mantém o que ainda está sendo gravado.
+    setForaLocal((atual) =>
+      Object.fromEntries(Object.entries(atual).filter(([id]) => gravando.current.has(id)))
+    );
+  }, [produto]);
+
+  const foraDoCusto = (impressao: ImpressaoDaParte) =>
+    foraLocal[impressao.id] ?? impressao.foraDoCusto;
 
   async function aplicarAoCadastro() {
     setEnviando(true);
@@ -218,7 +237,10 @@ export function ProdutoApuradoCard({
   }
 
   async function alternarNoCusto(impressao: ImpressaoDaParte) {
-    setEnviando(true);
+    if (gravando.current.has(impressao.id)) return;
+    const novo = !foraDoCusto(impressao);
+    gravando.current.add(impressao.id);
+    setForaLocal((atual) => ({ ...atual, [impressao.id]: novo }));
     setErro(null);
     setAviso(null);
 
@@ -226,20 +248,53 @@ export function ProdutoApuradoCard({
       const resposta = await fetch(`/api/producao/impressoes/${impressao.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ foraDoCusto: !impressao.foraDoCusto }),
+        body: JSON.stringify({ foraDoCusto: novo }),
       });
 
       if (!resposta.ok) {
         const dados = await resposta.json().catch(() => ({}));
         setErro(dados.erro ?? `Falha ao atualizar a impressão (HTTP ${resposta.status}).`);
-        return;
+        setForaLocal((atual) => ({ ...atual, [impressao.id]: !novo }));
       }
-
-      onAlterado();
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : "Falha de rede ao atualizar a impressão.");
+      setForaLocal((atual) => ({ ...atual, [impressao.id]: !novo }));
+    } finally {
+      gravando.current.delete(impressao.id);
+      if (gravando.current.size === 0) onAlterado();
+    }
+  }
+
+  /** Tira a parte do produto: remove os vínculos das placas dela (as impressões voltam a "sem produto"). */
+  async function removerParte(parte: ParteApurada) {
+    if (
+      !window.confirm(
+        `Remover a parte "${parte.parte}" deste produto? As impressões dela deixam de contar aqui e voltam para a lista de impressões sem produto.`
+      )
+    ) {
+      return;
+    }
+    setEnviando(true);
+    setErro(null);
+    setAviso(null);
+
+    try {
+      for (const arquivo of parte.arquivos) {
+        const resposta = await fetch(`/api/producao/vinculos/${encodeURIComponent(arquivo)}`, {
+          method: "DELETE",
+        });
+        if (!resposta.ok && resposta.status !== 404) {
+          const dados = await resposta.json().catch(() => ({}));
+          setErro(dados.erro ?? `Falha ao remover a parte (HTTP ${resposta.status}).`);
+          return;
+        }
+      }
+      setAviso(`Parte "${parte.parte}" removida do produto.`);
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "Falha de rede ao remover a parte.");
     } finally {
       setEnviando(false);
+      onAlterado();
     }
   }
 
@@ -277,7 +332,7 @@ export function ProdutoApuradoCard({
 
   const multiparte = produto.partes.length > 1;
   const impressoes = produto.partes.flatMap((p) => p.impressoes ?? []);
-  const noCusto = impressoes.filter((i) => i.resultado !== "em_andamento" && !i.foraDoCusto).length;
+  const noCusto = impressoes.filter((i) => i.resultado !== "em_andamento" && !foraDoCusto(i)).length;
   const finalizadas = impressoes.filter((i) => i.resultado !== "em_andamento").length;
 
   return (
@@ -400,6 +455,15 @@ export function ProdutoApuradoCard({
               </span>
               <span>{reais(parte.custoParteCentavos)}</span>
               {parte.excedente > 0 && <span>{parte.excedente} un. adiantadas (sem par)</span>}
+              <button
+                type="button"
+                className={styles.botaoTexto}
+                onClick={() => removerParte(parte)}
+                disabled={enviando}
+                title="A peça saiu em outra placa? Tire esta parte do produto."
+              >
+                Remover parte
+              </button>
             </li>
           ))}
         </ul>
@@ -426,8 +490,9 @@ export function ProdutoApuradoCard({
                   const salvo = impressao.horarioTermino ?? HORARIO_TERMINO_PADRAO;
                   const termino = terminos[impressao.nomeArquivo] ?? salvo;
                   const alterado = termino !== salvo;
+                  const fora = foraDoCusto(impressao);
                   const planejavel =
-                    !impressao.foraDoCusto &&
+                    !fora &&
                     impressao.resultado === "concluida" &&
                     (impressao.duracaoSegundos ?? 0) > 0;
                   const inicio = planejavel
@@ -438,14 +503,14 @@ export function ProdutoApuradoCard({
                     <div
                       key={impressao.id}
                       className={`${styles.linhaImpressao} ${
-                        impressao.foraDoCusto ? styles.linhaForaDoCusto : ""
+                        fora ? styles.linhaForaDoCusto : ""
                       }`}
                     >
                       <label className={styles.marcaImpressao}>
                         <input
                           type="checkbox"
-                          checked={!impressao.foraDoCusto}
-                          disabled={enviando || impressao.resultado === "em_andamento"}
+                          checked={!fora}
+                          disabled={impressao.resultado === "em_andamento"}
                           onChange={() => alternarNoCusto(impressao)}
                         />
                         <span>{dataHora(impressao.inicio)}</span>

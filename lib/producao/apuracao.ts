@@ -40,6 +40,8 @@ export interface ApuracaoParte {
   saldoLancavel: number;
   /** Da mais recente para a mais antiga. */
   impressoes: ImpressaoDaParte[];
+  /** Vínculos (placas) que formam a parte — é o que se remove para tirar a parte do produto. */
+  arquivos: string[];
 }
 
 export interface ApuracaoProduto {
@@ -270,6 +272,7 @@ export function apurarProduto(
           foraDoCusto: impressao.foraDoCusto === true,
         }))
         .sort((a, b) => b.inicio.getTime() - a.inicio.getTime()),
+      arquivos: grupo.vinculos.map((v) => v.nomeArquivo),
     };
   });
 
