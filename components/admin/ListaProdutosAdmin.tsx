@@ -51,6 +51,8 @@ export interface ProdutoLinha {
   /** `false` = rascunho: cadastrado, mas ainda fora da loja. */
   publicado: boolean;
   carrosseis: string[];
+  /** Já tem cálculo salvo na calculadora de preço. */
+  temCalculo: boolean;
 }
 
 type Aviso = { tipo: "ok" | "erro"; texto: string } | null;
@@ -703,6 +705,17 @@ export default function ListaProdutosAdmin({
                     ) : (
                       <span className={styles.custo}>{formatarPreco(produto.custoCentavos)}</span>
                     )}
+                    <Link
+                      href={`/admin/produtos/calculadora?produto=${produto.id}`}
+                      className={styles.linkCalculadora}
+                      title={
+                        produto.temCalculo
+                          ? "Abrir o cálculo deste produto na calculadora de preço"
+                          : "Levar este produto para a calculadora e ver se o preço da Shopee vale a pena"
+                      }
+                    >
+                      {produto.temCalculo ? "Ver cálculo" : "Calcular preço"}
+                    </Link>
                   </td>
                 </tr>
               );

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import ProdutoForm from "@/components/admin/ProdutoForm";
 import ProducaoDoProduto from "@/components/admin/producao/ProducaoDoProduto";
@@ -5,6 +6,7 @@ import { buscarProdutoPorId } from "@/lib/produtos/repository";
 import { produtoParaFormulario } from "@/lib/produtos/produtoFormulario";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
 import { listarCategoriasResumo } from "@/lib/categorias/repository";
+import { buscarCalculoDoProduto } from "@/lib/produtos/calculosPreco";
 import styles from "@/components/admin/admin.module.css";
 
 export default async function EditarProdutoPage({
@@ -13,10 +15,11 @@ export default async function EditarProdutoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [produto, taxasGlobais, categorias] = await Promise.all([
+  const [produto, taxasGlobais, categorias, calculo] = await Promise.all([
     buscarProdutoPorId(id),
     buscarTaxasCanais(),
     listarCategoriasResumo(),
+    buscarCalculoDoProduto(id),
   ]);
 
   if (!produto) {
@@ -27,6 +30,11 @@ export default async function EditarProdutoPage({
     <div className="container">
       <div className={styles.bar}>
         <h1>Editar produto</h1>
+        <div className={styles.barAcoes}>
+          <Link href={`/admin/produtos/calculadora?produto=${id}`} className={styles.btnGhost}>
+            {calculo ? "Ver cálculo de preço" : "Levar para a calculadora"}
+          </Link>
+        </div>
       </div>
       <ProdutoForm
         taxasGlobais={taxasGlobais}

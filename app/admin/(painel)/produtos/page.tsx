@@ -5,6 +5,7 @@ import { listarCategoriasResumo } from "@/lib/categorias/repository";
 import { listarCarrosseis } from "@/lib/home/repository";
 import { listarProdutos } from "@/lib/produtos/repository";
 import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
+import { listarCalculosPreco } from "@/lib/produtos/calculosPreco";
 import styles from "@/components/admin/admin.module.css";
 
 // Sempre busca dados atuais — sem isso o Next.js pré-renderiza esta página
@@ -18,11 +19,13 @@ export default async function AdminProdutosPage({
   searchParams: Promise<{ carrossel?: string }>;
 }) {
   const { carrossel: carrosselFiltro } = await searchParams;
-  const [todosProdutos, carrosseis, categorias] = await Promise.all([
+  const [todosProdutos, carrosseis, categorias, calculos] = await Promise.all([
     listarProdutos(),
     listarCarrosseis(),
     listarCategoriasResumo(),
+    listarCalculosPreco(),
   ]);
+  const produtosComCalculo = new Set(calculos.flatMap((c) => (c.produtoId ? [c.produtoId] : [])));
 
   // Carrosséis de cada produto (menu ☰ da linha, EDI-114).
   const carrosseisPorProduto = new Map<string, string[]>();
@@ -63,6 +66,7 @@ export default async function AdminProdutosPage({
       noCatalogoFacebook: produto.metaCatalogo?.publicar === true,
       publicado: produto.publicado !== false,
       carrosseis: carrosseisPorProduto.get(id) ?? [],
+      temCalculo: produtosComCalculo.has(id),
     };
   });
 

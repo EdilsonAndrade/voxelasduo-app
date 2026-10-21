@@ -82,6 +82,12 @@ export async function buscarCalculoPreco(id: string): Promise<CalculoPreco | nul
   return colecao.findOne({ _id: new ObjectId(id) });
 }
 
+/** Cálculo mais recente ligado ao produto — `null` = o produto ainda não passou pela calculadora. */
+export async function buscarCalculoDoProduto(produtoId: string): Promise<CalculoPreco | null> {
+  const colecao = await colecaoCalculos();
+  return colecao.findOne({ produtoId }, { sort: { atualizadoEm: -1 } });
+}
+
 /** Vários cálculos pelos ids, na ordem pedida — ids inválidos ou que não existem ficam de fora. */
 export async function buscarCalculosPreco(ids: string[]): Promise<CalculoPreco[]> {
   const validos = ids.filter((id) => ObjectId.isValid(id));

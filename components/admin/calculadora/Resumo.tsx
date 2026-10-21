@@ -32,11 +32,34 @@ function Estatistica({ rotulo, valor, apoio, destaque }: { rotulo: string; valor
   );
 }
 
+/** Custo de uma peça em destaque no topo do resumo — aparece assim que a impressão está preenchida. */
+function CustoPeca({ custo, custoCadastroCentavos }: { custo: CustoUnidade; custoCadastroCentavos: number | null }) {
+  const impressao = custo.energiaCentavos + custo.desgasteCentavos + custo.falhaCentavos;
+  const extras = custo.embalagemCentavos + custo.acabamentoCentavos + custo.maoDeObraCentavos + custo.outrosCentavos;
+  const diferenca = custoCadastroCentavos !== null ? custo.totalCentavos - custoCadastroCentavos : 0;
+  return (
+    <div className={calc.custoPeca}>
+      <span>Custo da peça</span>
+      <strong>{reais(custo.totalCentavos)}</strong>
+      <small>
+        Material {reais(custo.materialCentavos)} · Impressão {reais(impressao)} · Extras {reais(extras)} ·{" "}
+        <a href="#composicao-custo">ver composição</a>
+      </small>
+      {custoCadastroCentavos !== null && (
+        <small>
+          No cadastro do produto: <b>{reais(custoCadastroCentavos)}</b>
+          {Math.abs(diferenca) >= 1 && ` (${diferenca > 0 ? "+" : "−"}${reais(Math.abs(diferenca))} aqui)`}
+        </small>
+      )}
+    </div>
+  );
+}
+
 function Composicao({ custo }: { custo: CustoUnidade }) {
   const camadas = CAMADAS.map((c) => ({ ...c, centavos: custo[c.chave] as number })).filter((c) => c.centavos > 0);
   const total = custo.totalCentavos || 1;
   return (
-    <div className={calc.composicao}>
+    <div className={calc.composicao} id="composicao-custo">
       <span className={calc.rotuloGrupo}>Composição do custo por unidade</span>
       <div className={calc.camadas} role="img" aria-label={camadas.map((c) => `${c.rotulo} ${reais(c.centavos)}`).join(", ")}>
         {camadas.map((c) => (
@@ -72,6 +95,7 @@ export default function Resumo({
   onEscolherRoas,
   onUsarVerba,
   rodape,
+  custoCadastroCentavos = null,
 }: {
   res: ResultadoCalculadora;
   aba: CanalVenda;
@@ -83,6 +107,8 @@ export default function Resumo({
   onEscolherRoas: (roas: string) => void;
   onUsarVerba: (reais: string) => void;
   rodape: ReactNode;
+  /** Custo salvo no produto ligado ao cálculo, para comparar — `null` = sem produto ou sem custo. */
+  custoCadastroCentavos?: number | null;
 }) {
   const r = res.canais[aba];
   const pronto = res.custo !== null && r?.venda != null;
@@ -236,6 +262,8 @@ export default function Resumo({
           </button>
         ))}
       </div>
+
+      {res.custo && <CustoPeca custo={res.custo} custoCadastroCentavos={custoCadastroCentavos} />}
 
       {res.custo && (
         <table className={calc.comparaCanais}>

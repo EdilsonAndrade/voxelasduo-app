@@ -200,6 +200,25 @@
   color: var(--texto-soft);
 }
 
+.linkCalculadora {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--roxo);
+  text-decoration: none;
+}
+
+.linkCalculadora:hover {
+  text-decoration: underline;
+}
+
+.linkCalculadora:focus-visible {
+  outline: 2px solid var(--roxo);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Preços editáveis */
 
 .precos {

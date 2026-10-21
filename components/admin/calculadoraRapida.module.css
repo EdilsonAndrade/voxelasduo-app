@@ -978,6 +978,44 @@
   font-weight: 800;
 }
 
+.custoPeca {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--turquesa) 14%, transparent);
+}
+
+.custoPeca > span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texto-soft);
+}
+
+.custoPeca > strong {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.custoPeca small {
+  font-size: 0.8rem;
+  color: var(--texto-soft);
+}
+
+.custoPeca small b {
+  color: var(--preto);
+}
+
+.custoPeca a {
+  color: var(--roxo);
+}
+
 .precoConsumidor {
   display: flex;
   flex-direction: column;

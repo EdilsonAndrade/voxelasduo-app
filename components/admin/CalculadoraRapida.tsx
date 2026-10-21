@@ -32,13 +32,20 @@ import { numero, reais } from "./calculadora/formato";
 
 /** Cálculo salvo reaberto na calculadora — ausente = cálculo novo. */
 export interface CalculoInicial {
-  id: string;
+  /** Ausente = ainda não salvo (ex: aberto a partir de um produto). */
+  id?: string;
   nome: string;
   linkModelo3d?: string;
   linkShopee?: string;
   linkMercadoLivre?: string;
   valores: CalculadoraValores;
   produtoId?: string;
+}
+
+export interface ProdutoVinculado {
+  id: string;
+  /** Custo de produção salvo no cadastro — `null` = não configurado. */
+  custoCadastroCentavos: number | null;
 }
 
 async function mensagemDeErro(resposta: Response): Promise<string> {
@@ -50,9 +57,12 @@ async function mensagemDeErro(resposta: Response): Promise<string> {
 export default function CalculadoraRapida({
   taxasGlobais,
   calculoInicial,
+  produtoVinculado,
 }: {
   taxasGlobais: TaxasCanaisConfig;
   calculoInicial?: CalculoInicial;
+  /** Produto ligado ao cálculo — traz o custo do cadastro para comparar. */
+  produtoVinculado?: ProdutoVinculado;
 }) {
   const router = useRouter();
   const [valores, setValores] = useState<CalculadoraValoresV2>(() =>
@@ -296,7 +306,7 @@ export default function CalculadoraRapida({
 
       {produtoId ? (
         <span className={styles.formSuccess}>
-          Já virou produto: <Link href={`/admin/produtos/${produtoId}/editar`}>abrir o rascunho do produto</Link>
+          Ligado a um produto: <Link href={`/admin/produtos/${produtoId}/editar`}>abrir o cadastro do produto</Link>
         </span>
       ) : (
         <>
@@ -378,6 +388,7 @@ export default function CalculadoraRapida({
         onEscolherRoas={(roasMeta) => alterarAnuncio({ roasMeta })}
         onUsarVerba={(verbaMesReais) => alterarAnuncio({ verbaMesReais })}
         rodape={rodape}
+        custoCadastroCentavos={produtoVinculado?.custoCadastroCentavos ?? null}
       />
     </div>
   );
