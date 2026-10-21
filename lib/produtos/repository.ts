@@ -286,6 +286,46 @@ export async function incrementarEstoque(
   );
 }
 
+/**
+ * Sobe o estoque até `minimo` — nunca desce. Devolve o produto só quando o
+ * estoque mudou (controle de vendas: produção lançada maior que o estoque).
+ */
+export async function elevarEstoque(id: string, minimo: number): Promise<Produto | null> {
+  if (!ObjectId.isValid(id)) return null;
+
+  const colecao = await colecaoProdutos();
+  return colecao.findOneAndUpdate(
+    { _id: new ObjectId(id), estoque: { $lt: minimo } },
+    { $set: { estoque: minimo, atualizadoEm: new Date() } },
+    { returnDocument: "after" }
+  );
+}
+
+/**
+ * Tira até `quantidade` do estoque sem deixar negativo — a venda manual já
+ * aconteceu e não pode ser recusada por falta de estoque. Devolve quanto saiu
+ * de fato (o que precisa voltar se a venda for desfeita); `null` = produto não existe.
+ */
+export async function reduzirEstoqueAteZero(id: string, quantidade: number): Promise<number | null> {
+  if (!ObjectId.isValid(id)) return null;
+
+  const colecao = await colecaoProdutos();
+  const antes = await colecao.findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    [
+      {
+        $set: {
+          estoque: { $max: [0, { $subtract: ["$estoque", quantidade] }] },
+          atualizadoEm: new Date(),
+        },
+      },
+    ],
+    { returnDocument: "before" }
+  );
+  if (!antes) return null;
+  return Math.min(Math.max(antes.estoque, 0), quantidade);
+}
+
 export interface ResultadoAbatimentoEstoque {
   sucesso: boolean;
   motivoFalha?: "estoque_insuficiente" | "produto_removido";

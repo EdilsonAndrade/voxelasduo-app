@@ -18,6 +18,7 @@ export default async function AdminPainelLayout({ children }: { children: React.
             <Link href="/admin/pedidos">Pedidos</Link>
             <Link href="/admin/evento">Pedidos de evento</Link>
             <Link href="/admin/producao">Produção</Link>
+            <Link href="/admin/controle-vendas">Controle de vendas</Link>
             <Link href="/admin/atendimento">Atendimento</Link>
             <Link href="/admin/tendencias">Produtos em alta</Link>
             <Link href="/admin/nichos">Pesquisa de nichos</Link>
