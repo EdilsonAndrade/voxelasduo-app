@@ -185,15 +185,33 @@ export function ProdutoApuradoCard({
     }
 
     try {
+      // O PATCH substitui o `custoProducao` inteiro e exige todos os campos:
+      // parte do custo atual do cadastro e troca só o que foi apurado.
+      const atual = await fetch(`/api/produtos/${produto.produtoId}`);
+      const dadosAtuais = await atual.json().catch(() => ({}));
+      if (!atual.ok) {
+        setErro(dadosAtuais.erro ?? `Falha ao ler o cadastro (HTTP ${atual.status}).`);
+        return;
+      }
+      if (!dadosAtuais.produto?.custoProducao) {
+        setErro("Preencha o custo de produção no cadastro do produto antes de aplicar o apurado.");
+        return;
+      }
+
       const resposta = await fetch(`/api/produtos/${produto.produtoId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ custoProducao }),
+        body: JSON.stringify({
+          custoProducao: { ...dadosAtuais.produto.custoProducao, ...custoProducao },
+        }),
       });
 
       if (!resposta.ok) {
         const dados = await resposta.json().catch(() => ({}));
-        setErro(dados.erro ?? `Falha ao aplicar (HTTP ${resposta.status}).`);
+        const detalhes = dados.campos ? Object.values(dados.campos as Record<string, string>) : [];
+        setErro(
+          [dados.erro ?? `Falha ao aplicar (HTTP ${resposta.status}).`, ...detalhes].join(" ")
+        );
         return;
       }
 
