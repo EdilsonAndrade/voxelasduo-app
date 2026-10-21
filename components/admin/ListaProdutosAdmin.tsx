@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import BaixarFotosProduto from "./BaixarFotosProduto";
 import ConfirmModal from "./ConfirmModal";
@@ -579,7 +580,9 @@ export default function ListaProdutosAdmin({
                     )}
                   </td>
                   <td className={styles.colNome}>
-                    {produto.nome}{" "}
+                    <Link href={`/admin/produtos/${produto.id}/editar`} className={styles.linkNome}>
+                      {produto.nome}
+                    </Link>{" "}
                     {!estaPublicado(produto) && (
                       <span className={adminStyles.badgeZero} title="Rascunho: fora da loja até ser publicado">
                         Rascunho

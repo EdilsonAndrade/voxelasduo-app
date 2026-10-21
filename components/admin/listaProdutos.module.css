@@ -151,6 +151,22 @@
   min-width: 10rem;
 }
 
+.linkNome {
+  color: inherit;
+  text-decoration: none;
+}
+
+.linkNome:hover {
+  color: var(--roxo);
+  text-decoration: underline;
+}
+
+.linkNome:focus-visible {
+  outline: 2px solid var(--roxo);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .colLevar {
   width: 1%;
   white-space: nowrap;
