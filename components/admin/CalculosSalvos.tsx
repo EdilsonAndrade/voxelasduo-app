@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import styles from "./admin.module.css";
 import calc from "./calculadoraRapida.module.css";
 import ConfirmModal from "./ConfirmModal";
+import { combinaBusca } from "@/lib/busca/texto";
 
 export interface CalculoResumo {
   id: string;
@@ -22,6 +23,7 @@ export default function CalculosSalvos({ calculos, abertoId }: { calculos: Calcu
   const [excluindo, setExcluindo] = useState<CalculoResumo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
+  const [busca, setBusca] = useState("");
 
   async function confirmarExclusao() {
     if (!excluindo) return;
@@ -56,17 +58,45 @@ export default function CalculosSalvos({ calculos, abertoId }: { calculos: Calcu
 
   // Ordem da lista, não a ordem em que foram marcados.
   const idsMarcados = calculos.filter((c) => marcados.has(c.id)).map((c) => c.id);
-  const todosMarcados = idsMarcados.length === calculos.length;
+  // "Marcar todos" vale para o que a busca mostra; marcados escondidos continuam marcados.
+  const visiveis = calculos.filter((c) => combinaBusca(busca, c.nome, c.alturaCm && `${c.alturaCm} cm`));
+  const todosMarcados = visiveis.length > 0 && visiveis.every((c) => marcados.has(c.id));
+
+  function alternarVisiveis() {
+    setMarcados((atual) => {
+      const novo = new Set(atual);
+      for (const c of visiveis) {
+        if (todosMarcados) novo.delete(c.id);
+        else novo.add(c.id);
+      }
+      return novo;
+    });
+  }
 
   return (
     <details className={calc.salvos} open={!abertoId}>
       <summary>Cálculos salvos ({calculos.length})</summary>
+      <div className={calc.buscaSalvos}>
+        <input
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && setBusca("")}
+          placeholder="Buscar cálculo pelo nome…"
+          aria-label="Buscar cálculo salvo"
+        />
+        {busca.trim() !== "" && (
+          <span className={styles.mlLinkAviso}>
+            {visiveis.length} de {calculos.length}
+          </span>
+        )}
+      </div>
       <div className={calc.barraImpressao}>
         <label className={calc.checkFaixaCurto}>
           <input
             type="checkbox"
             checked={todosMarcados}
-            onChange={() => setMarcados(todosMarcados ? new Set() : new Set(calculos.map((c) => c.id)))}
+            onChange={alternarVisiveis}
           />
           Marcar todos
         </label>
@@ -83,7 +113,8 @@ export default function CalculosSalvos({ calculos, abertoId }: { calculos: Calcu
         )}
       </div>
       <ul>
-        {calculos.map((c) => (
+        {visiveis.length === 0 && <li className={styles.mlLinkAviso}>Nenhum cálculo com “{busca.trim()}”.</li>}
+        {visiveis.map((c) => (
           <li key={c.id} className={c.id === abertoId ? calc.salvoAberto : undefined}>
             <input
               type="checkbox"

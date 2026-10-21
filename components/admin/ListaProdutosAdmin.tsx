@@ -13,6 +13,7 @@ import LinhaPrecoProduto, {
 import MenuAcoesProduto, { type CarrosselOpcao } from "./MenuAcoesProduto";
 import TrocarCategoriaProduto from "./TrocarCategoriaProduto";
 import type { CategoriaResumo } from "@/lib/models/categoria";
+import { combinaBusca } from "@/lib/busca/texto";
 import type { PrecosCanaisProduto, Produto } from "@/lib/models/produto";
 import { formatarPreco } from "@/lib/produtos/formato";
 import {
@@ -129,6 +130,7 @@ export default function ListaProdutosAdmin({
   carrosseis: CarrosselOpcao[];
 }) {
   const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set());
+  const [busca, setBusca] = useState("");
   // Quantas peças de cada produto vão ao evento: obrigatório em todo marcado (EDI-126).
   const [quantidades, setQuantidades] = useState<Record<string, string>>({});
   const [linhas, setLinhas] = useState(() => estadoInicial(produtos));
@@ -145,7 +147,10 @@ export default function ListaProdutosAdmin({
   const [publicando, setPublicando] = useState<Set<string>>(() => new Set());
   const [confirmarRestauracao, setConfirmarRestauracao] = useState(false);
 
-  const todosMarcados = produtos.length > 0 && produtos.every((p) => selecionados.has(p.id));
+  // A busca só esconde linhas: o que já foi marcado ou editado continua valendo.
+  const nomeCategoria = new Map(categorias.map((c) => [c.slug, c.nome]));
+  const visiveis = produtos.filter((p) => combinaBusca(busca, p.nome, nomeCategoria.get(p.categoria) ?? p.categoria));
+  const todosMarcados = visiveis.length > 0 && visiveis.every((p) => selecionados.has(p.id));
   const idsSelecionados = produtos.filter((p) => selecionados.has(p.id)).map((p) => p.id);
   const idsAlterados = produtos.filter((p) => linhaAlterada(linhas[p.id])).map((p) => p.id);
   const idsAjustePendente = produtos.filter((p) => linhas[p.id].ajustePendente !== null).map((p) => p.id);
@@ -203,7 +208,14 @@ export default function ListaProdutosAdmin({
   }
 
   function alternarTodos() {
-    setSelecionados(todosMarcados ? new Set() : new Set(produtos.map((p) => p.id)));
+    setSelecionados((atual) => {
+      const novo = new Set(atual);
+      for (const p of visiveis) {
+        if (todosMarcados) novo.delete(p.id);
+        else novo.add(p.id);
+      }
+      return novo;
+    });
   }
 
   function editarQuantidade(id: string, valor: string) {
@@ -520,6 +532,22 @@ export default function ListaProdutosAdmin({
         onCancelar={() => setConfirmarRestauracao(false)}
       />
 
+      <div className={styles.busca}>
+        <input
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && setBusca("")}
+          placeholder="Buscar produto pelo nome ou categoria…"
+          aria-label="Buscar produto"
+        />
+        {busca.trim() !== "" && (
+          <span className={styles.contagem}>
+            {visiveis.length} de {produtos.length} {plural(produtos.length, "produto", "produtos")}
+          </span>
+        )}
+      </div>
+
       {/* A rolagem lateral, quando a janela é estreita, fica na tabela — nunca na página. */}
       <div className={styles.rolagem}>
         <table className={styles.tabela}>
@@ -545,7 +573,14 @@ export default function ListaProdutosAdmin({
             </tr>
           </thead>
           <tbody>
-            {produtos.map((produto) => {
+            {visiveis.length === 0 && (
+              <tr>
+                <td colSpan={99} className={styles.semResultado}>
+                  Nenhum produto com “{busca.trim()}”.
+                </td>
+              </tr>
+            )}
+            {visiveis.map((produto) => {
               const marcado = selecionados.has(produto.id);
               const classes = [
                 styles.linha,

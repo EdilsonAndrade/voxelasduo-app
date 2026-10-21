@@ -10,6 +10,36 @@
  * última linha, escondida atrás da barra de seleção) e o cabeçalho gruda no
  * topo. A página não ganha barra horizontal própria.
  */
+.busca {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.busca input {
+  flex: 1 1 18rem;
+  max-width: 32rem;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.92rem;
+  color: var(--preto);
+}
+
+.busca input:focus {
+  border-color: var(--roxo);
+  outline: none;
+}
+
+.semResultado {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--texto-soft);
+}
+
 .rolagem {
   overflow: auto;
   overscroll-behavior-x: contain;
