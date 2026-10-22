@@ -136,15 +136,12 @@ function validarTaxasCanais(valor: unknown): string | undefined {
     }
   }
 
-  // Margens são sobre o custo, não sobre o preço — sem teto de 100%.
-  if (taxas.margemMinimaPercentual !== undefined) {
-    if (!numeroFinito(taxas.margemMinimaPercentual) || (taxas.margemMinimaPercentual as number) < 0) {
-      return "Informe um percentual válido, maior ou igual a 0, para a margem mínima.";
-    }
-  }
-  if (taxas.margemDesejadaPercentual !== undefined) {
-    if (!numeroFinito(taxas.margemDesejadaPercentual) || (taxas.margemDesejadaPercentual as number) < 0) {
-      return "Informe um percentual válido, maior ou igual a 0, para a margem desejada.";
+  // Margens são % do preço de venda (lucro ÷ preço) — sempre menores que 100%.
+  for (const campo of ["margemMinimaPercentual", "margemDesejadaPercentual"] as const) {
+    if (taxas[campo] === undefined) continue;
+    const valor = taxas[campo];
+    if (!numeroFinito(valor) || (valor as number) < 0 || (valor as number) >= 100) {
+      return `A margem é sobre o preço de venda: use um valor entre 0 e menos de 100% em "${campo}".`;
     }
   }
 

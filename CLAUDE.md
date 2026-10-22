@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/033-buscador-produtos-alta/plan.md
+at specs/034-verba-de-desconto-cupons/plan.md
 
 ## RULES
 

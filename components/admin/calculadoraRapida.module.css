@@ -1385,3 +1385,12 @@
     transition: none;
   }
 }
+
+/* Verba de desconto (spec 034): margem − piso − cupom de loja, com simulador. */
+.cardVerba {
+  padding: 0.8rem 0.9rem;
+  border: 2px solid color-mix(in srgb, var(--turquesa) 45%, var(--surface-line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--turquesa) 8%, var(--surface));
+  font-size: 0.85rem;
+}

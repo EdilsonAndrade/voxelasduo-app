@@ -7,6 +7,9 @@ import type { AnuncioCalculadoraValores } from "@/lib/models/calculoPreco";
 import { NOME_CANAL, type CanalVenda } from "@/lib/produtos/canaisCalculadora";
 import type { CustoUnidade } from "@/lib/produtos/custoCalculadora";
 import { CANAIS_VENDA, type ResultadoCalculadora } from "@/lib/produtos/resultadoCalculadora";
+import { detalharVenda } from "@/lib/produtos/calculadoraRapida";
+import { calcularVerbaDesconto, type CupomLoja } from "@/lib/produtos/verbaDesconto";
+import VerbaDesconto from "../VerbaDesconto";
 import { AnuncioCanal, ConcorrenteCanal, KitsCanal } from "./BlocosCanal";
 import { numero, porcentagem, reais } from "./formato";
 
@@ -96,6 +99,8 @@ export default function Resumo({
   onUsarVerba,
   rodape,
   custoCadastroCentavos = null,
+  pisoPercentual,
+  cupomLoja,
 }: {
   res: ResultadoCalculadora;
   aba: CanalVenda;
@@ -109,6 +114,10 @@ export default function Resumo({
   rodape: ReactNode;
   /** Custo salvo no produto ligado ao cálculo, para comparar — `null` = sem produto ou sem custo. */
   custoCadastroCentavos?: number | null;
+  /** Piso de lucro global (% do preço) — base da verba de desconto (spec 034). */
+  pisoPercentual: number;
+  /** Cupom de loja global — entra só na aba Shopee. */
+  cupomLoja: CupomLoja | null;
 }) {
   const r = res.canais[aba];
   const pronto = res.custo !== null && r?.venda != null;
@@ -149,6 +158,21 @@ export default function Resumo({
     const taxasPedido = r.taxas.filter((t) => !t.foraDoPedido);
     const taxasFora = r.taxas.filter((t) => t.foraDoPedido);
     const pecasDia = res.producao?.pecasPorDia ?? 0;
+    // Lucro num preço qualquer com as mesmas taxas, anúncio, imposto e custos do pedido deste canal.
+    const lucroEm = (precoCentavos: number) =>
+      detalharVenda({
+        precoCentavos,
+        faixas: r.canal.faixas,
+        custoCentavos: r.custoPedidoCentavos,
+        anuncioPercentual: r.anuncioPercentual,
+        impostoPercentual: res.impostoPercentual,
+      }).lucroCentavos;
+    const verba = calcularVerbaDesconto({
+      precoCentavos: r.precoCentavos,
+      pisoPercentual,
+      cupomLoja: aba === "shopee" ? cupomLoja : null,
+      lucroEm,
+    });
     corpo = (
       <>
         <div className={calc.precoConsumidor}>
@@ -219,6 +243,10 @@ export default function Resumo({
               ))}
             </ul>
           )}
+        </div>
+
+        <div className={calc.cardVerba}>
+          <VerbaDesconto key={aba} verba={verba} lucroEm={lucroEm} idCampo={`simularDesconto-calc-${aba}`} />
         </div>
 
         <Composicao custo={res.custo} />

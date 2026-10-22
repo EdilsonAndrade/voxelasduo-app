@@ -253,6 +253,20 @@ export async function restaurarAjusteEvento(id: string): Promise<Produto | null>
   return resultado ?? null;
 }
 
+/** Produtos com margens antigas (% sobre o custo) aguardando revisão (spec 034), por nome. */
+export async function listarMargensParaRevisar(): Promise<Produto[]> {
+  const colecao = await colecaoProdutos();
+  return colecao.find({ margensParaRevisar: { $exists: true } }).sort({ nome: 1 }).toArray();
+}
+
+/** "Marcar revisado": tira o produto da lista de margens para revisar. `false` = produto inexistente. */
+export async function removerMargensParaRevisar(id: string): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  const colecao = await colecaoProdutos();
+  const resultado = await colecao.updateOne({ _id: new ObjectId(id) }, { $unset: { margensParaRevisar: "" } });
+  return resultado.matchedCount > 0;
+}
+
 export async function removerProduto(id: string): Promise<Produto | null> {
   if (!ObjectId.isValid(id)) return null;
   const colecao = await colecaoProdutos();

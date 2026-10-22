@@ -874,3 +874,26 @@
     min-height: 44px;
   }
 }
+
+/* Verba de desconto na Shopee (spec 034): sem espaço para o cupom de loja / abaixo do piso. */
+.seloVerba,
+.seloVerbaRuim {
+  display: block;
+  width: fit-content;
+  margin-top: 0.2rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.seloVerba {
+  background: color-mix(in srgb, var(--amarelo) 30%, var(--surface));
+  color: var(--preto);
+}
+
+.seloVerbaRuim {
+  background: color-mix(in srgb, var(--rosa) 25%, var(--surface));
+  color: var(--preto);
+}

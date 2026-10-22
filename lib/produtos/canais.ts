@@ -37,16 +37,21 @@ function taxaShopee(percentualProduto?: number): TaxaCanal {
 }
 
 /**
- * Menor preço `(base + fixa) / (1 − taxa%)` dentro de uma faixa: percorre as
- * faixas da mais barata para a mais cara; se o preço passa do teto da faixa,
- * tenta a seguinte (no mínimo o piso dela). `null` = taxa `>= 100%`.
+ * Menor preço `(base + fixa) / (1 − taxa% − margem%)` dentro de uma faixa:
+ * percorre as faixas da mais barata para a mais cara; se o preço passa do teto
+ * da faixa, tenta a seguinte (no mínimo o piso dela). `margemPrecoPercentual`
+ * é o lucro em % do preço (0 = só cobre a base). Com margem o preço é
+ * arredondado para cima, para o lucro não ficar centavos abaixo dela.
+ * `null` = taxa + margem `>= 100%`.
  */
-function precoPorTaxa(baseCentavos: number, taxa: TaxaCanal): number | null {
+function precoPorTaxa(baseCentavos: number, taxa: TaxaCanal, margemPrecoPercentual = 0): number | null {
   const faixas = taxa.faixas?.length ? taxa.faixas : [{ ateCentavos: null, percentual: taxa.percentual, fixaCentavos: taxa.fixaCentavos }];
+  const arredondar = margemPrecoPercentual > 0 ? Math.ceil : Math.round;
   let pisoCentavos = 0;
   for (const faixa of faixas) {
-    if (faixa.percentual < 100) {
-      const preco = Math.max(Math.round((baseCentavos + faixa.fixaCentavos) / (1 - faixa.percentual / 100)), pisoCentavos);
+    const divisor = 1 - (faixa.percentual + margemPrecoPercentual) / 100;
+    if (divisor > 0) {
+      const preco = Math.max(arredondar((baseCentavos + faixa.fixaCentavos) / divisor), pisoCentavos);
       if (faixa.ateCentavos === null || preco <= faixa.ateCentavos) return preco;
     }
     if (faixa.ateCentavos === null) return null;
@@ -72,7 +77,10 @@ export interface ResultadoCanal {
   /** Taxa percentual + fixa cobrada no preço sugerido, em centavos. */
   comissaoCentavos: number | null;
   lucroLiquidoCentavos: number | null;
+  /** Lucro em % do preço de venda (a régua do piso e da margem desejada). */
   margemPercentual: number | null;
+  /** Lucro em % sobre o custo (markup) — só informativo. */
+  markupPercentual: number | null;
   prejuizo: boolean;
   margemBaixa: boolean;
 }
@@ -93,16 +101,29 @@ export function resolverTaxasCanais(
 }
 
 /**
- * Preço sugerido de um canal: `(custo × (1 + margem) + taxaFixa) / (1 − taxa%)`
- * — a fórmula do EDI-92 acrescida da taxa fixa do canal (igual a ela quando a
- * taxa fixa é zero). Retorna `null` quando a taxa percentual é `>= 100%`.
+ * Preço sugerido de um canal: `(custo + taxaFixa) / (1 − taxa% − margem%)`,
+ * com a margem em % do preço — o lucro nesse preço é exatamente essa fatia
+ * dele. Retorna `null` quando taxa + margem é `>= 100%`.
  */
 export function calcularPrecoSugeridoCanal(
   custoCentavos: number,
   margemDesejadaPercentual: number,
   taxa: TaxaCanal
 ): number | null {
-  return precoPorTaxa(custoCentavos * (1 + margemDesejadaPercentual / 100), taxa);
+  return precoPorTaxa(custoCentavos, taxa, margemDesejadaPercentual);
+}
+
+/**
+ * Preço pela régua antiga, com a margem em % sobre o custo (markup):
+ * `(custo × (1 + markup) + taxaFixa) / (1 − taxa%)`. Só para converter as
+ * margens gravadas antes da régua do preço.
+ */
+export function calcularPrecoPorMarkupCanal(
+  custoCentavos: number,
+  markupPercentual: number,
+  taxa: TaxaCanal
+): number | null {
+  return precoPorTaxa(custoCentavos * (1 + markupPercentual / 100), taxa);
 }
 
 /**
@@ -119,7 +140,7 @@ export function calcularPrecoEscalaCanal(
 
 /**
  * Monta o resultado de um canal a partir do preço sugerido: comissão (percentual
- * sobre o preço + fixa), lucro líquido e margem sobre o preço, com os mesmos
+ * sobre o preço + fixa), lucro líquido, margem (% do preço) e markup, com os mesmos
  * alertas de prejuízo/margem baixa do simulador. `custoCentavos` é o custo usado
  * no lucro (COGS no modo completo, custo de caixa no modo escala).
  */
@@ -138,6 +159,7 @@ export function calcularResultadoCanal(
       comissaoCentavos: null,
       lucroLiquidoCentavos: null,
       margemPercentual: null,
+      markupPercentual: null,
       prejuizo: false,
       margemBaixa: false,
     };
@@ -145,7 +167,8 @@ export function calcularResultadoCanal(
 
   const comissaoCentavos = comissaoCanal(taxa, precoSugeridoCentavos);
   const lucroLiquidoCentavos = precoSugeridoCentavos - custoCentavos - comissaoCentavos;
-  const margemPercentual = custoCentavos > 0 ? (lucroLiquidoCentavos / custoCentavos) * 100 : 0;
+  const margemPercentual = precoSugeridoCentavos > 0 ? (lucroLiquidoCentavos / precoSugeridoCentavos) * 100 : 0;
+  const markupPercentual = custoCentavos > 0 ? (lucroLiquidoCentavos / custoCentavos) * 100 : null;
 
   return {
     canal,
@@ -155,6 +178,7 @@ export function calcularResultadoCanal(
     comissaoCentavos,
     lucroLiquidoCentavos,
     margemPercentual,
+    markupPercentual,
     prejuizo: lucroLiquidoCentavos < 0,
     margemBaixa: margemPercentual < margemMinimaPercentual,
   };
@@ -175,9 +199,9 @@ export interface ResultadoPisoCanal {
 }
 
 /**
- * Preço mínimo (piso) de um canal: a mesma fórmula do preço sugerido, com a
- * margem mínima (% sobre o custo) no lugar da desejada. Retorna `null` quando
- * a taxa percentual é `>= 100%`.
+ * Preço mínimo (piso) de um canal: a mesma fórmula do preço sugerido, com o
+ * piso (% do preço) no lugar da margem desejada. Retorna `null` quando taxa +
+ * piso é `>= 100%`.
  */
 export function calcularPrecoMinimoCanal(
   custoCentavos: number,

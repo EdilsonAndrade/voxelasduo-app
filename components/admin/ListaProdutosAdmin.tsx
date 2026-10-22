@@ -45,6 +45,8 @@ export interface ProdutoLinha {
   precoShopeeCentavos: number | null;
   /** Custo total por peça (`calcularCustoProducao().totalCentavos`) — `null` sem custo configurado. */
   custoCentavos: number | null;
+  /** Verba de desconto no preço da Shopee (spec 034) — `null` sem custo configurado. */
+  verbaShopee: "ok" | "semCupomLoja" | "abaixoDoPiso" | null;
   /** Ajuste do evento já gravado — `null` = preços normais. */
   ajusteEvento: { percentual: number; precoAnterior: number } | null;
   mercadoLivrePermalink: string | null;
@@ -739,6 +741,22 @@ export default function ListaProdutosAdmin({
                       </span>
                     ) : (
                       <span className={styles.custo}>{formatarPreco(produto.custoCentavos)}</span>
+                    )}
+                    {produto.verbaShopee === "abaixoDoPiso" && (
+                      <span
+                        className={styles.seloVerbaRuim}
+                        title="Na Shopee, o preço salvo já dá menos que o piso de lucro: não há espaço para cupom nem promoção."
+                      >
+                        Abaixo do piso
+                      </span>
+                    )}
+                    {produto.verbaShopee === "semCupomLoja" && (
+                      <span
+                        className={styles.seloVerba}
+                        title="Na Shopee, a margem acima do piso não cobre nem o cupom de loja. Suba o preço para ter verba de desconto."
+                      >
+                        Sem verba p/ cupom
+                      </span>
                     )}
                     <Link
                       href={`/admin/produtos/calculadora?produto=${produto.id}`}

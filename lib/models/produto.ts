@@ -72,10 +72,21 @@ export interface TaxasCanaisProduto {
   shopeeTaxaPercentual?: number;
   siteTaxaPercentual?: number;
   siteTaxaFixaCentavos?: number;
-  /** Override da margem mínima só deste produto — ausente = usa o padrão global (EDI-108). */
+  /** Override do piso de lucro só deste produto, em % do preço — ausente = usa o padrão global (EDI-108). */
   margemMinimaPercentual?: number;
-  /** Override da margem desejada só deste produto — ausente = usa o padrão global (EDI-108, correção: antes não era salva). */
+  /** Override da margem desejada só deste produto, em % do preço — ausente = usa o padrão global. */
   margemDesejadaPercentual?: number;
+}
+
+/**
+ * Margens próprias que o produto tinha quando eram medidas em % sobre o custo
+ * (markup). Gravado pela migração para a régua do preço; some quando o
+ * vendedor marca o produto como revisado.
+ */
+export interface MargensParaRevisar {
+  minimaSobreCusto?: number;
+  desejadaSobreCusto?: number;
+  migradoEm: Date;
 }
 
 /**
@@ -195,6 +206,8 @@ export interface Produto {
   metaCatalogo?: MetaCatalogoProduto;
   /** Ajuste de preços do evento em andamento — ausente = preços normais (EDI-126). */
   ajusteEvento?: AjusteEvento;
+  /** Margens antigas (% sobre o custo) aguardando revisão — ausente = nada a revisar. */
+  margensParaRevisar?: MargensParaRevisar;
   /**
    * Endereço do modelo 3D que origina a peça — a página do modelo (MakerWorld,
    * Printables…) ou o arquivo `.3mf` guardado no Drive. Só para administração:

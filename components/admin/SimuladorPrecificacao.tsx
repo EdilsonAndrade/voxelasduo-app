@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import styles from "./admin.module.css";
+import VerbaDesconto from "./VerbaDesconto";
 import type { ComissaoMercadoLivre } from "@/lib/produtos/precificacao";
 import { calcularPrecoEscala, calcularPrecoSugerido, calcularSimulacaoPrecificacao } from "@/lib/produtos/precificacao";
 import {
@@ -13,6 +14,7 @@ import {
   type ResultadoCanal,
   type TaxasCanaisEfetivas,
 } from "@/lib/produtos/canais";
+import { calcularVerbaDesconto, type CupomLoja } from "@/lib/produtos/verbaDesconto";
 
 const NOME_CANAL: Record<CanalVenda, string> = {
   mercadoLivre: "Mercado Livre",
@@ -64,10 +66,12 @@ export interface SimuladorPrecificacaoProps {
   tempoImpressaoHoras: number | null;
   /** Taxas efetivas de Shopee e site próprio (padrão global com override do produto aplicado) — EDI-106. */
   taxasCanais: TaxasCanaisEfetivas;
-  /** Margem mínima efetiva (padrão global com override do produto já aplicado) — piso de segurança pra promoções (EDI-108). */
+  /** Piso de lucro efetivo, em % do preço (padrão global com override do produto já aplicado) — EDI-108. */
   margemMinimaPercentual: number;
-  /** Margem de lucro desejada efetiva (padrão global com override do produto já aplicado) — usada pro "preço sugerido" (EDI-108, correção: antes era um campo solto que não persistia). */
+  /** Margem de lucro desejada efetiva, em % do preço (padrão global com override do produto já aplicado) — usada pro "preço sugerido". */
   margemDesejadaPercentual: number;
+  /** Cupom de loja global da Shopee — sai primeiro da verba de desconto do card da Shopee (spec 034). */
+  cupomLoja: CupomLoja | null;
   /** Preço de venda próprio de ML/Shopee, em centavos — ausente num canal = usa `precoVendaReais` (o preço do site) também nesse canal (EDI-108). */
   precosCanaisCentavos?: { mercadoLivre?: number; shopee?: number };
   /** Chamado quando o vendedor clica em "Usar esse preço" no preço sugerido (bloco geral, não por canal), com o valor pronto para o campo "Preço (R$)". */
@@ -95,6 +99,7 @@ export default function SimuladorPrecificacao({
   taxasCanais,
   margemMinimaPercentual,
   margemDesejadaPercentual,
+  cupomLoja,
   precosCanaisCentavos,
   onAplicarPrecoSugerido,
   onAplicarPrecoCanal,
@@ -301,7 +306,7 @@ export default function SimuladorPrecificacao({
             ) : (
               <div className={styles.field}>
                 <label>Margem de lucro desejada</label>
-                <span className={styles.comparativoPreco}>{margemDesejadaPercentual}%</span>
+                <span className={styles.comparativoPreco}>{margemDesejadaPercentual}% do preço</span>
                 <span className={styles.mlLinkAviso}>
                   Editável em "Taxas dos canais neste produto" (ou no padrão global, em Taxas dos
                   canais).
@@ -348,7 +353,7 @@ export default function SimuladorPrecificacao({
             <span className={styles.mlLinkAviso}>
               {modoPreco === "escala"
                 ? "Informe o lucro desejado por peça e a taxa estimada da plataforma (menor que 100%) para calcular o preço de escala."
-                : "Informe a margem desejada e a taxa estimada da plataforma (menor que 100%) para calcular o preço sugerido."}
+                : "Informe a taxa estimada da plataforma. Taxa + margem desejada precisam somar menos de 100% para existir um preço sugerido."}
             </span>
           )}
 
@@ -373,7 +378,7 @@ export default function SimuladorPrecificacao({
                         </span>
                       ) : resultado.precoSugeridoCentavos === null ? (
                         <span className={styles.fieldError}>
-                          Taxa inválida ({descreverTaxa(resultado.taxa)}): precisa ser menor que 100%.
+                          Sem preço possível: taxa ({descreverTaxa(resultado.taxa)}) + margem precisam somar menos de 100%.
                         </span>
                       ) : (
                         <>
@@ -401,12 +406,17 @@ export default function SimuladorPrecificacao({
                           <span>
                             <strong>
                               = Seu lucro: {formatarReais(resultado.lucroLiquidoCentavos ?? 0)} (
-                              {(resultado.margemPercentual ?? 0).toFixed(0)}% sobre o custo)
+                              {(resultado.margemPercentual ?? 0).toFixed(1)}% do preço)
                             </strong>
                           </span>
+                          {resultado.markupPercentual !== null && (
+                            <span className={styles.mlLinkAviso}>
+                              Markup: {resultado.markupPercentual.toFixed(0)}% sobre o custo (só informativo)
+                            </span>
+                          )}
                           {resultado.prejuizo && <span>⚠ Resulta em prejuízo.</span>}
                           {!resultado.prejuizo && resultado.margemBaixa && (
-                            <span>⚠ Lucro abaixo do mínimo ({margemMinimaPercentual}% sobre o custo).</span>
+                            <span>⚠ Lucro abaixo do piso ({margemMinimaPercentual}% do preço).</span>
                           )}
                           {(onAplicarPrecoCanal ?? onAplicarPrecoSugerido) && (
                             <button
@@ -437,7 +447,8 @@ export default function SimuladorPrecificacao({
                             if (precoAtualDoCanal === null) return null;
 
                             const custo = custoBaseCentavos!;
-                            const lucroMinimo = Math.round((custo * margemMinimaPercentual) / 100);
+                            // Piso em % do preço: o lucro mínimo é uma fatia do preço atual do canal.
+                            const lucroMinimo = Math.round((precoAtualDoCanal * margemMinimaPercentual) / 100);
                             const comissaoEm = (preco: number) => comissaoCanal(resultado.taxa, preco);
                             // O custo extra (frete grátis etc.) sai do repasse, então soma ao custo do piso.
                             const precoMinimoCom = (extra: number) =>
@@ -457,13 +468,18 @@ export default function SimuladorPrecificacao({
                             const recebeComExtra = recebeSemExtra - custoExtraCentavos;
                             const lucroComExtra = recebeComExtra - custo;
                             const extraCabe = custoExtraCentavos <= extraMaximo;
-                            const textoExtra = custoExtraCentavos > 0 ? " com esse frete/custo extra" : "";
+                            const verba = calcularVerbaDesconto({
+                              precoCentavos: precoAtualDoCanal,
+                              pisoPercentual: margemMinimaPercentual,
+                              cupomLoja: resultado.canal === "shopee" ? cupomLoja : null,
+                              lucroEm: (preco) => preco - comissaoEm(preco) - custo - custoExtraCentavos,
+                            });
 
                             return (
                               <div className={styles.field}>
                                 <strong>
                                   Promoções — seu lucro mínimo: {formatarReais(lucroMinimo)} (
-                                  {margemMinimaPercentual}% sobre o custo)
+                                  {margemMinimaPercentual}% do preço atual)
                                 </strong>
                                 <span className={styles.mlLinkAviso}>
                                   Preço atual {PREPOSICAO_CANAL[resultado.canal]}:{" "}
@@ -514,17 +530,11 @@ export default function SimuladorPrecificacao({
                                     </span>
                                   ))}
 
-                                {descontoOk && precoMinimo !== null && (
-                                  <span>
-                                    Desconto: aceite promoções de até{" "}
-                                    <strong>
-                                      {pisoDesconto.descontoMaximoPercentual!.toFixed(1)}% (
-                                      {formatarReais(pisoDesconto.descontoMaximoCentavos!)})
-                                    </strong>
-                                    {textoExtra}. Nesse limite o preço cai para {formatarReais(precoMinimo)} e seu
-                                    lucro fica em {formatarReais(lucroMinimo)}. Desconto maior: recuse.
-                                  </span>
-                                )}
+                                <VerbaDesconto
+                                  verba={verba}
+                                  lucroEm={(preco) => preco - comissaoEm(preco) - custo - custoExtraCentavos}
+                                  idCampo={`simularDesconto-${resultado.canal}`}
+                                />
 
                                 {!descontoOk && precoMinimo !== null && onAplicarPrecoCanal && (
                                   <button
@@ -626,8 +636,8 @@ export default function SimuladorPrecificacao({
         >
           <strong>
             Você recebe: {formatarReais(simulacao.precoVendaCentavos - simulacao.comissaoCentavos)} · Seu
-            lucro: {formatarReais(simulacao.lucroLiquidoCentavos)} ({simulacao.margemPercentual.toFixed(0)}%
-            sobre o custo)
+            lucro: {formatarReais(simulacao.lucroLiquidoCentavos)} ({simulacao.margemPercentual.toFixed(1)}% do
+            preço · markup {simulacao.markupPercentual.toFixed(0)}%)
           </strong>
           {simulacao.prejuizo && prejuizoDeCaixa !== false && (
             <div>⚠ Esse preço resulta em prejuízo.</div>
@@ -639,7 +649,7 @@ export default function SimuladorPrecificacao({
             </div>
           )}
           {!simulacao.prejuizo && simulacao.margemBaixa && (
-            <div>⚠ Lucro abaixo do mínimo configurado ({margemMinimaPercentual}% sobre o custo).</div>
+            <div>⚠ Lucro abaixo do piso configurado ({margemMinimaPercentual}% do preço).</div>
           )}
         </div>
       )}

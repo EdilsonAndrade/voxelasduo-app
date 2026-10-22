@@ -15,9 +15,10 @@ export default async function EditarProdutoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [produto, taxasGlobais, categorias, calculo] = await Promise.all([
+  // As taxas antes do produto: a primeira leitura delas migra as margens antigas do produto (spec 034).
+  const taxasGlobais = await buscarTaxasCanais();
+  const [produto, categorias, calculo] = await Promise.all([
     buscarProdutoPorId(id),
-    buscarTaxasCanais(),
     listarCategoriasResumo(),
     buscarCalculoDoProduto(id),
   ]);
@@ -40,6 +41,7 @@ export default async function EditarProdutoPage({
         taxasGlobais={taxasGlobais}
         categorias={categorias}
         valoresIniciais={produtoParaFormulario(produto, id)}
+        margensAntigas={produto.margensParaRevisar}
       />
       <ProducaoDoProduto produtoId={id} />
     </div>

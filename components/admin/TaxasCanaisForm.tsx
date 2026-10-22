@@ -18,6 +18,14 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
   );
   const [margemMinima, setMargemMinima] = useState(String(valoresIniciais.margemMinimaPercentual));
   const [margemDesejada, setMargemDesejada] = useState(String(valoresIniciais.margemDesejadaPercentual));
+  const [cupomPercentual, setCupomPercentual] = useState(String(valoresIniciais.cupomLojaPercentual));
+  const [cupomTetoReais, setCupomTetoReais] = useState(
+    valoresIniciais.cupomLojaTetoCentavos !== null ? (valoresIniciais.cupomLojaTetoCentavos / 100).toFixed(2) : ""
+  );
+  const [cupomSemLimite, setCupomSemLimite] = useState(valoresIniciais.cupomLojaTetoCentavos === null);
+  const [cupomCestaReais, setCupomCestaReais] = useState(
+    (valoresIniciais.cupomLojaCestaMinimaCentavos / 100).toFixed(2)
+  );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [camposErro, setCamposErro] = useState<Record<string, string>>({});
@@ -39,12 +47,16 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
           siteTaxaFixaCentavos: Math.round(numeroDeTexto(siteFixaReais) * 100),
           margemMinimaPercentual: numeroDeTexto(margemMinima),
           margemDesejadaPercentual: numeroDeTexto(margemDesejada),
+          cupomLojaPercentual: cupomPercentual.trim() === "" ? 0 : numeroDeTexto(cupomPercentual),
+          cupomLojaTetoCentavos: cupomSemLimite ? null : Math.round(numeroDeTexto(cupomTetoReais) * 100),
+          cupomLojaCestaMinimaCentavos:
+            cupomCestaReais.trim() === "" ? 0 : Math.round(numeroDeTexto(cupomCestaReais) * 100),
         }),
       });
       const dados = await resposta.json();
 
       if (!resposta.ok) {
-        setErro(dados.erro ?? "Não foi possível salvar as taxas.");
+        setErro(`${dados.erro ?? "Não foi possível salvar as taxas."} (status ${resposta.status})`);
         setCamposErro(dados.campos ?? {});
         return;
       }
@@ -108,8 +120,12 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
         </fieldset>
 
         <fieldset className={styles.field}>
-          <legend>Margens</legend>
-          <label htmlFor="margemDesejada">Margem de lucro desejada padrão (%)</label>
+          <legend>Margens (% do preço de venda)</legend>
+          <span className={styles.mlLinkAviso}>
+            Margem = de cada R$ 100 vendidos, quanto fica com você depois de pagar o custo e as taxas do
+            canal. É a mesma conta da calculadora e dos marketplaces.
+          </span>
+          <label htmlFor="margemDesejada">Margem de lucro desejada padrão (% do preço)</label>
           <input
             id="margemDesejada"
             inputMode="decimal"
@@ -117,14 +133,14 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
             onChange={(e) => setMargemDesejada(e.target.value)}
           />
           <span className={styles.mlLinkAviso}>
-            Usada para calcular o "preço sugerido" no simulador — é sobre o custo, sem teto (100% =
-            dobrar o custo). Pode ser sobrescrita por produto.
+            Usada para calcular o &quot;preço sugerido&quot;. Deixe acima do piso: a diferença é a verba para
+            cupons e promoções. Pode ser sobrescrita por produto.
           </span>
           {camposErro.margemDesejadaPercentual && (
             <span className={styles.fieldError}>{camposErro.margemDesejadaPercentual}</span>
           )}
 
-          <label htmlFor="margemMinima">Margem de lucro mínima aceitável (%)</label>
+          <label htmlFor="margemMinima">Piso de lucro (% do preço)</label>
           <input
             id="margemMinima"
             inputMode="decimal"
@@ -132,14 +148,74 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
             onChange={(e) => setMargemMinima(e.target.value)}
           />
           <span className={styles.mlLinkAviso}>
-            Usada para calcular o preço mínimo e o desconto máximo de cada canal — o piso de
-            segurança para você rodar promoções sem vender no prejuízo. Também é sobre o custo (80%
-            = lucro mínimo de 80% do custo, já descontada a taxa do canal). Pode ser sobrescrita por
-            produto.
+            O mínimo que você aceita ganhar mesmo com cupom ou promoção. Tudo que a margem do produto
+            passar disso é verba de desconto. Pode ser sobrescrito por produto.
           </span>
           {camposErro.margemMinimaPercentual && (
             <span className={styles.fieldError}>{camposErro.margemMinimaPercentual}</span>
           )}
+        </fieldset>
+
+        <fieldset className={styles.field}>
+          <legend>Cupom de loja (Shopee)</legend>
+          <span className={styles.mlLinkAviso}>
+            O cupom que vale para todos os produtos da loja. Ele sai primeiro da verba de desconto de
+            cada produto; o que sobra fica livre para promoção relâmpago, cupom do produto etc.
+          </span>
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <label htmlFor="cupomLojaPercentual">Desconto (%)</label>
+              <input
+                id="cupomLojaPercentual"
+                inputMode="decimal"
+                placeholder="Ex: 3 (0 = sem cupom)"
+                value={cupomPercentual}
+                onChange={(e) => setCupomPercentual(e.target.value)}
+              />
+              {camposErro.cupomLojaPercentual && (
+                <span className={styles.fieldError}>{camposErro.cupomLojaPercentual}</span>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="cupomLojaTeto">Desconto máximo (R$)</label>
+              <input
+                id="cupomLojaTeto"
+                inputMode="decimal"
+                placeholder="Ex: 5.00"
+                value={cupomSemLimite ? "" : cupomTetoReais}
+                disabled={cupomSemLimite}
+                onChange={(e) => setCupomTetoReais(e.target.value)}
+              />
+              <label className={styles.channelToggle}>
+                <input
+                  type="checkbox"
+                  checked={cupomSemLimite}
+                  onChange={(e) => setCupomSemLimite(e.target.checked)}
+                />{" "}
+                Sem limite
+              </label>
+              {camposErro.cupomLojaTetoCentavos && (
+                <span className={styles.fieldError}>{camposErro.cupomLojaTetoCentavos}</span>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="cupomLojaCesta">Valor mínimo da cesta (R$)</label>
+              <input
+                id="cupomLojaCesta"
+                inputMode="decimal"
+                placeholder="Ex: 10.00"
+                value={cupomCestaReais}
+                onChange={(e) => setCupomCestaReais(e.target.value)}
+              />
+              <span className={styles.mlLinkAviso}>
+                Só para registro: a conta sempre desconta o cupom, porque o cliente pode completar a cesta
+                com outros itens.
+              </span>
+              {camposErro.cupomLojaCestaMinimaCentavos && (
+                <span className={styles.fieldError}>{camposErro.cupomLojaCestaMinimaCentavos}</span>
+              )}
+            </div>
+          </div>
         </fieldset>
 
         {erro && <span className={styles.fieldError}>{erro}</span>}

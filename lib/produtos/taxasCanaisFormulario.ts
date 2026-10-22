@@ -10,9 +10,9 @@ export interface TaxasCanaisFormValores {
   shopeeTaxaPercentual: string;
   siteTaxaPercentual: string;
   siteTaxaFixaReais: string;
-  /** Override da margem mínima só deste produto (EDI-108) — vazio = herda o padrão global. */
+  /** Override do piso de lucro (% do preço) só deste produto (EDI-108) — vazio = herda o padrão global. */
   margemMinimaPercentual: string;
-  /** Override da margem desejada só deste produto (EDI-108, correção) — vazio = herda o padrão global. */
+  /** Override da margem desejada (% do preço) só deste produto — vazio = herda o padrão global. */
   margemDesejadaPercentual: string;
 }
 
@@ -33,12 +33,6 @@ function percentualValido(texto: string): boolean {
   return Number.isFinite(numero) && numero >= 0 && numero < 100;
 }
 
-/** Margens (mínima e desejada) são sobre o custo, não sobre o preço — sem teto de 100%. */
-function percentualSemTetoValido(texto: string): boolean {
-  const numero = numeroDeTexto(texto);
-  return Number.isFinite(numero) && numero >= 0;
-}
-
 /** Campos de taxa preenchidos com valor inválido — usado para avisar antes de salvar. */
 export function camposTaxasCanaisInvalidos(form: TaxasCanaisFormValores): string[] {
   const invalidos: string[] = [];
@@ -54,15 +48,15 @@ export function camposTaxasCanaisInvalidos(form: TaxasCanaisFormValores): string
   }
   if (
     form.margemMinimaPercentual.trim() !== "" &&
-    !percentualSemTetoValido(form.margemMinimaPercentual)
+    !percentualValido(form.margemMinimaPercentual)
   ) {
-    invalidos.push("margem mínima (maior ou igual a 0)");
+    invalidos.push("piso de lucro (% do preço, entre 0 e 99,9%)");
   }
   if (
     form.margemDesejadaPercentual.trim() !== "" &&
-    !percentualSemTetoValido(form.margemDesejadaPercentual)
+    !percentualValido(form.margemDesejadaPercentual)
   ) {
-    invalidos.push("margem desejada (maior ou igual a 0)");
+    invalidos.push("margem desejada (% do preço, entre 0 e 99,9%)");
   }
   return invalidos;
 }
@@ -86,13 +80,13 @@ export function montarTaxasCanaisProduto(form: TaxasCanaisFormValores): TaxasCan
   }
   if (
     form.margemMinimaPercentual.trim() !== "" &&
-    percentualSemTetoValido(form.margemMinimaPercentual)
+    percentualValido(form.margemMinimaPercentual)
   ) {
     taxas.margemMinimaPercentual = numeroDeTexto(form.margemMinimaPercentual);
   }
   if (
     form.margemDesejadaPercentual.trim() !== "" &&
-    percentualSemTetoValido(form.margemDesejadaPercentual)
+    percentualValido(form.margemDesejadaPercentual)
   ) {
     taxas.margemDesejadaPercentual = numeroDeTexto(form.margemDesejadaPercentual);
   }

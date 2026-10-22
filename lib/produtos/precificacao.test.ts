@@ -6,7 +6,8 @@ describe("calcularSimulacaoPrecificacao", () => {
     const resultado = calcularSimulacaoPrecificacao(2995, 1131, 7305, 20);
 
     expect(resultado.lucroLiquidoCentavos).toBe(7305 - 2995 - 1131);
-    expect(resultado.margemPercentual).toBeCloseTo(((7305 - 2995 - 1131) / 2995) * 100, 5);
+    expect(resultado.margemPercentual).toBeCloseTo(((7305 - 2995 - 1131) / 7305) * 100, 5);
+    expect(resultado.markupPercentual).toBeCloseTo(((7305 - 2995 - 1131) / 2995) * 100, 5);
     expect(resultado.prejuizo).toBe(false);
     expect(resultado.margemBaixa).toBe(false);
   });
@@ -19,7 +20,7 @@ describe("calcularSimulacaoPrecificacao", () => {
   });
 
   it("sinaliza margem baixa quando a margem fica abaixo do mínimo configurado, sem estar em prejuízo", () => {
-    // custo+comissão = 4126; preço 4300 -> lucro 174 -> ~5,8% sobre o custo (< 20% mínimo), sem prejuízo
+    // custo+comissão = 4126; preço 4300 -> lucro 174 -> ~4% do preço (< 20% mínimo), sem prejuízo
     const resultado = calcularSimulacaoPrecificacao(2995, 1131, 4300, 20);
 
     expect(resultado.prejuizo).toBe(false);
@@ -33,22 +34,25 @@ describe("calcularSimulacaoPrecificacao", () => {
 });
 
 describe("calcularPrecoSugerido", () => {
-  it("calcula o preço sugerido para o cenário de referência (planilha de custos, EDI-92)", () => {
-    // COGS R$29,95, margem desejada 100%, taxa da plataforma 18% -> preço sugerido R$73,05 (mesmo exemplo da planilha do solicitante)
-    expect(calcularPrecoSugerido(2995, 100, 18)).toBe(7305);
+  it("a margem desejada é % do preço: COGS R$29,95, margem 40%, taxa 18% -> R$71,31", () => {
+    const preco = calcularPrecoSugerido(2995, 40, 18)!;
+    expect(preco).toBe(7131);
+    const lucro = preco - Math.round((preco * 18) / 100) - 2995;
+    expect(lucro / preco).toBeGreaterThanOrEqual(0.3999);
   });
 
   it("com margem zero, o preço sugerido cobre apenas o custo e a taxa", () => {
     expect(calcularPrecoSugerido(2995, 0, 18)).toBe(Math.round(2995 / 0.82));
   });
 
-  it("com taxa zero, o preço sugerido é o custo mais a margem, sem ajuste de taxa", () => {
-    expect(calcularPrecoSugerido(2995, 100, 0)).toBe(2995 * 2);
+  it("com taxa zero e margem 50%, o preço é o dobro do custo", () => {
+    expect(calcularPrecoSugerido(2995, 50, 0)).toBe(2995 * 2);
   });
 
-  it("retorna null quando a taxa da plataforma é 100% ou mais", () => {
-    expect(calcularPrecoSugerido(2995, 100, 100)).toBeNull();
-    expect(calcularPrecoSugerido(2995, 100, 150)).toBeNull();
+  it("retorna null quando taxa + margem chega a 100% ou mais", () => {
+    expect(calcularPrecoSugerido(2995, 82, 18)).toBeNull();
+    expect(calcularPrecoSugerido(2995, 100, 0)).toBeNull();
+    expect(calcularPrecoSugerido(2995, 10, 150)).toBeNull();
   });
 });
 

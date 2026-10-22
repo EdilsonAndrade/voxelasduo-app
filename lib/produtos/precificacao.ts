@@ -18,7 +18,10 @@ export interface SimulacaoPrecificacao {
   cogsCentavos: number;
   comissaoCentavos: number;
   lucroLiquidoCentavos: number;
+  /** Lucro em % do preço de venda. */
   margemPercentual: number;
+  /** Lucro em % sobre o custo (markup) — só informativo. */
+  markupPercentual: number;
   /** true quando lucroLiquidoCentavos < 0. */
   prejuizo: boolean;
   /** true quando margemPercentual está abaixo do limite mínimo configurado pelo usuário. */
@@ -38,7 +41,8 @@ export function calcularSimulacaoPrecificacao(
   margemMinimaPercentual: number
 ): SimulacaoPrecificacao {
   const lucroLiquidoCentavos = precoVendaCentavos - cogsCentavos - comissaoCentavos;
-  const margemPercentual = cogsCentavos > 0 ? (lucroLiquidoCentavos / cogsCentavos) * 100 : 0;
+  const margemPercentual = precoVendaCentavos > 0 ? (lucroLiquidoCentavos / precoVendaCentavos) * 100 : 0;
+  const markupPercentual = cogsCentavos > 0 ? (lucroLiquidoCentavos / cogsCentavos) * 100 : 0;
 
   return {
     precoVendaCentavos,
@@ -46,30 +50,28 @@ export function calcularSimulacaoPrecificacao(
     comissaoCentavos,
     lucroLiquidoCentavos,
     margemPercentual,
+    markupPercentual,
     prejuizo: lucroLiquidoCentavos < 0,
     margemBaixa: margemPercentual < margemMinimaPercentual,
   };
 }
 
 /**
- * Sugere um preço de venda a partir do custo de produção, da margem de
- * lucro desejada e da taxa (percentual) estimada da plataforma — mesma
- * fórmula do modelo de custos já usado internamente pelo solicitante:
- * `(custo * (1 + margem)) / (1 - taxa)`. Retorna `null` quando a taxa
- * informada é `>= 100%` (a fórmula divide por zero ou fica negativa nesse
- * caso, o que não representa um preço válido).
+ * Sugere um preço de venda a partir do custo de produção, da margem de lucro
+ * desejada (em % do preço) e da taxa (percentual) estimada da plataforma:
+ * `custo / (1 − taxa − margem)` — nesse preço o lucro é exatamente a margem
+ * do preço. Retorna `null` quando taxa + margem é `>= 100%` (não existe preço).
  */
 export function calcularPrecoSugerido(
   cogsCentavos: number,
   margemDesejadaPercentual: number,
   taxaPlataformaPercentual: number
 ): number | null {
-  if (taxaPlataformaPercentual >= 100) return null;
+  const divisor = 1 - (taxaPlataformaPercentual + margemDesejadaPercentual) / 100;
+  if (divisor <= 0) return null;
 
-  const precoSugeridoCentavos =
-    (cogsCentavos * (1 + margemDesejadaPercentual / 100)) / (1 - taxaPlataformaPercentual / 100);
-
-  return Math.round(precoSugeridoCentavos);
+  const preco = cogsCentavos / divisor;
+  return margemDesejadaPercentual > 0 ? Math.ceil(preco) : Math.round(preco);
 }
 
 /**

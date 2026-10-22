@@ -6,6 +6,9 @@ import { listarCarrosseis } from "@/lib/home/repository";
 import { listarProdutos } from "@/lib/produtos/repository";
 import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import { listarCalculosPreco } from "@/lib/produtos/calculosPreco";
+import { comissaoCanal, resolverTaxasCanais } from "@/lib/produtos/canais";
+import { calcularVerbaDesconto } from "@/lib/produtos/verbaDesconto";
+import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
 import styles from "@/components/admin/admin.module.css";
 
 // Sempre busca dados atuais — sem isso o Next.js pré-renderiza esta página
@@ -19,6 +22,8 @@ export default async function AdminProdutosPage({
   searchParams: Promise<{ carrossel?: string }>;
 }) {
   const { carrossel: carrosselFiltro } = await searchParams;
+  // As taxas antes dos produtos: a primeira leitura delas migra as margens antigas (spec 034).
+  const taxas = await buscarTaxasCanais();
   const [todosProdutos, carrosseis, categorias, calculos] = await Promise.all([
     listarProdutos(),
     listarCarrosseis(),
@@ -49,6 +54,18 @@ export default async function AdminProdutosPage({
   const linhas: ProdutoLinha[] = produtos.map((produto) => {
     const id = produto._id!.toString();
     const custo = produto.custoProducao ? calcularCustoProducao(produto.custoProducao).totalCentavos : null;
+    const custoValido = custo !== null && Number.isFinite(custo) ? custo : null;
+    // Verba de desconto no preço da Shopee salvo (o do site quando a Shopee não tem preço próprio).
+    const shopee = resolverTaxasCanais(taxas, produto.taxasCanais).shopee;
+    const verbaShopee =
+      custoValido !== null
+        ? calcularVerbaDesconto({
+            precoCentavos: produto.precosCanais?.shopee ?? produto.preco,
+            pisoPercentual: produto.taxasCanais?.margemMinimaPercentual ?? taxas.margemMinimaPercentual,
+            cupomLoja: { percentual: taxas.cupomLojaPercentual, tetoCentavos: taxas.cupomLojaTetoCentavos },
+            lucroEm: (preco) => preco - comissaoCanal(shopee, preco) - custoValido,
+          }).estado
+        : null;
     return {
       id,
       nome: produto.nome,
@@ -58,7 +75,8 @@ export default async function AdminProdutosPage({
       precoCentavos: produto.preco,
       precoMercadoLivreCentavos: produto.precosCanais?.mercadoLivre ?? null,
       precoShopeeCentavos: produto.precosCanais?.shopee ?? null,
-      custoCentavos: custo !== null && Number.isFinite(custo) ? custo : null,
+      custoCentavos: custoValido,
+      verbaShopee,
       ajusteEvento: produto.ajusteEvento
         ? { percentual: produto.ajusteEvento.percentual, precoAnterior: produto.ajusteEvento.precoAnterior }
         : null,

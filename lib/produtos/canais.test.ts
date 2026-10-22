@@ -3,6 +3,7 @@ import {
   calcularComparativoCanais,
   calcularPrecoEscalaCanal,
   calcularPrecoMinimoCanal,
+  calcularPrecoPorMarkupCanal,
   calcularPrecoSugeridoCanal,
   calcularResultadoCanal,
   calcularResultadoPisoCanal,
@@ -14,19 +15,20 @@ import { calcularPrecoEscala, calcularPrecoSugerido } from "./precificacao";
 import { TAXAS_CANAIS_PADRAO } from "@/lib/models/configuracao";
 
 describe("calcularPrecoSugeridoCanal", () => {
-  it("é idêntico à fórmula do EDI-92 quando a taxa fixa é zero", () => {
-    expect(calcularPrecoSugeridoCanal(2995, 100, { percentual: 18, fixaCentavos: 0 })).toBe(
-      calcularPrecoSugerido(2995, 100, 18)
+  it("é idêntico ao preço sugerido simples quando a taxa fixa é zero", () => {
+    expect(calcularPrecoSugeridoCanal(2995, 40, { percentual: 18, fixaCentavos: 0 })).toBe(
+      calcularPrecoSugerido(2995, 40, 18)
     );
   });
 
   it("inclui a taxa fixa do canal no preço", () => {
-    // (2000 * 2 + 100) / (1 - 0,10) = 4555,55 -> 4556
-    expect(calcularPrecoSugeridoCanal(2000, 100, { percentual: 10, fixaCentavos: 100 })).toBe(4556);
+    // (2000 + 100) / (1 - 0,10 - 0,40) = 4200
+    expect(calcularPrecoSugeridoCanal(2000, 40, { percentual: 10, fixaCentavos: 100 })).toBe(4200);
   });
 
-  it("retorna null quando a taxa percentual é >= 100", () => {
-    expect(calcularPrecoSugeridoCanal(2000, 100, { percentual: 100, fixaCentavos: 0 })).toBeNull();
+  it("retorna null quando taxa + margem é >= 100", () => {
+    expect(calcularPrecoSugeridoCanal(2000, 10, { percentual: 100, fixaCentavos: 0 })).toBeNull();
+    expect(calcularPrecoSugeridoCanal(2000, 90, { percentual: 10, fixaCentavos: 0 })).toBeNull();
   });
 });
 
@@ -43,15 +45,16 @@ describe("calcularPrecoEscalaCanal", () => {
 });
 
 describe("calcularResultadoCanal", () => {
-  it("o lucro líquido no preço sugerido equivale à margem desejada sobre o custo", () => {
-    const taxa = { percentual: 14, fixaCentavos: 0 };
-    const custo = 5000;
-    const preco = calcularPrecoSugeridoCanal(custo, 50, taxa);
-    const resultado = calcularResultadoCanal("shopee", taxa, preco, custo, 20);
+  it("no preço sugerido o lucro é a margem desejada em % do preço", () => {
+    const taxa = { percentual: 14, fixaCentavos: 2000 };
+    const custo = 5957;
+    const preco = calcularPrecoSugeridoCanal(custo, 40, taxa);
+    const resultado = calcularResultadoCanal("shopee", taxa, preco, custo, 25);
 
-    // lucro esperado = custo * 50% = 2500 (tolerância de 1 centavo por arredondamento)
-    expect(Math.abs((resultado.lucroLiquidoCentavos ?? 0) - 2500)).toBeLessThanOrEqual(1);
-    expect(resultado.prejuizo).toBe(false);
+    // A comissão é arredondada ao centavo: a margem fica em 40% com folga de centésimos.
+    expect(resultado.margemPercentual!).toBeCloseTo(40, 1);
+    expect(resultado.markupPercentual!).toBeCloseTo((resultado.lucroLiquidoCentavos! / custo) * 100, 5);
+    expect(resultado.margemBaixa).toBe(false);
   });
 
   it("considera a taxa fixa na comissão", () => {
@@ -69,17 +72,18 @@ describe("calcularResultadoCanal", () => {
   it("sinaliza prejuízo e margem baixa", () => {
     const taxa = { percentual: 10, fixaCentavos: 0 };
     expect(calcularResultadoCanal("shopee", taxa, 4000, 5000, 20).prejuizo).toBe(true);
-    // lucro 200 sobre custo 4500 -> ~4,4% (< 20%), sem prejuízo
+    // lucro 180 sobre o preço 5200 -> ~3,5% (< 20%), sem prejuízo
     const baixa = calcularResultadoCanal("shopee", taxa, 5200, 4500, 20);
     expect(baixa.prejuizo).toBe(false);
     expect(baixa.margemBaixa).toBe(true);
   });
 
-  it("a margem é sobre o custo: preço sugerido com 100% não dispara alerta de mínimo 80%", () => {
-    const taxa = { percentual: 16.5, fixaCentavos: 0 };
-    const resultado = calcularResultadoCanal("mercadoLivre", taxa, 6846, 2858, 80);
-    expect(resultado.margemPercentual).toBeCloseTo(100, 0);
-    expect(resultado.margemBaixa).toBe(false);
+  it("a margem é sobre o preço: R$ 130,45 na Shopee com custo R$ 59,57 dá 25%", () => {
+    const shopee = resolverTaxasCanais(TAXAS_CANAIS_PADRAO).shopee;
+    const resultado = calcularResultadoCanal("shopee", shopee, 13045, 5957, 25);
+    expect(resultado.lucroLiquidoCentavos).toBe(3262);
+    expect(resultado.margemPercentual).toBeCloseTo(25, 1);
+    expect(resultado.markupPercentual).toBeCloseTo(54.8, 1);
   });
 
   it("devolve campos nulos quando não há preço válido", () => {
@@ -116,7 +120,7 @@ describe("calcularComparativoCanais", () => {
   const base = {
     custoBaseCentavos: 2995,
     modo: "completo" as const,
-    margemDesejadaPercentual: 100,
+    margemDesejadaPercentual: 40,
     lucroEscalaCentavos: 0,
     margemMinimaPercentual: 20,
     mercadoLivre: { percentual: 18, fixaCentavos: 0 },
@@ -127,7 +131,7 @@ describe("calcularComparativoCanais", () => {
   it("devolve os três canais na ordem ML, Shopee, site próprio", () => {
     const resultado = calcularComparativoCanais(base);
     expect(resultado.map((r) => r.canal)).toEqual(["mercadoLivre", "shopee", "siteProprio"]);
-    expect(resultado[0].precoSugeridoCentavos).toBe(7305); // cenário de referência do EDI-92
+    expect(resultado[0].precoSugeridoCentavos).toBe(calcularPrecoSugerido(2995, 40, 18));
   });
 
   it("canal com menor taxa tem preço sugerido menor", () => {
@@ -157,20 +161,26 @@ describe("calcularPrecoMinimoCanal", () => {
   });
 
   it("inclui a taxa fixa no piso", () => {
-    // (2000 * 1,15 + 100) / (1 - 0,10) = 2666,67 -> 2667
-    expect(calcularPrecoMinimoCanal(2000, { percentual: 10, fixaCentavos: 100 }, 15)).toBe(2667);
+    // (2000 + 100) / (1 - 0,10 - 0,25) = 3230,77 -> 3231
+    expect(calcularPrecoMinimoCanal(2000, { percentual: 10, fixaCentavos: 100 }, 25)).toBe(3231);
   });
 
-  it("margem mínima é sobre o custo (custo R$28,58, ML 16,5%, mínimo 80% -> R$61,61)", () => {
-    const precoMinimo = calcularPrecoMinimoCanal(2858, { percentual: 16.5, fixaCentavos: 0 }, 80);
-    expect(precoMinimo).toBe(6161);
-    const lucro = precoMinimo! - Math.round((precoMinimo! * 16.5) / 100) - 2858;
-    expect(Math.abs(lucro - 2286)).toBeLessThanOrEqual(1);
+  it("o piso é % do preço: no preço mínimo o lucro é o piso do preço", () => {
+    const precoMinimo = calcularPrecoMinimoCanal(2858, { percentual: 16.5, fixaCentavos: 0 }, 25)!;
+    const lucro = precoMinimo - Math.round((precoMinimo * 16.5) / 100) - 2858;
+    expect(lucro / precoMinimo).toBeGreaterThanOrEqual(0.2499);
   });
 
-  it("retorna null só quando a taxa percentual é >= 100", () => {
-    expect(calcularPrecoMinimoCanal(2000, { percentual: 60, fixaCentavos: 0 }, 40)).not.toBeNull();
-    expect(calcularPrecoMinimoCanal(2000, { percentual: 100, fixaCentavos: 0 }, 40)).toBeNull();
+  it("retorna null quando taxa + piso é >= 100", () => {
+    expect(calcularPrecoMinimoCanal(2000, { percentual: 60, fixaCentavos: 0 }, 30)).not.toBeNull();
+    expect(calcularPrecoMinimoCanal(2000, { percentual: 60, fixaCentavos: 0 }, 40)).toBeNull();
+  });
+});
+
+describe("calcularPrecoPorMarkupCanal", () => {
+  it("mantém a régua antiga (% sobre o custo) para converter margens gravadas", () => {
+    // (2000 * 2 + 100) / (1 - 0,10) = 4555,55 -> 4556
+    expect(calcularPrecoPorMarkupCanal(2000, 100, { percentual: 10, fixaCentavos: 100 })).toBe(4556);
   });
 });
 

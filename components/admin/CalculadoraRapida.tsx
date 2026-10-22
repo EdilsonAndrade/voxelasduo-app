@@ -200,7 +200,7 @@ export default function CalculadoraRapida({
       if (shopee != null) precosCanais.shopee = shopee;
       if (mercadoLivre != null) precosCanais.mercadoLivre = mercadoLivre;
 
-      // O cadastro guarda a margem sobre o custo: converte o lucro do preço do site.
+      // O cadastro guarda a margem em % do preço, a mesma régua da calculadora.
       const vendaSite = detalharVenda({
         precoCentavos: res.precoSiteCentavos,
         faixas: faixaUnica(taxaSite.percentual, taxaSite.fixaCentavos),
@@ -208,8 +208,7 @@ export default function CalculadoraRapida({
         anuncioPercentual: 0,
         impostoPercentual: res.impostoPercentual,
       });
-      const margemSobreCusto =
-        res.custo.totalCentavos > 0 ? Math.max(0, Math.round((vendaSite.lucroCentavos / res.custo.totalCentavos) * 100)) : 0;
+      const margemPreco = Math.min(99, Math.max(0, Math.round(vendaSite.margemPrecoPercentual)));
 
       const resposta = await fetch("/api/produtos", {
         method: "POST",
@@ -223,7 +222,7 @@ export default function CalculadoraRapida({
           custoProducao: paraCustoProducao(valores.impressao, res.custo),
           taxasCanais: {
             shopeeTaxaPercentual: res.canais.shopee?.venda?.faixa.percentual ?? numero(valores.canais.shopee.taxaPercentual),
-            margemDesejadaPercentual: margemSobreCusto,
+            margemDesejadaPercentual: margemPreco,
           },
           precosCanais,
           linkModelo3d: linkModelo.trim(),
@@ -389,6 +388,8 @@ export default function CalculadoraRapida({
         onUsarVerba={(verbaMesReais) => alterarAnuncio({ verbaMesReais })}
         rodape={rodape}
         custoCadastroCentavos={produtoVinculado?.custoCadastroCentavos ?? null}
+        pisoPercentual={taxasGlobais.margemMinimaPercentual}
+        cupomLoja={{ percentual: taxasGlobais.cupomLojaPercentual, tetoCentavos: taxasGlobais.cupomLojaTetoCentavos }}
       />
     </div>
   );

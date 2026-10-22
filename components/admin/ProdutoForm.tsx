@@ -39,6 +39,7 @@ import {
   LIMITE_DESCRICAO_META,
   LIMITE_TITULO_META,
   type CustoProducao,
+  type MargensParaRevisar,
   type TaxasCanaisProduto,
 } from "@/lib/models/produto";
 import {
@@ -210,12 +211,15 @@ export default function ProdutoForm({
   valoresIniciais = VAZIO,
   taxasGlobais = TAXAS_CANAIS_PADRAO,
   categorias = [],
+  margensAntigas,
 }: {
   valoresIniciais?: ProdutoFormValores;
   /** Padrão global das taxas de Shopee/site próprio, definido em /admin/configuracoes. */
   taxasGlobais?: TaxasCanaisConfig;
   /** Categorias do site cadastradas, na ordem (EDI-123). */
   categorias?: CategoriaResumo[];
+  /** Margens próprias da régua antiga (% sobre o custo) aguardando revisão — spec 034. */
+  margensAntigas?: MargensParaRevisar;
 }) {
   const router = useRouter();
   const [valores, setValores] = useState(valoresIniciais);
@@ -1323,7 +1327,7 @@ export default function ProdutoForm({
             />
           </div>
           <div className={styles.field}>
-            <label htmlFor="margemMinimaProduto">Margem mínima deste produto (% sobre o custo)</label>
+            <label htmlFor="margemMinimaProduto">Piso de lucro deste produto (% do preço)</label>
             <input
               id="margemMinimaProduto"
               inputMode="decimal"
@@ -1333,7 +1337,7 @@ export default function ProdutoForm({
             />
           </div>
           <div className={styles.field}>
-            <label htmlFor="margemDesejadaProduto">Margem de lucro desejada deste produto (% sobre o custo)</label>
+            <label htmlFor="margemDesejadaProduto">Margem de lucro desejada deste produto (% do preço)</label>
             <input
               id="margemDesejadaProduto"
               inputMode="decimal"
@@ -1343,6 +1347,19 @@ export default function ProdutoForm({
             />
           </div>
         </div>
+        <span className={styles.mlLinkAviso}>
+          Margens em % do preço de venda: de cada R$ 100 vendidos, quanto fica com você. Em branco = padrão
+          global ({taxasGlobais.margemMinimaPercentual}% de piso, {taxasGlobais.margemDesejadaPercentual}% desejada).
+        </span>
+        {margensAntigas && (
+          <span className={styles.fieldError}>
+            Este produto tinha margem própria na conta antiga (% sobre o custo):
+            {margensAntigas.minimaSobreCusto !== undefined && ` mínima ${margensAntigas.minimaSobreCusto}%`}
+            {margensAntigas.desejadaSobreCusto !== undefined && ` · desejada ${margensAntigas.desejadaSobreCusto}%`}.
+            Agora ele usa o padrão. Digite a margem em % do preço se quiser outra e marque como revisado em
+            Configurações → Margens para revisar.
+          </span>
+        )}
         {taxasCanaisInvalidas.length > 0 && (
           <span className={styles.fieldError}>Corrija: {taxasCanaisInvalidas.join(", ")}.</span>
         )}
@@ -1397,6 +1414,7 @@ export default function ProdutoForm({
         taxasCanais={taxasCanaisEfetivas}
         margemMinimaPercentual={margemMinimaEfetiva}
         margemDesejadaPercentual={margemDesejadaEfetiva}
+        cupomLoja={{ percentual: taxasGlobais.cupomLojaPercentual, tetoCentavos: taxasGlobais.cupomLojaTetoCentavos }}
         precosCanaisCentavos={precosCanaisCentavos}
         onAplicarPrecoSugerido={(preco) => atualizarCampo("precoReais", preco)}
         onAplicarPrecoCanal={aplicarPrecoNoCanal}

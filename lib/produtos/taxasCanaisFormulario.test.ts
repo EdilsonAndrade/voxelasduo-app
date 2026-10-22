@@ -28,13 +28,13 @@ describe("taxasCanaisFormulario", () => {
     ).toEqual({ margemMinimaPercentual: 22.5 });
   });
 
-  it("converte o override de margemDesejadaPercentual, sem teto de 100 (EDI-108)", () => {
+  it("converte o override de margemDesejadaPercentual e ignora valor >= 100 (% do preço)", () => {
     expect(
       montarTaxasCanaisProduto({ ...VAZIO_TAXAS_CANAIS, margemDesejadaPercentual: "40" })
     ).toEqual({ margemDesejadaPercentual: 40 });
     expect(
       montarTaxasCanaisProduto({ ...VAZIO_TAXAS_CANAIS, margemDesejadaPercentual: "300" })
-    ).toEqual({ margemDesejadaPercentual: 300 });
+    ).toEqual({});
   });
 
   it("volta do produto salvo para o formulário e reabre igual", () => {
@@ -72,10 +72,10 @@ describe("taxasCanaisFormulario", () => {
     ).toHaveLength(5);
   });
 
-  it("margem desejada acima de 100 não é considerada inválida (sem teto)", () => {
+  it("margem desejada de 100 ou mais é inválida (é % do preço)", () => {
     expect(
-      camposTaxasCanaisInvalidos({ ...VAZIO_TAXAS_CANAIS, margemDesejadaPercentual: "300" })
-    ).toEqual([]);
+      camposTaxasCanaisInvalidos({ ...VAZIO_TAXAS_CANAIS, margemDesejadaPercentual: "115" })
+    ).toHaveLength(1);
   });
 
   it("formata o padrão global (com margens) como placeholder", () => {
@@ -84,15 +84,18 @@ describe("taxasCanaisFormulario", () => {
         shopeeTaxaPercentual: 14,
         siteTaxaPercentual: 4.99,
         siteTaxaFixaCentavos: 0,
-        margemMinimaPercentual: 15,
-        margemDesejadaPercentual: 100,
+        margemMinimaPercentual: 25,
+        margemDesejadaPercentual: 40,
+        cupomLojaPercentual: 3,
+        cupomLojaTetoCentavos: 500,
+        cupomLojaCestaMinimaCentavos: 1000,
       })
     ).toEqual({
       shopeeTaxaPercentual: "14",
       siteTaxaPercentual: "4.99",
       siteTaxaFixaReais: "0.00",
-      margemMinimaPercentual: "15",
-      margemDesejadaPercentual: "100",
+      margemMinimaPercentual: "25",
+      margemDesejadaPercentual: "40",
     });
   });
 });
