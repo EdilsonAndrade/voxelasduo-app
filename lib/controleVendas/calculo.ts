@@ -1,4 +1,5 @@
 import type { TaxasCanaisConfig } from "@/lib/models/configuracao";
+import { FAIXAS_SHOPEE_2026, faixaDoPreco } from "@/lib/produtos/calculadoraRapida";
 import {
   CANAIS_CONTROLE,
   type CanalControle,
@@ -24,8 +25,11 @@ export function taxaPadraoCanal(
   switch (canal) {
     case "site":
       return { taxaPercentual: taxas.siteTaxaPercentual, taxaFixaCentavos: taxas.siteTaxaFixaCentavos };
-    case "shopee":
-      return { taxaPercentual: taxas.shopeeTaxaPercentual, taxaFixaCentavos: 0 };
+    case "shopee": {
+      // Tabela por faixa do preço unitário; a taxa fixa é cobrada por item.
+      const faixa = faixaDoPreco(FAIXAS_SHOPEE_2026, precoUnitarioCentavos);
+      return { taxaPercentual: faixa.percentual, taxaFixaCentavos: faixa.fixaCentavos * quantidade };
+    }
     case "mercadoLivre":
       return {
         taxaPercentual: MERCADO_LIVRE_PADRAO.percentual,

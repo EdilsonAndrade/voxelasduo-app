@@ -55,7 +55,8 @@ describe("calcularVenda", () => {
 describe("taxaPadraoCanal", () => {
   it("site e Shopee vêm da configuração; venda direta sem taxa", () => {
     expect(taxaPadraoCanal("site", TAXAS_CANAIS_PADRAO, 5000, 1)).toEqual({ taxaPercentual: 4.99, taxaFixaCentavos: 0 });
-    expect(taxaPadraoCanal("shopee", TAXAS_CANAIS_PADRAO, 5000, 1).taxaPercentual).toBe(14);
+    expect(taxaPadraoCanal("shopee", TAXAS_CANAIS_PADRAO, 3500, 2)).toEqual({ taxaPercentual: 20, taxaFixaCentavos: 900 });
+    expect(taxaPadraoCanal("shopee", TAXAS_CANAIS_PADRAO, 15000, 1)).toEqual({ taxaPercentual: 14, taxaFixaCentavos: 2000 });
     expect(taxaPadraoCanal("direta", TAXAS_CANAIS_PADRAO, 5000, 1)).toEqual({ taxaPercentual: 0, taxaFixaCentavos: 0 });
   });
 

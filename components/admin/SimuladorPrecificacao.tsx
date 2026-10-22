@@ -6,6 +6,7 @@ import type { ComissaoMercadoLivre } from "@/lib/produtos/precificacao";
 import { calcularPrecoEscala, calcularPrecoSugerido, calcularSimulacaoPrecificacao } from "@/lib/produtos/precificacao";
 import {
   calcularComparativoCanais,
+  comissaoCanal,
   calcularPrecoMinimoCanal,
   calcularResultadoPisoCanal,
   type CanalVenda,
@@ -437,8 +438,7 @@ export default function SimuladorPrecificacao({
 
                             const custo = custoBaseCentavos!;
                             const lucroMinimo = Math.round((custo * margemMinimaPercentual) / 100);
-                            const comissaoEm = (preco: number) =>
-                              Math.round((preco * resultado.taxa.percentual) / 100) + resultado.taxa.fixaCentavos;
+                            const comissaoEm = (preco: number) => comissaoCanal(resultado.taxa, preco);
                             // O custo extra (frete grátis etc.) sai do repasse, então soma ao custo do piso.
                             const precoMinimoCom = (extra: number) =>
                               calcularPrecoMinimoCanal(custo + extra, resultado.taxa, margemMinimaPercentual);

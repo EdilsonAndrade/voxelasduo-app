@@ -32,6 +32,8 @@ export interface ResultadoCanal {
   venda: DetalheVenda | null;
   taxas: LinhaTaxa[];
   totalTaxasCentavos: number;
+  /** O que o canal deposita: preço − taxas descontadas no pedido (sem anúncio, imposto e frete). */
+  repasseCentavos: number | null;
   /** Preço ÷ custo por unidade. */
   markup: number | null;
   limite: LimiteAnuncio | null;
@@ -113,7 +115,7 @@ export function calcularResultado(
     const precoCentavos = modo === "alvo" ? precoAlvoCentavos : precoMargemCentavos;
 
     if (precoCentavos === null) {
-      return { canal, anuncioPercentual, custoPedidoCentavos, precoMargemCentavos, precoSemAnuncioCentavos, precoCentavos, precoCheioCentavos: null, venda: null, taxas: [], totalTaxasCentavos: 0, markup: null, limite: null };
+      return { canal, anuncioPercentual, custoPedidoCentavos, precoMargemCentavos, precoSemAnuncioCentavos, precoCentavos, precoCheioCentavos: null, venda: null, taxas: [], totalTaxasCentavos: 0, repasseCentavos: null, markup: null, limite: null };
     }
     const venda = detalharVenda({ ...base, precoCentavos, anuncioPercentual });
     const taxas = detalharTaxas(canal, venda, precoCentavos, impostoPercentual);
@@ -128,6 +130,7 @@ export function calcularResultado(
       venda,
       taxas,
       totalTaxasCentavos: taxas.reduce((t, l) => t + l.centavos, 0),
+      repasseCentavos: precoCentavos - taxas.reduce((t, l) => t + (l.foraDoPedido ? 0 : l.centavos), 0),
       markup: custo.totalCentavos > 0 ? precoCentavos / custo.totalCentavos : null,
       limite:
         margemPercentual !== null

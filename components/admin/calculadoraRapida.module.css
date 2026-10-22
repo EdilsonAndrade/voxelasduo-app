@@ -1184,6 +1184,41 @@
   color: var(--texto-soft);
 }
 
+.cardTaxas li small {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--texto-soft);
+}
+
+.cardTaxas li.repasse {
+  margin-top: 0.3rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid color-mix(in srgb, var(--rosa) 30%, var(--surface-line));
+  align-items: baseline;
+}
+
+.cardTaxas li.repasse span:first-child {
+  color: var(--preto);
+  font-weight: 700;
+}
+
+.cardTaxas li.repasse strong {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: color-mix(in srgb, var(--turquesa) 60%, var(--preto));
+}
+
+.cardTaxas ul.foraDoPedido {
+  margin-top: 0.3rem;
+}
+
+.cardTaxas li.foraTitulo span:first-child {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* Composição do custo: uma barra em camadas, como as camadas de uma impressão. */
 .composicao {
   display: flex;

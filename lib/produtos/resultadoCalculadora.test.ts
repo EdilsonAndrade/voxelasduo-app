@@ -92,3 +92,16 @@ describe("calcularResultado", () => {
     expect(r.pecasMes).toBe(390);
   });
 });
+
+describe("repasse do canal", () => {
+  it("bate com a renda do pedido real da Shopee: R$ 35 → R$ 23,50, com o anúncio fora do repasse", () => {
+    const v = valores();
+    v.precificacao = { ...v.precificacao, modo: "alvo", precoAlvoReais: "35" };
+    v.anuncio = { modo: "embutido", roasMeta: "8", verbaMesReais: "" };
+    const shopee = calcularResultado(v, SITE).canais.shopee!;
+    expect(shopee.repasseCentavos).toBe(2350);
+    const anuncio = shopee.taxas.find((t) => t.rotulo.startsWith("Anúncio"))!;
+    expect(anuncio.foraDoPedido).toBe(true);
+    expect(shopee.venda!.anuncioCentavos).toBeGreaterThan(0);
+  });
+});

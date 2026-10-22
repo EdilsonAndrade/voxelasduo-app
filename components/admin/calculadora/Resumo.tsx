@@ -146,6 +146,8 @@ export default function Resumo({
   } else {
     const venda = r.venda;
     const lucro = venda.lucroCentavos;
+    const taxasPedido = r.taxas.filter((t) => !t.foraDoPedido);
+    const taxasFora = r.taxas.filter((t) => t.foraDoPedido);
     const pecasDia = res.producao?.pecasPorDia ?? 0;
     corpo = (
       <>
@@ -180,18 +182,43 @@ export default function Resumo({
 
         <div className={calc.cardTaxas}>
           <div>
-            <span>Total de taxas do canal</span>
+            <span>Taxas descontadas no pedido</span>
             <small>{NOME_CANAL[aba]}</small>
           </div>
-          <strong>{reais(r.totalTaxasCentavos)}</strong>
+          <strong>{reais(taxasPedido.reduce((t, l) => t + l.centavos, 0))}</strong>
           <ul>
-            {r.taxas.map((t) => (
+            {taxasPedido.map((t) => (
               <li key={t.rotulo}>
                 <span>{t.rotulo}</span>
                 <span>{reais(t.centavos)}</span>
               </li>
             ))}
+            {r.repasseCentavos !== null && (
+              <li className={calc.repasse}>
+                <span>
+                  Você recebe {aba === "direta" ? "na venda" : `da ${NOME_CANAL[aba]}`}
+                  {aba !== "direta" && <small>É a &quot;renda estimada do pedido&quot; no painel do canal.</small>}
+                </span>
+                <strong>{reais(r.repasseCentavos)}</strong>
+              </li>
+            )}
           </ul>
+          {taxasFora.length > 0 && (
+            <ul className={calc.foraDoPedido}>
+              <li className={calc.foraTitulo}>
+                <span>Fora do pedido (entra no lucro, não no repasse)</span>
+              </li>
+              {taxasFora.map((t) => (
+                <li key={t.rotulo}>
+                  <span>
+                    {t.rotulo}
+                    {t.rotulo.startsWith("Anúncio") && <small>Sai do saldo de Ads que você recarrega, não da venda.</small>}
+                  </span>
+                  <span>{reais(t.centavos)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <Composicao custo={res.custo} />

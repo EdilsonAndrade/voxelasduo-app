@@ -7,6 +7,8 @@ import {
   calcularResultadoCanal,
   calcularResultadoPisoCanal,
   resolverTaxasCanais,
+  comissaoCanal,
+  taxaNoPreco,
 } from "./canais";
 import { calcularPrecoEscala, calcularPrecoSugerido } from "./precificacao";
 import { TAXAS_CANAIS_PADRAO } from "@/lib/models/configuracao";
@@ -89,9 +91,10 @@ describe("calcularResultadoCanal", () => {
 });
 
 describe("resolverTaxasCanais", () => {
-  it("usa o padrão global quando não há override", () => {
+  it("usa a tabela por faixa da Shopee (não o % global) e o padrão do site quando não há override", () => {
     const taxas = resolverTaxasCanais(TAXAS_CANAIS_PADRAO);
-    expect(taxas.shopee.percentual).toBe(14);
+    expect(taxaNoPreco(taxas.shopee, 3500)).toMatchObject({ percentual: 20, fixaCentavos: 450 });
+    expect(taxaNoPreco(taxas.shopee, 15000)).toMatchObject({ percentual: 14, fixaCentavos: 2000 });
     expect(taxas.siteProprio).toEqual({ percentual: 4.99, fixaCentavos: 0 });
   });
 
@@ -100,7 +103,7 @@ describe("resolverTaxasCanais", () => {
       shopeeTaxaPercentual: 20,
       siteTaxaFixaCentavos: 50,
     });
-    expect(taxas.shopee.percentual).toBe(20);
+    expect(taxaNoPreco(taxas.shopee, 15000)).toMatchObject({ percentual: 20, fixaCentavos: 2000 });
     expect(taxas.siteProprio).toEqual({ percentual: 4.99, fixaCentavos: 50 });
   });
 
@@ -190,5 +193,20 @@ describe("calcularResultadoPisoCanal", () => {
     const resultado = calcularResultadoPisoCanal("siteProprio", 5000, null);
     expect(resultado.descontoMaximoCentavos).toBeNull();
     expect(resultado.descontoMaximoPercentual).toBeNull();
+  });
+});
+
+describe("Shopee por faixa (pedido real: R$ 35 → taxas R$ 11,50, repasse R$ 23,50)", () => {
+  const shopee = resolverTaxasCanais(TAXAS_CANAIS_PADRAO).shopee;
+
+  it("cobra 20% + R$ 4,50 até R$ 79,99", () => {
+    expect(comissaoCanal(shopee, 3500)).toBe(1150);
+  });
+
+  it("o preço sugerido pula para a faixa seguinte quando passa do teto", () => {
+    // Custo alto: em 20% + 4,50 o preço passaria de R$ 79,99, então usa 14% + R$ 16.
+    const preco = calcularPrecoSugeridoCanal(6000, 0, shopee)!;
+    expect(preco).toBe(Math.max(8000, Math.round((6000 + 1600) / 0.86)));
+    expect(calcularResultadoCanal("shopee", shopee, preco, 6000, 0).taxa).toMatchObject({ percentual: 14, fixaCentavos: 1600 });
   });
 });

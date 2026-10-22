@@ -1292,11 +1292,12 @@ export default function ProdutoForm({
         </span>
         <div className={styles.row}>
           <div className={styles.field}>
-            <label htmlFor="taxaShopeeProduto">Taxa da Shopee (%)</label>
+            <label htmlFor="taxaShopeeProduto">Comissão da Shopee (%)</label>
             <input
               id="taxaShopeeProduto"
               inputMode="decimal"
-              placeholder={placeholderTaxasGlobais.shopeeTaxaPercentual}
+              placeholder="tabela por faixa"
+              title="Em branco = tabela da Shopee por faixa de preço (20% + R$ 4,50 até R$ 79,99). Preenchido = troca só o %; a taxa fixa da faixa continua."
               value={valores.taxasCanais.shopeeTaxaPercentual}
               onChange={(e) => atualizarCampoTaxasCanais("shopeeTaxaPercentual", e.target.value)}
             />

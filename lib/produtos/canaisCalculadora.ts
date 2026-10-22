@@ -97,6 +97,11 @@ export function montarCanal(canal: CanalVenda, v: CalculadoraValoresV2): CanalMo
 export interface LinhaTaxa {
   rotulo: string;
   centavos: number;
+  /**
+   * Não sai do repasse do pedido: o anúncio é pago pelo saldo de Ads, o imposto
+   * e o frete grátis da venda direta saem do seu bolso depois.
+   */
+  foraDoPedido?: boolean;
 }
 
 function porcento(n: number): string {
@@ -123,9 +128,9 @@ export function detalharTaxas(canal: CanalMontado, venda: DetalheVenda, precoCen
     linhas.push({ rotulo: canal.canal === "mercadoLivre" ? "Custo fixo (abaixo de R$ 79)" : "Taxa fixa", centavos: fixa });
     if (canal.adicionalCpfCentavos > 0) linhas.push({ rotulo: "Adicional CPF (+450 pedidos)", centavos: canal.adicionalCpfCentavos });
   }
-  if (venda.impostoCentavos > 0) linhas.push({ rotulo: `Imposto ${porcento(impostoPercentual)}`, centavos: venda.impostoCentavos });
-  if (venda.anuncioCentavos > 0) linhas.push({ rotulo: "Anúncio (Ads)", centavos: venda.anuncioCentavos });
-  if (canal.freteCentavos > 0) linhas.push({ rotulo: "Frete grátis (você paga o envio)", centavos: canal.freteCentavos });
+  if (venda.impostoCentavos > 0) linhas.push({ rotulo: `Imposto ${porcento(impostoPercentual)}`, centavos: venda.impostoCentavos, foraDoPedido: true });
+  if (venda.anuncioCentavos > 0) linhas.push({ rotulo: "Anúncio (Ads)", centavos: venda.anuncioCentavos, foraDoPedido: true });
+  if (canal.freteCentavos > 0) linhas.push({ rotulo: "Frete grátis (você paga o envio)", centavos: canal.freteCentavos, foraDoPedido: true });
   if (canal.cupomCentavos > 0) linhas.push({ rotulo: "Cupom próprio", centavos: canal.cupomCentavos });
   return linhas.filter((l) => l.centavos > 0);
 }

@@ -1,10 +1,58 @@
 import type { TaxasCanaisConfig } from "@/lib/models/configuracao";
 import type { TaxasCanaisProduto } from "@/lib/models/produto";
+import { FAIXAS_SHOPEE_2026, faixaDoPreco, type FaixaTaxa } from "./calculadoraRapida";
 
-/** Taxa de um canal: percentual sobre o preço + taxa fixa por venda (EDI-106). */
+/**
+ * Taxa de um canal: percentual sobre o preço + taxa fixa por venda (EDI-106).
+ * Com `faixas`, a taxa depende do preço (Shopee) e `percentual`/`fixaCentavos`
+ * são os da faixa usada — ver `taxaNoPreco`.
+ */
 export interface TaxaCanal {
   percentual: number;
   fixaCentavos: number;
+  faixas?: FaixaTaxa[];
+}
+
+/** Percentual e taxa fixa que o canal cobra num preço (a faixa do preço, quando há faixas). */
+export function taxaNoPreco(taxa: TaxaCanal, precoCentavos: number): TaxaCanal {
+  if (!taxa.faixas?.length) return taxa;
+  const faixa = faixaDoPreco(taxa.faixas, precoCentavos);
+  return { percentual: faixa.percentual, fixaCentavos: faixa.fixaCentavos, faixas: taxa.faixas };
+}
+
+/** Quanto o canal desconta da venda num preço: percentual + taxa fixa. */
+export function comissaoCanal(taxa: TaxaCanal, precoCentavos: number): number {
+  const efetiva = taxaNoPreco(taxa, precoCentavos);
+  return Math.round((precoCentavos * efetiva.percentual) / 100) + efetiva.fixaCentavos;
+}
+
+/**
+ * Shopee pela tabela oficial por faixa de preço (a mesma da calculadora) — o
+ * percentual próprio do produto, quando informado, substitui o da tabela e
+ * mantém a taxa fixa de cada faixa.
+ */
+function taxaShopee(percentualProduto?: number): TaxaCanal {
+  const faixas = FAIXAS_SHOPEE_2026.map((f) => (percentualProduto !== undefined ? { ...f, percentual: percentualProduto } : f));
+  return { percentual: faixas[0].percentual, fixaCentavos: faixas[0].fixaCentavos, faixas };
+}
+
+/**
+ * Menor preço `(base + fixa) / (1 − taxa%)` dentro de uma faixa: percorre as
+ * faixas da mais barata para a mais cara; se o preço passa do teto da faixa,
+ * tenta a seguinte (no mínimo o piso dela). `null` = taxa `>= 100%`.
+ */
+function precoPorTaxa(baseCentavos: number, taxa: TaxaCanal): number | null {
+  const faixas = taxa.faixas?.length ? taxa.faixas : [{ ateCentavos: null, percentual: taxa.percentual, fixaCentavos: taxa.fixaCentavos }];
+  let pisoCentavos = 0;
+  for (const faixa of faixas) {
+    if (faixa.percentual < 100) {
+      const preco = Math.max(Math.round((baseCentavos + faixa.fixaCentavos) / (1 - faixa.percentual / 100)), pisoCentavos);
+      if (faixa.ateCentavos === null || preco <= faixa.ateCentavos) return preco;
+    }
+    if (faixa.ateCentavos === null) return null;
+    pisoCentavos = faixa.ateCentavos + 1;
+  }
+  return null;
 }
 
 export type CanalVenda = "mercadoLivre" | "shopee" | "siteProprio";
@@ -35,10 +83,8 @@ export function resolverTaxasCanais(
   override?: TaxasCanaisProduto
 ): TaxasCanaisEfetivas {
   return {
-    shopee: {
-      percentual: override?.shopeeTaxaPercentual ?? global.shopeeTaxaPercentual,
-      fixaCentavos: 0,
-    },
+    // O percentual global da Shopee não entra mais: só a tabela por faixa ou o % do próprio produto.
+    shopee: taxaShopee(override?.shopeeTaxaPercentual),
     siteProprio: {
       percentual: override?.siteTaxaPercentual ?? global.siteTaxaPercentual,
       fixaCentavos: override?.siteTaxaFixaCentavos ?? global.siteTaxaFixaCentavos,
@@ -56,12 +102,7 @@ export function calcularPrecoSugeridoCanal(
   margemDesejadaPercentual: number,
   taxa: TaxaCanal
 ): number | null {
-  if (taxa.percentual >= 100) return null;
-
-  return Math.round(
-    (custoCentavos * (1 + margemDesejadaPercentual / 100) + taxa.fixaCentavos) /
-      (1 - taxa.percentual / 100)
-  );
+  return precoPorTaxa(custoCentavos * (1 + margemDesejadaPercentual / 100), taxa);
 }
 
 /**
@@ -73,11 +114,7 @@ export function calcularPrecoEscalaCanal(
   lucroDesejadoCentavos: number,
   taxa: TaxaCanal
 ): number | null {
-  if (taxa.percentual >= 100) return null;
-
-  return Math.round(
-    (custoCaixaCentavos + lucroDesejadoCentavos + taxa.fixaCentavos) / (1 - taxa.percentual / 100)
-  );
+  return precoPorTaxa(custoCaixaCentavos + lucroDesejadoCentavos, taxa);
 }
 
 /**
@@ -106,13 +143,14 @@ export function calcularResultadoCanal(
     };
   }
 
-  const comissaoCentavos = Math.round((precoSugeridoCentavos * taxa.percentual) / 100) + taxa.fixaCentavos;
+  const comissaoCentavos = comissaoCanal(taxa, precoSugeridoCentavos);
   const lucroLiquidoCentavos = precoSugeridoCentavos - custoCentavos - comissaoCentavos;
   const margemPercentual = custoCentavos > 0 ? (lucroLiquidoCentavos / custoCentavos) * 100 : 0;
 
   return {
     canal,
-    taxa,
+    // Com faixas, a taxa mostrada é a da faixa do preço sugerido.
+    taxa: taxaNoPreco(taxa, precoSugeridoCentavos),
     precoSugeridoCentavos,
     comissaoCentavos,
     lucroLiquidoCentavos,

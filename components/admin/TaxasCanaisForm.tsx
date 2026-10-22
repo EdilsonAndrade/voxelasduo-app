@@ -11,7 +11,7 @@ function numeroDeTexto(valor: string): number {
 
 /** Padrão global das taxas de Shopee e site próprio — cada produto pode sobrescrever no próprio cadastro (EDI-106). */
 export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: TaxasCanaisConfig }) {
-  const [shopee, setShopee] = useState(String(valoresIniciais.shopeeTaxaPercentual));
+  const shopee = String(valoresIniciais.shopeeTaxaPercentual);
   const [sitePercentual, setSitePercentual] = useState(String(valoresIniciais.siteTaxaPercentual));
   const [siteFixaReais, setSiteFixaReais] = useState(
     (valoresIniciais.siteTaxaFixaCentavos / 100).toFixed(2)
@@ -67,13 +67,11 @@ export default function TaxasCanaisForm({ valoresIniciais }: { valoresIniciais: 
 
         <fieldset className={styles.field}>
           <legend>Shopee</legend>
-          <label htmlFor="taxaShopee">Taxa estimada (%)</label>
-          <input
-            id="taxaShopee"
-            inputMode="decimal"
-            value={shopee}
-            onChange={(e) => setShopee(e.target.value)}
-          />
+          {/* O % antigo continua salvo (a API exige o campo), mas os cálculos usam a tabela por faixa. */}
+          <span className={styles.mlLinkAviso}>
+            Usa a tabela oficial por faixa de preço, a mesma da calculadora: até R$ 79,99 = 20% + R$ 4,50; até
+            R$ 99,99 = 14% + R$ 16; até R$ 199,99 = 14% + R$ 20; acima = 14% + R$ 26.
+          </span>
           {camposErro.shopeeTaxaPercentual && (
             <span className={styles.fieldError}>{camposErro.shopeeTaxaPercentual}</span>
           )}
