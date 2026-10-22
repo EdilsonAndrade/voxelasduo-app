@@ -52,23 +52,29 @@ export default function MapearArquivo({
   if (pendentes.length === 0) return null;
 
   return (
-    <section className={styles.blocoPendentes}>
-      <h2 className={styles.tituloBloco}>Impressões sem produto</h2>
+    // Acordeão com rolagem própria: a fila só cresce e não pode empurrar o resto da página.
+    <details className={styles.blocoPendentes} open>
+      <summary className={styles.resumoPendentes}>
+        <h2 className={styles.tituloBloco}>Impressões sem produto</h2>
+        <span className={styles.contagemPendentes}>{pendentes.length}</span>
+      </summary>
       <p className={styles.subtituloBloco}>
         Diga uma vez de que produto é cada arquivo. As impressões já importadas com esse nome
         passam a contar junto.
       </p>
 
-      {pendentes.map((pendente) => (
-        <LinhaPendente
-          key={pendente.nomeArquivo}
-          pendente={pendente}
-          produtos={produtos}
-          partesPorProduto={partesPorProduto}
-          onMapeado={onMapeado}
-        />
-      ))}
-    </section>
+      <div className={styles.rolagemPendentes}>
+        {pendentes.map((pendente) => (
+          <LinhaPendente
+            key={pendente.nomeArquivo}
+            pendente={pendente}
+            produtos={produtos}
+            partesPorProduto={partesPorProduto}
+            onMapeado={onMapeado}
+          />
+        ))}
+      </div>
+    </details>
   );
 }
 
