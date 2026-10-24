@@ -101,11 +101,19 @@ function faixas(linhas: Linha[]): { chave: string; cor: string; esquerda: number
 export default function PlanoProdutoCard({
   plano,
   destaque,
+  aberto,
+  oculto,
+  onAlternar,
   onSalvo,
   onRemovido,
 }: {
   plano: PlanoProduto;
   destaque: boolean;
+  /** Recolhido = só o cabeçalho (nome e totais), para achar o produto rápido. */
+  aberto: boolean;
+  /** Fora da busca: escondido, mas montado — edições não salvas não se perdem. */
+  oculto: boolean;
+  onAlternar: () => void;
   onSalvo: (plano: PlanoProduto) => void;
   onRemovido: (chave: string) => void;
 }) {
@@ -244,8 +252,22 @@ export default function PlanoProdutoCard({
     <article
       id={`plano-${plano.chave}`}
       className={`${styles.produto} ${destaque ? styles.produtoDestaque : ""}`}
+      hidden={oculto}
     >
       <div className={styles.produtoTopo}>
+        <button
+          type="button"
+          className={styles.alternar}
+          onClick={onAlternar}
+          aria-expanded={aberto}
+          aria-controls={`corpo-${plano.chave}`}
+          title={aberto ? "Recolher as partes" : "Mostrar as partes"}
+        >
+          <span className={`${styles.seta} ${aberto ? styles.setaAberta : ""}`} aria-hidden="true">
+            ▸
+          </span>
+          <span className={styles.somenteLeitor}>{aberto ? "Recolher" : "Mostrar"} partes</span>
+        </button>
         <h2 className={styles.produtoNome}>
           {avulso ? (
             <input
@@ -282,6 +304,7 @@ export default function PlanoProdutoCard({
         {alterado && <span className={styles.naoSalvo}>não salvo</span>}
       </div>
 
+      <div id={`corpo-${plano.chave}`} hidden={!aberto}>
       <div className={styles.linhas}>
         <div className={styles.cabecalho} aria-hidden="true">
           <span />
@@ -400,6 +423,8 @@ export default function PlanoProdutoCard({
             Salvar
           </button>
         </div>
+      </div>
+
       </div>
 
       {aviso && <p className={styles.ok}>{aviso}</p>}

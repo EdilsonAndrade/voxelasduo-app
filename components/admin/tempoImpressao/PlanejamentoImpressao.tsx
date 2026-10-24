@@ -6,6 +6,19 @@ import SelectBusca from "@/components/admin/SelectBusca";
 import PlanoProdutoCard, { type PlanoProduto } from "./PlanoProdutoCard";
 import styles from "./tempoImpressao.module.css";
 
+/** Busca sem acento nem maiúsculas: "papai noel" encontra "Papai Noel". */
+function normalizar(texto: string): string {
+  return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("pt-BR").trim();
+}
+
+/** Encontra pelo nome do produto/item ou pelo nome de alguma parte. */
+function correspondeBusca(plano: PlanoProduto, termo: string): boolean {
+  if (!termo) return true;
+  return [plano.produtoNome, ...plano.itens.map((item) => item.nome)].some((nome) =>
+    normalizar(nome).includes(termo)
+  );
+}
+
 /**
  * Tempo de Impressão (specs/035): escolhe um produto do catálogo (publicado ou
  * não) ou dá nome a algo que ainda não é produto, cadastra as partes com o
@@ -28,6 +41,25 @@ export default function PlanejamentoImpressao({
   const [destaque, setDestaque] = useState(
     () => planosIniciais.find((p) => destacar && p.produtoId === destacar)?.chave ?? ""
   );
+  const [busca, setBusca] = useState("");
+  /** Cards abertos — começam recolhidos, menos o que veio destacado. */
+  const [abertos, setAbertos] = useState<Set<string>>(() => new Set(destaque ? [destaque] : []));
+
+  const termo = normalizar(busca);
+  const visiveis = planos.filter((plano) => correspondeBusca(plano, termo)).length;
+
+  function abrir(chave: string) {
+    setAbertos((atual) => new Set(atual).add(chave));
+  }
+
+  function alternar(chave: string) {
+    setAbertos((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(chave)) novo.delete(chave);
+      else novo.add(chave);
+      return novo;
+    });
+  }
 
   useEffect(() => {
     if (!destaque) return;
@@ -40,6 +72,8 @@ export default function PlanejamentoImpressao({
     const existente = planos.find((p) => p.produtoId === produto.id);
     if (existente) {
       setDestaque(existente.chave);
+      abrir(existente.chave);
+      setBusca("");
     } else {
       const chave = `novo-${crypto.randomUUID()}`;
       setPlanos((atual) => [
@@ -47,6 +81,8 @@ export default function PlanejamentoImpressao({
         ...atual,
       ]);
       setDestaque(chave);
+      abrir(chave);
+      setBusca("");
     }
     setEscolhido("");
   }
@@ -58,6 +94,8 @@ export default function PlanejamentoImpressao({
     const chave = `novo-${crypto.randomUUID()}`;
     setPlanos((atual) => [{ chave, produtoNome: nome, itens: [], novo: true }, ...atual]);
     setDestaque(chave);
+    abrir(chave);
+    setBusca("");
     setNomeAvulso("");
   }
 
@@ -122,6 +160,36 @@ export default function PlanejamentoImpressao({
         </form>
       </div>
 
+      {planos.length > 0 && (
+        <div className={styles.filtros}>
+          <input
+            type="search"
+            className={`${styles.entrada} ${styles.busca}`}
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por produto ou parte…"
+            aria-label="Buscar no Tempo de Impressão"
+          />
+          <span className={styles.contagem} aria-live="polite">
+            {termo ? `${visiveis} de ${planos.length}` : `${planos.length} ${planos.length === 1 ? "item" : "itens"}`}
+          </span>
+          <button
+            type="button"
+            className={styles.botaoTexto}
+            onClick={() => setAbertos(new Set(planos.map((p) => p.chave)))}
+          >
+            Expandir todos
+          </button>
+          <button type="button" className={styles.botaoTexto} onClick={() => setAbertos(new Set())}>
+            Recolher todos
+          </button>
+        </div>
+      )}
+
+      {termo && visiveis === 0 && (
+        <p className={styles.vazio}>Nada encontrado para “{busca.trim()}”. Confira a grafia ou limpe a busca.</p>
+      )}
+
       {planos.length === 0 ? (
         <p className={styles.vazio}>
           Nada aqui ainda. Escolha um produto ou digite um nome acima, ou leve as peças de um produto pela tela de{" "}
@@ -133,6 +201,9 @@ export default function PlanejamentoImpressao({
             key={plano.chave}
             plano={plano}
             destaque={plano.chave === destaque}
+            aberto={abertos.has(plano.chave)}
+            oculto={!correspondeBusca(plano, termo)}
+            onAlternar={() => alternar(plano.chave)}
             onSalvo={salvo}
             onRemovido={removido}
           />

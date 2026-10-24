@@ -88,9 +88,81 @@
 .produtoTopo {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 0.4rem 0.9rem;
   margin-bottom: 0.7rem;
+}
+
+/* Recolher/mostrar as partes do card. */
+.alternar {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--surface-line);
+  background: var(--creme);
+  color: var(--preto);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.alternar:hover {
+  border-color: var(--roxo);
+}
+
+.alternar:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+.seta {
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.setaAberta {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seta {
+    transition: none;
+  }
+}
+
+.somenteLeitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Busca e recolher/expandir todos. */
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+}
+
+.busca {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.contagem {
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+}
+
+/* `.produto` define display; sem isto o atributo `hidden` não esconderia o card. */
+.produto[hidden] {
+  display: none;
 }
 
 .produtoNome {
