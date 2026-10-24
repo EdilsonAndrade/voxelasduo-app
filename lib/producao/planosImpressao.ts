@@ -128,29 +128,21 @@ export function minutosEmHoras(minutos: number): string {
   return `${Math.floor(minutos / 60)}h${String(minutos % 60).padStart(2, "0")}`;
 }
 
-/** "HH:MM" ordena como texto; sem início vai para o fim. */
-function compararInicio(a?: string, b?: string): number {
-  if (a && b) return a.localeCompare(b);
-  if (a) return -1;
-  if (b) return 1;
-  return 0;
-}
-
 /**
- * Ordem da ficha: partes pelo horário de início e produtos pelo início mais
- * cedo das suas partes. Sem início fica no fim — partes na ordem cadastrada,
+ * Ordem da ficha, do menor tempo de impressão para o maior: partes pelo tempo
+ * de cada uma e produtos pelo tempo total. Empate: partes na ordem cadastrada,
  * produtos em ordem alfabética.
  */
-export function ordenarPorInicio<P extends { produtoNome: string; itens: Pick<ItemImpressao, "inicio">[] }>(
+export function ordenarPorTempo<P extends { produtoNome: string; itens: Pick<ItemImpressao, "minutos">[] }>(
   planos: P[]
 ): P[] {
   const ordenados = planos.map((plano) => ({
     ...plano,
-    itens: [...plano.itens].sort((a, b) => compararInicio(a.inicio, b.inicio)),
+    itens: [...plano.itens].sort((a, b) => a.minutos - b.minutos),
   }));
   return ordenados.sort(
     (a, b) =>
-      compararInicio(a.itens[0]?.inicio, b.itens[0]?.inicio) ||
+      totalMinutos(a.itens) - totalMinutos(b.itens) ||
       a.produtoNome.localeCompare(b.produtoNome, "pt-BR", { sensitivity: "base" })
   );
 }

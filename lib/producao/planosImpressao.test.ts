@@ -3,31 +3,30 @@ import {
   itensDaApuracao,
   mesclarItens,
   minutosEmHoras,
-  ordenarPorInicio,
+  ordenarPorTempo,
   totalMinutos,
   totalPecas,
   validarItens,
   type ParteDaApuracao,
 } from "./planosImpressao";
 
-describe("ordenarPorInicio", () => {
-  const item = (nome: string, inicio?: string) => ({ nome, inicio });
+describe("ordenarPorTempo", () => {
+  const item = (nome: string, minutos: number) => ({ nome, minutos });
 
-  it("ordena as partes e os produtos pelo horário de início, sem início no fim", () => {
-    const resultado = ordenarPorInicio([
-      { produtoNome: "Zebra", itens: [item("a", "14:00"), item("b"), item("c", "09:30")] },
-      { produtoNome: "Sem horário", itens: [item("x")] },
-      { produtoNome: "Abelha", itens: [item("d", "11:00")] },
-      { produtoNome: "Árvore", itens: [item("y")] },
+  it("ordena as partes pelo tempo e os produtos pelo tempo total, do menor ao maior", () => {
+    const resultado = ordenarPorTempo([
+      { produtoNome: "Zebra", itens: [item("a", 120), item("b", 30), item("c", 60)] },
+      { produtoNome: "Abelha", itens: [item("d", 300)] },
+      { produtoNome: "Árvore", itens: [item("e", 45)] },
     ]);
-    expect(resultado.map((p) => p.produtoNome)).toEqual(["Zebra", "Abelha", "Árvore", "Sem horário"]);
-    expect(resultado[0].itens.map((i) => i.nome)).toEqual(["c", "a", "b"]);
+    expect(resultado.map((p) => p.produtoNome)).toEqual(["Árvore", "Zebra", "Abelha"]);
+    expect(resultado[1].itens.map((i) => i.nome)).toEqual(["b", "c", "a"]);
   });
 
   it("empata pelo nome do produto", () => {
-    const resultado = ordenarPorInicio([
-      { produtoNome: "Boneco", itens: [item("a", "08:00")] },
-      { produtoNome: "Anjo", itens: [item("b", "08:00")] },
+    const resultado = ordenarPorTempo([
+      { produtoNome: "Boneco", itens: [item("a", 90)] },
+      { produtoNome: "Anjo", itens: [item("b", 90)] },
     ]);
     expect(resultado.map((p) => p.produtoNome)).toEqual(["Anjo", "Boneco"]);
   });
