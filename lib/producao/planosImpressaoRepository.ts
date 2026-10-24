@@ -20,6 +20,7 @@ async function colecaoPlanos() {
 
 export interface PlanoComProduto extends PlanoImpressao {
   produtoNome: string;
+  linkModelo3d?: string;
 }
 
 /**
@@ -36,13 +37,15 @@ export async function listarPlanos(): Promise<PlanoComProduto[]> {
   const produtos = await client
     .db(DB_NAME)
     .collection<Produto>(PRODUTOS_COLLECTION)
-    .find({ _id: { $in: ids.map((id) => new ObjectId(id)) } }, { projection: { nome: 1 } })
+    .find({ _id: { $in: ids.map((id) => new ObjectId(id)) } }, { projection: { nome: 1, linkModelo3d: 1 } })
     .toArray();
-  const nomes = new Map(produtos.map((p) => [p._id!.toString(), p.nome]));
+  const porId = new Map(produtos.map((p) => [p._id!.toString(), p]));
 
   return planos.flatMap((plano) => {
-    const produtoNome = nomes.get(plano.produtoId);
-    return produtoNome === undefined ? [] : [{ ...plano, produtoNome }];
+    const produto = porId.get(plano.produtoId);
+    return produto
+      ? [{ ...plano, produtoNome: produto.nome, ...(produto.linkModelo3d ? { linkModelo3d: produto.linkModelo3d } : {}) }]
+      : [];
   });
 }
 

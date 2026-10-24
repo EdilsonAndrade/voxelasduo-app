@@ -15,6 +15,8 @@ export interface ItemPlano {
 export interface PlanoProduto {
   produtoId: string;
   produtoNome: string;
+  /** Link do modelo 3D de origem (MakerWorld, Drive…) — o nome do produto leva até ele. */
+  linkModelo3d?: string;
   itens: ItemPlano[];
   /** Ainda não gravado: o primeiro "Salvar" cria o plano (POST). */
   novo?: boolean;
@@ -158,6 +160,7 @@ export default function PlanoProdutoCard({
       const salvo: PlanoProduto = {
         produtoId: plano.produtoId,
         produtoNome: plano.produtoNome,
+        linkModelo3d: plano.linkModelo3d,
         itens: dados.plano.itens,
       };
       setLinhas(salvo.itens.map(paraLinha));
@@ -203,7 +206,21 @@ export default function PlanoProdutoCard({
       className={`${styles.produto} ${destaque ? styles.produtoDestaque : ""}`}
     >
       <div className={styles.produtoTopo}>
-        <h2 className={styles.produtoNome}>{plano.produtoNome}</h2>
+        <h2 className={styles.produtoNome}>
+          {plano.linkModelo3d ? (
+            <a
+              href={plano.linkModelo3d}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.linkModelo}
+              title="Abrir o modelo 3D de origem"
+            >
+              {plano.produtoNome}
+            </a>
+          ) : (
+            plano.produtoNome
+          )}
+        </h2>
         <span className={styles.total}>
           Total: <span className={styles.totalValor}>{minutosEmHoras(total)}</span>
           {linhas.length > 1 && ` em ${linhas.length} partes`}

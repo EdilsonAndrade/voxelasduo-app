@@ -414,3 +414,22 @@
     border-color: #bbb;
   }
 }
+
+/* Nome do produto que leva ao modelo 3D de origem (MakerWorld, Drive…). */
+.linkModelo {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--roxo) 45%, transparent);
+  text-underline-offset: 3px;
+}
+
+.linkModelo:hover {
+  color: var(--roxo);
+  text-decoration-color: currentColor;
+}
+
+.linkModelo:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

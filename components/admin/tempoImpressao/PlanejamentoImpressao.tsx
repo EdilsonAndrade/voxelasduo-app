@@ -18,7 +18,7 @@ export default function PlanejamentoImpressao({
   destacar,
 }: {
   planosIniciais: PlanoProduto[];
-  produtos: { id: string; nome: string }[];
+  produtos: { id: string; nome: string; linkModelo3d?: string }[];
   /** Produto vindo da Produção (`?produto=`): o card dele abre destacado. */
   destacar?: string;
 }) {
@@ -35,7 +35,7 @@ export default function PlanejamentoImpressao({
     const produto = produtos.find((p) => p.id === escolhido);
     if (!produto) return;
     if (!planos.some((p) => p.produtoId === produto.id)) {
-      setPlanos((atual) => [{ produtoId: produto.id, produtoNome: produto.nome, itens: [], novo: true }, ...atual]);
+      setPlanos((atual) => [{ produtoId: produto.id, produtoNome: produto.nome, linkModelo3d: produto.linkModelo3d, itens: [], novo: true }, ...atual]);
     }
     setDestaque(produto.id);
     setEscolhido("");

@@ -35,6 +35,7 @@ export interface ParteApurada {
 export interface ProdutoApurado {
   produtoId: string;
   produtoNome: string;
+  linkModelo3d?: string;
   unidadesAcabadas: number;
   gramasPorPeca?: number;
   horasPorPeca?: number;
@@ -396,7 +397,21 @@ export function ProdutoApuradoCard({
   return (
     <article className={styles.produto}>
       <div className={styles.produtoTopo}>
-        <h3 className={styles.produtoNome}>{produto.produtoNome}</h3>
+        <h3 className={styles.produtoNome}>
+          {produto.linkModelo3d ? (
+            <a
+              href={produto.linkModelo3d}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.linkModelo}
+              title="Abrir o modelo 3D de origem"
+            >
+              {produto.produtoNome}
+            </a>
+          ) : (
+            produto.produtoNome
+          )}
+        </h3>
         <span className={styles.unidades}>
           {produto.unidadesAcabadas}{" "}
           {produto.unidadesAcabadas === 1 ? "peça produzida" : "peças produzidas"}

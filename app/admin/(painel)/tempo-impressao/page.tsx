@@ -19,10 +19,11 @@ export default async function TempoImpressaoPage({ searchParams }: { searchParam
       planosIniciais={planos.map((plano) => ({
         produtoId: plano.produtoId,
         produtoNome: plano.produtoNome,
+        linkModelo3d: plano.linkModelo3d,
         itens: plano.itens,
       }))}
       produtos={produtos
-        .map((p) => ({ id: p._id!.toString(), nome: p.nome }))
+        .map((p) => ({ id: p._id!.toString(), nome: p.nome, linkModelo3d: p.linkModelo3d }))
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }))}
     />
   );

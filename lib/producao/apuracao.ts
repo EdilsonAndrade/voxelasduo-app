@@ -47,6 +47,8 @@ export interface ApuracaoParte {
 export interface ApuracaoProduto {
   produtoId: string;
   produtoNome: string;
+  /** Link do modelo 3D de origem (MakerWorld, Drive…) — o nome do produto leva até ele. */
+  linkModelo3d?: string;
   unidadesAcabadas: number;
   gramasPorPeca?: number;
   horasPorPeca?: number;
@@ -343,6 +345,7 @@ export function apurarProduto(
   return {
     produtoId: produto._id!.toString(),
     produtoNome: produto.nome,
+    linkModelo3d: produto.linkModelo3d,
     unidadesAcabadas,
     gramasPorPeca,
     horasPorPeca,
