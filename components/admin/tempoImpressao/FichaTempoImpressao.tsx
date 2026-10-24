@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import ImprimirButton from "@/components/admin/ImprimirButton";
 import { terminoPrevisto } from "@/lib/producao/agenda";
 import { minutosEmHoras, quantidadeDoItem, totalMinutos, totalPecas } from "@/lib/producao/planosImpressao";
@@ -16,21 +19,49 @@ function termino(inicio: string | undefined, minutos: number): string {
  * Ficha em lista do Tempo de Impressão (specs/035): cada produto com o total e,
  * se tiver mais de uma parte, as partes abaixo. "Imprimir / salvar PDF" usa a
  * impressão do navegador, como a folha de orçamentos.
+ *
+ * Produtos e partes vêm todos marcados; o que for desmarcado fica apagado na
+ * tela e some da impressão, e o total do produto passa a somar só as partes
+ * marcadas.
  */
-export default function FichaTempoImpressao({ planos }: { planos: PlanoProduto[] }) {
-  const hoje = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+export default function FichaTempoImpressao({ planos, geradaEm }: { planos: PlanoProduto[]; geradaEm: string }) {
+  /** Ids das partes fora da ficha. */
+  const [fora, setFora] = useState<Set<string>>(new Set());
+
+  const todosItens = planos.flatMap((plano) => plano.itens.map((item) => item.id));
+  const produtosNaFicha = planos.filter((plano) => plano.itens.some((item) => !fora.has(item.id))).length;
+
+  function alternar(ids: string[], incluir: boolean) {
+    setFora((atual) => {
+      const novo = new Set(atual);
+      for (const id of ids) {
+        if (incluir) novo.delete(id);
+        else novo.add(id);
+      }
+      return novo;
+    });
+  }
 
   return (
     <div className={`container ${styles.ficha}`}>
       <div className={styles.fichaControles}>
         <ImprimirButton className={styles.botao} />
+        <span className={styles.total}>
+          {produtosNaFicha} de {planos.length} {planos.length === 1 ? "produto" : "produtos"} na ficha
+        </span>
+        <button type="button" className={styles.botaoTexto} onClick={() => setFora(new Set())}>
+          Marcar todos
+        </button>
+        <button type="button" className={styles.botaoTexto} onClick={() => setFora(new Set(todosItens))}>
+          Desmarcar todos
+        </button>
         <Link href="/admin/tempo-impressao" className={styles.botaoTexto}>
           Voltar ao Tempo de Impressão
         </Link>
       </div>
 
       <h1 className={styles.fichaTitulo}>Tempo de impressão</h1>
-      <p className={styles.fichaData}>Gerada em {hoje}</p>
+      <p className={styles.fichaData}>Gerada em {geradaEm}</p>
 
       {planos.length === 0 ? (
         <p className={styles.vazio}>Nenhum produto no Tempo de Impressão.</p>
@@ -44,27 +75,57 @@ export default function FichaTempoImpressao({ planos }: { planos: PlanoProduto[]
             <span className={styles.direita}>Término</span>
           </li>
           {planos.map((plano) => {
+            const ids = plano.itens.map((item) => item.id);
+            const marcados = plano.itens.filter((item) => !fora.has(item.id));
+            const noProduto = marcados.length > 0;
             const unica = plano.itens.length === 1 ? plano.itens[0] : null;
             return (
-              <li key={plano.produtoId} className={styles.fichaProduto}>
+              <li
+                key={plano.produtoId}
+                className={`${styles.fichaProduto} ${noProduto ? "" : styles.foraDaFicha}`}
+              >
                 <div className={styles.fichaProdutoLinha}>
-                  <span>{plano.produtoNome}</span>
-                  <span className={styles.direita}>{totalPecas(plano.itens)}</span>
-                  <span className={styles.direita}>{minutosEmHoras(totalMinutos(plano.itens))}</span>
+                  <label className={styles.fichaMarca}>
+                    <input
+                      type="checkbox"
+                      className={styles.fichaCheckbox}
+                      checked={noProduto}
+                      onChange={() => alternar(ids, !noProduto)}
+                      aria-label={`Incluir ${plano.produtoNome} na ficha`}
+                    />
+                    <span>{plano.produtoNome}</span>
+                  </label>
+                  <span className={styles.direita}>{totalPecas(marcados)}</span>
+                  <span className={styles.direita}>{minutosEmHoras(totalMinutos(marcados))}</span>
                   <span className={styles.direita}>{unica?.inicio ?? ""}</span>
                   <span className={styles.direita}>{unica ? termino(unica.inicio, unica.minutos) : ""}</span>
                 </div>
                 {!unica && (
                   <ul className={styles.fichaPartes}>
-                    {plano.itens.map((item) => (
-                      <li key={item.id} className={styles.fichaParte}>
-                        <span>{item.nome}</span>
-                        <span className={styles.direita}>{quantidadeDoItem(item)}</span>
-                        <span className={styles.direita}>{minutosEmHoras(item.minutos)}</span>
-                        <span className={styles.direita}>{item.inicio ?? "—"}</span>
-                        <span className={styles.direita}>{termino(item.inicio, item.minutos)}</span>
-                      </li>
-                    ))}
+                    {plano.itens.map((item) => {
+                      const naFicha = !fora.has(item.id);
+                      return (
+                        <li
+                          key={item.id}
+                          className={`${styles.fichaParte} ${naFicha ? "" : styles.foraDaFicha}`}
+                        >
+                          <label className={styles.fichaMarca}>
+                            <input
+                              type="checkbox"
+                              className={styles.fichaCheckbox}
+                              checked={naFicha}
+                              onChange={() => alternar([item.id], !naFicha)}
+                              aria-label={`Incluir ${item.nome} na ficha`}
+                            />
+                            <span>{item.nome}</span>
+                          </label>
+                          <span className={styles.direita}>{quantidadeDoItem(item)}</span>
+                          <span className={styles.direita}>{minutosEmHoras(item.minutos)}</span>
+                          <span className={styles.direita}>{item.inicio ?? "—"}</span>
+                          <span className={styles.direita}>{termino(item.inicio, item.minutos)}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </li>

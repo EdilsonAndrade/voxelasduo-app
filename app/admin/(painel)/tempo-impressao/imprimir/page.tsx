@@ -14,6 +14,12 @@ export default async function ImprimirTempoImpressaoPage() {
 
   return (
     <FichaTempoImpressao
+      geradaEm={new Date().toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "America/Sao_Paulo",
+      })}
       planos={planos
         .map((plano) => ({ produtoId: plano.produtoId, produtoNome: plano.produtoNome, itens: plano.itens }))
         .sort((a, b) => a.produtoNome.localeCompare(b.produtoNome, "pt-BR", { sensitivity: "base" }))}

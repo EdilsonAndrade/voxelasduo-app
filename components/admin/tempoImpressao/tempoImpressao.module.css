@@ -399,8 +399,26 @@
   text-align: right;
 }
 
+.fichaMarca {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  cursor: pointer;
+}
+
+/* Desmarcado: apagado na tela, fora da impressão. */
+.foraDaFicha {
+  opacity: 0.4;
+}
+
+.fichaParte.foraDaFicha {
+  text-decoration: line-through;
+}
+
 @media print {
-  .fichaControles {
+  .fichaControles,
+  .fichaCheckbox,
+  .foraDaFicha {
     display: none;
   }
 
