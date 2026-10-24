@@ -4,6 +4,7 @@ export const MAX_ITENS_PLANO = 50;
 export const MAX_NOME_ITEM = 120;
 /** 14 dias — acima disso é quase certamente erro de digitação. */
 export const MAX_MINUTOS_ITEM = 14 * 24 * 60;
+export const MAX_QUANTIDADE_ITEM = 999;
 
 const HORARIO = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -51,6 +52,16 @@ export function validarItens(payload: unknown): { itens?: ItemImpressao[]; erro?
       return { erro: `${linha} (${nome}): tempo acima de 14 dias — confira as horas.` };
     }
 
+    const quantidade = item.quantidade ?? 1;
+    if (
+      typeof quantidade !== "number" ||
+      !Number.isInteger(quantidade) ||
+      quantidade < 1 ||
+      quantidade > MAX_QUANTIDADE_ITEM
+    ) {
+      return { erro: `${linha} (${nome}): informe a quantidade de peças da placa (1 a ${MAX_QUANTIDADE_ITEM}).` };
+    }
+
     const inicio = typeof item.inicio === "string" ? item.inicio.trim() : "";
     if (inicio !== "" && !HORARIO.test(inicio)) {
       return { erro: `${linha} (${nome}): horário de início inválido (use HH:MM).` };
@@ -60,6 +71,7 @@ export function validarItens(payload: unknown): { itens?: ItemImpressao[]; erro?
       id: typeof item.id === "string" && item.id.trim() !== "" ? item.id : novoId(),
       nome,
       minutos,
+      quantidade,
       ...(inicio ? { inicio } : {}),
     });
   }
@@ -68,7 +80,7 @@ export function validarItens(payload: unknown): { itens?: ItemImpressao[]; erro?
 }
 
 /**
- * Importação da Produção: parte com o mesmo nome tem o tempo atualizado (mantém
+ * Importação da Produção: parte com o mesmo nome tem tempo e quantidade atualizados (mantém
  * id e horário planejado), parte nova entra no fim, e as que não vieram ficam.
  */
 export function mesclarItens(atuais: ItemImpressao[], recebidos: ItemImpressao[]): ItemImpressao[] {
@@ -79,6 +91,7 @@ export function mesclarItens(atuais: ItemImpressao[], recebidos: ItemImpressao[]
     const existente = porNome.get(nomeNormalizado(recebido.nome));
     if (existente) {
       existente.minutos = recebido.minutos;
+      if (recebido.quantidade !== undefined) existente.quantidade = recebido.quantidade;
       continue;
     }
     const novo = { ...recebido };
@@ -87,6 +100,15 @@ export function mesclarItens(atuais: ItemImpressao[], recebidos: ItemImpressao[]
   }
 
   return resultado;
+}
+
+/** Peças da placa — planos gravados antes da quantidade contam 1. */
+export function quantidadeDoItem(item: Pick<ItemImpressao, "quantidade">): number {
+  return item.quantidade ?? 1;
+}
+
+export function totalPecas(itens: Pick<ItemImpressao, "quantidade">[]): number {
+  return itens.reduce((soma, item) => soma + quantidadeDoItem(item), 0);
 }
 
 export function totalMinutos(itens: Pick<ItemImpressao, "minutos">[]): number {
@@ -104,6 +126,8 @@ export interface ImpressaoDaApuracao {
   inicio: string;
   resultado: "concluida" | "interrompida" | "em_andamento";
   duracaoSegundos?: number;
+  /** Peças por placa declaradas no vínculo. */
+  rendimentoPorPlaca?: number;
   foraDoCusto: boolean;
 }
 
@@ -120,13 +144,19 @@ export interface ParteDaApuracao<I extends ImpressaoDaApuracao = ImpressaoDaApur
 export function itensDaApuracao<I extends ImpressaoDaApuracao>(
   partes: ParteDaApuracao<I>[],
   foraDoCusto: (impressao: I) => boolean = (i) => i.foraDoCusto
-): { nome: string; minutos: number }[] {
+): { nome: string; minutos: number; quantidade: number }[] {
   return partes.flatMap((parte) => {
     const candidatas = parte.impressoes.filter(
       (i) => !foraDoCusto(i) && i.resultado === "concluida" && (i.duracaoSegundos ?? 0) > 0
     );
     if (candidatas.length === 0) return [];
     const recente = candidatas.reduce((a, b) => (Date.parse(b.inicio) > Date.parse(a.inicio) ? b : a));
-    return [{ nome: parte.parte, minutos: Math.ceil(recente.duracaoSegundos! / 60) }];
+    return [
+      {
+        nome: parte.parte,
+        minutos: Math.ceil(recente.duracaoSegundos! / 60),
+        quantidade: Math.max(1, Math.round(recente.rendimentoPorPlaca ?? 1)),
+      },
+    ];
   });
 }

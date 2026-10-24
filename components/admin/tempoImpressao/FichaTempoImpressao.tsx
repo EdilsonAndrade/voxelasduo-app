@@ -1,7 +1,7 @@
 import Link from "next/link";
 import ImprimirButton from "@/components/admin/ImprimirButton";
 import { terminoPrevisto } from "@/lib/producao/agenda";
-import { minutosEmHoras, totalMinutos } from "@/lib/producao/planosImpressao";
+import { minutosEmHoras, quantidadeDoItem, totalMinutos, totalPecas } from "@/lib/producao/planosImpressao";
 import type { PlanoProduto } from "./PlanoProdutoCard";
 import styles from "./tempoImpressao.module.css";
 
@@ -38,6 +38,7 @@ export default function FichaTempoImpressao({ planos }: { planos: PlanoProduto[]
         <ul className={styles.fichaLista}>
           <li className={`${styles.fichaProdutoLinha} ${styles.fichaCabecalho}`} aria-hidden="true">
             <span>Produto / parte</span>
+            <span className={styles.direita}>Qtd</span>
             <span className={styles.direita}>Tempo</span>
             <span className={styles.direita}>Início</span>
             <span className={styles.direita}>Término</span>
@@ -48,6 +49,7 @@ export default function FichaTempoImpressao({ planos }: { planos: PlanoProduto[]
               <li key={plano.produtoId} className={styles.fichaProduto}>
                 <div className={styles.fichaProdutoLinha}>
                   <span>{plano.produtoNome}</span>
+                  <span className={styles.direita}>{totalPecas(plano.itens)}</span>
                   <span className={styles.direita}>{minutosEmHoras(totalMinutos(plano.itens))}</span>
                   <span className={styles.direita}>{unica?.inicio ?? ""}</span>
                   <span className={styles.direita}>{unica ? termino(unica.inicio, unica.minutos) : ""}</span>
@@ -57,6 +59,7 @@ export default function FichaTempoImpressao({ planos }: { planos: PlanoProduto[]
                     {plano.itens.map((item) => (
                       <li key={item.id} className={styles.fichaParte}>
                         <span>{item.nome}</span>
+                        <span className={styles.direita}>{quantidadeDoItem(item)}</span>
                         <span className={styles.direita}>{minutosEmHoras(item.minutos)}</span>
                         <span className={styles.direita}>{item.inicio ?? "—"}</span>
                         <span className={styles.direita}>{termino(item.inicio, item.minutos)}</span>

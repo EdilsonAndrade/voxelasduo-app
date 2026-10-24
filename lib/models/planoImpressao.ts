@@ -9,6 +9,8 @@ export interface ItemImpressao {
   nome: string;
   /** Tempo de impressão da placa, em minutos inteiros. */
   minutos: number;
+  /** Peças que saem nessa placa (ex.: 5 pares de botas). Ausente = 1 (planos antigos). */
+  quantidade?: number;
   /** "HH:MM" planejado para mandar para a impressora; ausente = ainda sem horário. */
   inicio?: string;
 }

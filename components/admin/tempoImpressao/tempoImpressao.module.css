@@ -106,7 +106,7 @@
 .cabecalho,
 .linha {
   display: grid;
-  grid-template-columns: 1.6rem minmax(8rem, 1fr) 4.2rem 4.2rem 6.6rem minmax(9rem, auto);
+  grid-template-columns: 1.6rem minmax(8rem, 1fr) 4.2rem 4.2rem 3.8rem 6.6rem minmax(9rem, auto);
   align-items: center;
   gap: 0.5rem;
 }
@@ -365,7 +365,7 @@
 .fichaProdutoLinha,
 .fichaParte {
   display: grid;
-  grid-template-columns: 1fr 5rem 5rem 7.5rem;
+  grid-template-columns: 1fr 4rem 5rem 5rem 7.5rem;
   gap: 0.6rem;
   align-items: baseline;
   font-variant-numeric: tabular-nums;

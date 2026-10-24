@@ -4,6 +4,7 @@ import {
   mesclarItens,
   minutosEmHoras,
   totalMinutos,
+  totalPecas,
   validarItens,
   type ParteDaApuracao,
 } from "./planosImpressao";
@@ -15,9 +16,15 @@ describe("validarItens", () => {
       { id: "x1", nome: "base", minutos: 222, inicio: "" },
     ]);
     expect(erro).toBeUndefined();
-    expect(itens![0]).toMatchObject({ nome: "corpo", minutos: 602, inicio: "22:00" });
+    expect(itens![0]).toMatchObject({ nome: "corpo", minutos: 602, quantidade: 1, inicio: "22:00" });
     expect(itens![0].id).toEqual(expect.any(String));
-    expect(itens![1]).toEqual({ id: "x1", nome: "base", minutos: 222 });
+    expect(itens![1]).toEqual({ id: "x1", nome: "base", minutos: 222, quantidade: 1 });
+  });
+
+  it("aceita a quantidade de peças da placa e recusa zero ou fracionada", () => {
+    expect(validarItens([{ nome: "botas", minutos: 144, quantidade: 5 }]).itens![0].quantidade).toBe(5);
+    expect(validarItens([{ nome: "botas", minutos: 144, quantidade: 0 }]).erro).toMatch(/quantidade/);
+    expect(validarItens([{ nome: "botas", minutos: 144, quantidade: 1.5 }]).erro).toMatch(/quantidade/);
   });
 
   it("recusa lista vazia", () => {
@@ -49,11 +56,11 @@ describe("mesclarItens", () => {
 
   it("atualiza o tempo pelo nome mantendo id e início, acrescenta novas e mantém as demais", () => {
     const resultado = mesclarItens(atuais, [
-      { id: "n1", nome: " base ", minutos: 222 },
+      { id: "n1", nome: " base ", minutos: 222, quantidade: 4 },
       { id: "n2", nome: "tampa", minutos: 30 },
     ]);
     expect(resultado).toEqual([
-      { id: "1", nome: "Base", minutos: 222, inicio: "06:00" },
+      { id: "1", nome: "Base", minutos: 222, quantidade: 4, inicio: "06:00" },
       { id: "2", nome: "corpo", minutos: 600 },
       { id: "n2", nome: "tampa", minutos: 30 },
     ]);
@@ -61,8 +68,9 @@ describe("mesclarItens", () => {
   });
 });
 
-describe("totalMinutos / minutosEmHoras", () => {
+describe("totalMinutos / minutosEmHoras / totalPecas", () => {
   it("soma e formata", () => {
+    expect(totalPecas([{ quantidade: 4 }, { quantidade: 5 }, {}])).toBe(10);
     expect(totalMinutos([{ minutos: 602 }, { minutos: 222 }])).toBe(824);
     expect(minutosEmHoras(824)).toBe("13h44");
     expect(minutosEmHoras(17)).toBe("0h17");
@@ -83,14 +91,14 @@ describe("itensDaApuracao", () => {
         parte: "chaminé",
         impressoes: [
           impressao("a", "2026-10-05T22:41:00Z", 36000),
-          impressao("b", "2026-10-06T22:41:00Z", 36120),
+          impressao("b", "2026-10-06T22:41:00Z", 36120, { rendimentoPorPlaca: 4 }),
         ],
       },
       { parte: "gift", impressoes: [impressao("c", "2026-10-07T11:15:00Z", 1001)] },
     ];
     expect(itensDaApuracao(partes)).toEqual([
-      { nome: "chaminé", minutos: 602 },
-      { nome: "gift", minutos: 17 },
+      { nome: "chaminé", minutos: 602, quantidade: 4 },
+      { nome: "gift", minutos: 17, quantidade: 1 },
     ]);
   });
 
@@ -113,6 +121,6 @@ describe("itensDaApuracao", () => {
     const partes: ParteDaApuracao[] = [
       { parte: "base", impressoes: [impressao("a", "2026-10-05T10:00:00Z", 3600, { foraDoCusto: true })] },
     ];
-    expect(itensDaApuracao(partes, () => false)).toEqual([{ nome: "base", minutos: 60 }]);
+    expect(itensDaApuracao(partes, () => false)).toEqual([{ nome: "base", minutos: 60, quantidade: 1 }]);
   });
 });

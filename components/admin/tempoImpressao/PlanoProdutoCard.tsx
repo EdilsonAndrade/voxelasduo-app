@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { terminoPrevisto } from "@/lib/producao/agenda";
-import { minutosEmHoras } from "@/lib/producao/planosImpressao";
+import { minutosEmHoras, quantidadeDoItem } from "@/lib/producao/planosImpressao";
 import styles from "./tempoImpressao.module.css";
 
 export interface ItemPlano {
   id: string;
   nome: string;
   minutos: number;
+  quantidade?: number;
   inicio?: string;
 }
 
@@ -28,6 +29,7 @@ interface Linha {
   nome: string;
   horas: string;
   minutos: string;
+  quantidade: string;
   inicio: string;
 }
 
@@ -41,6 +43,7 @@ function paraLinha(item: ItemPlano): Linha {
     nome: item.nome,
     horas: String(Math.floor(item.minutos / 60)),
     minutos: String(item.minutos % 60),
+    quantidade: String(quantidadeDoItem(item)),
     inicio: item.inicio ?? "",
   };
 }
@@ -53,7 +56,7 @@ function minutosDaLinha(linha: Linha): number {
 }
 
 function novaLinha(nome = ""): Linha {
-  return { id: crypto.randomUUID(), nome, horas: "", minutos: "", inicio: "" };
+  return { id: crypto.randomUUID(), nome, horas: "", minutos: "", quantidade: "1", inicio: "" };
 }
 
 function textoTermino(inicio: string, minutos: number): React.ReactNode {
@@ -110,6 +113,7 @@ export default function PlanoProdutoCard({
   const [aviso, setAviso] = useState<string | null>(null);
 
   const alterado = plano.novo || JSON.stringify(linhas) !== JSON.stringify(inicial);
+  const pecas = linhas.reduce((soma, linha) => soma + (Number(linha.quantidade) > 0 ? Number(linha.quantidade) : 0), 0);
   const total = linhas.reduce((soma, linha) => soma + (minutosDaLinha(linha) > 0 ? minutosDaLinha(linha) : 0), 0);
 
   function atualizar(id: string, campo: keyof Linha, valor: string) {
@@ -140,6 +144,7 @@ export default function PlanoProdutoCard({
       id: linha.id,
       nome: linha.nome,
       minutos: minutosDaLinha(linha),
+      quantidade: Number(linha.quantidade),
       inicio: linha.inicio,
     }));
 
@@ -224,6 +229,8 @@ export default function PlanoProdutoCard({
         <span className={styles.total}>
           Total: <span className={styles.totalValor}>{minutosEmHoras(total)}</span>
           {linhas.length > 1 && ` em ${linhas.length} partes`}
+          {" · "}
+          <span className={styles.totalValor}>{pecas}</span> {pecas === 1 ? "peça" : "peças"}
         </span>
         {alterado && <span className={styles.naoSalvo}>não salvo</span>}
       </div>
@@ -234,6 +241,7 @@ export default function PlanoProdutoCard({
           <span>Parte</span>
           <span>Horas</span>
           <span>Min</span>
+          <span>Qtd</span>
           <span>Início</span>
           <span>Término</span>
         </div>
@@ -270,6 +278,15 @@ export default function PlanoProdutoCard({
               inputMode="numeric"
               placeholder="0"
               aria-label="Minutos de impressão"
+            />
+            <input
+              className={`${styles.entrada} ${styles.entradaNumero}`}
+              value={linha.quantidade}
+              onChange={(e) => atualizar(linha.id, "quantidade", e.target.value)}
+              inputMode="numeric"
+              placeholder="1"
+              aria-label="Peças nesta placa"
+              title="Quantas peças saem nesta impressão"
             />
             <input
               type="time"
