@@ -128,6 +128,33 @@ export function minutosEmHoras(minutos: number): string {
   return `${Math.floor(minutos / 60)}h${String(minutos % 60).padStart(2, "0")}`;
 }
 
+/** "HH:MM" ordena como texto; sem início vai para o fim. */
+function compararInicio(a?: string, b?: string): number {
+  if (a && b) return a.localeCompare(b);
+  if (a) return -1;
+  if (b) return 1;
+  return 0;
+}
+
+/**
+ * Ordem da ficha: partes pelo horário de início e produtos pelo início mais
+ * cedo das suas partes. Sem início fica no fim — partes na ordem cadastrada,
+ * produtos em ordem alfabética.
+ */
+export function ordenarPorInicio<P extends { produtoNome: string; itens: Pick<ItemImpressao, "inicio">[] }>(
+  planos: P[]
+): P[] {
+  const ordenados = planos.map((plano) => ({
+    ...plano,
+    itens: [...plano.itens].sort((a, b) => compararInicio(a.inicio, b.inicio)),
+  }));
+  return ordenados.sort(
+    (a, b) =>
+      compararInicio(a.itens[0]?.inicio, b.itens[0]?.inicio) ||
+      a.produtoNome.localeCompare(b.produtoNome, "pt-BR", { sensitivity: "base" })
+  );
+}
+
 /** O mínimo de uma impressão da apuração da Produção que a importação precisa. */
 export interface ImpressaoDaApuracao {
   id: string;

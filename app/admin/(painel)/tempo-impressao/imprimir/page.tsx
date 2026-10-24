@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import FichaTempoImpressao from "@/components/admin/tempoImpressao/FichaTempoImpressao";
+import { ordenarPorInicio } from "@/lib/producao/planosImpressao";
 import { listarPlanos } from "@/lib/producao/planosImpressaoRepository";
 
 export const metadata: Metadata = {
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-/** Ficha em lista para imprimir / salvar PDF (specs/035), em ordem alfabética. */
+/** Ficha em lista para imprimir / salvar PDF (specs/035), por horário de início. */
 export default async function ImprimirTempoImpressaoPage() {
   const planos = await listarPlanos();
 
@@ -20,9 +21,9 @@ export default async function ImprimirTempoImpressaoPage() {
         year: "numeric",
         timeZone: "America/Sao_Paulo",
       })}
-      planos={planos
-        .map((plano) => ({ chave: plano.id, id: plano.id, produtoId: plano.produtoId, produtoNome: plano.produtoNome, itens: plano.itens }))
-        .sort((a, b) => a.produtoNome.localeCompare(b.produtoNome, "pt-BR", { sensitivity: "base" }))}
+      planos={ordenarPorInicio(
+        planos.map((plano) => ({ chave: plano.id, id: plano.id, produtoId: plano.produtoId, produtoNome: plano.produtoNome, itens: plano.itens }))
+      )}
     />
   );
 }
