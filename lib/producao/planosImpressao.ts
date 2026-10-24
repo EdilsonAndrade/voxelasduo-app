@@ -13,6 +13,14 @@ export function nomeNormalizado(nome: string): string {
   return nome.trim().toLocaleLowerCase("pt-BR");
 }
 
+/** Nome do item avulso (o que ainda não é produto do catálogo). */
+export function validarNomeAvulso(valor: unknown): { nome?: string; erro?: string } {
+  const nome = typeof valor === "string" ? valor.trim() : "";
+  if (nome === "") return { erro: "Dê um nome ao item (ou escolha um produto do catálogo)." };
+  if (nome.length > MAX_NOME_ITEM) return { erro: `Nome com mais de ${MAX_NOME_ITEM} caracteres.` };
+  return { nome };
+}
+
 function novoId(): string {
   return crypto.randomUUID();
 }

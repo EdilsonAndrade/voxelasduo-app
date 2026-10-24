@@ -16,12 +16,18 @@ export interface ItemImpressao {
 }
 
 /**
- * Planejamento de impressão de um produto (specs/035) — independente do custo
- * de produção do cadastro e do status de publicação. Um por produto.
+ * Planejamento de impressão (specs/035) — independente do custo de produção do
+ * cadastro e do status de publicação.
+ *
+ * Ligado a um produto do catálogo (`produtoId`, no máximo um plano por produto)
+ * ou avulso, só com `nome`: algo que ainda não virou produto e pode ir para a
+ * calculadora ou virar produto depois (o plano passa então a ter `produtoId`).
  */
 export interface PlanoImpressao {
   _id?: ObjectId;
-  produtoId: string;
+  produtoId?: string;
+  /** Nome do item avulso — ignorado quando há `produtoId` (vale o nome do produto). */
+  nome?: string;
   itens: ItemImpressao[];
   criadoEm: Date;
   atualizadoEm: Date;

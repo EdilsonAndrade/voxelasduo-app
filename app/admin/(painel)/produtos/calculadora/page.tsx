@@ -4,7 +4,9 @@ import CalculadoraRapida from "@/components/admin/CalculadoraRapida";
 import CalculosSalvos from "@/components/admin/CalculosSalvos";
 import styles from "@/components/admin/admin.module.css";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
-import { valoresDoProduto } from "@/lib/produtos/calculadoraDoProduto";
+import { valoresDoProduto, valoresDoTempoImpressao } from "@/lib/produtos/calculadoraDoProduto";
+import { totalMinutos } from "@/lib/producao/planosImpressao";
+import { buscarPlano } from "@/lib/producao/planosImpressaoRepository";
 import { normalizarValores } from "@/lib/produtos/calculadoraValores";
 import { buscarCalculoDoProduto, buscarCalculoPreco, listarCalculosPreco } from "@/lib/produtos/calculosPreco";
 import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
@@ -16,9 +18,9 @@ export const dynamic = "force-dynamic";
 export default async function CalculadoraPrecoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string; produto?: string }>;
+  searchParams: Promise<{ id?: string; produto?: string; planoImpressao?: string }>;
 }) {
-  const { id, produto: produtoParam } = await searchParams;
+  const { id, produto: produtoParam, planoImpressao: planoParam } = await searchParams;
 
   // Vindo de um produto: reabre o cálculo dele, se já houver; senão começa um com os dados do cadastro.
   if (!id && produtoParam) {
@@ -26,13 +28,20 @@ export default async function CalculadoraPrecoPage({
     if (existente) redirect(`/admin/produtos/calculadora?id=${existente._id!.toString()}`);
   }
 
-  const [taxasGlobais, calculos, calculo] = await Promise.all([
+  const [taxasGlobais, calculos, calculo, planoAvulso] = await Promise.all([
     buscarTaxasCanais(),
     listarCalculosPreco(),
     id ? buscarCalculoPreco(id) : null,
+    // Item do Tempo de Impressão que ainda não é produto (specs/035).
+    !id && !produtoParam && planoParam ? buscarPlano(planoParam) : null,
   ]);
 
   if (id && !calculo) notFound();
+  if (planoParam && !id && !produtoParam) {
+    if (!planoAvulso) notFound();
+    // Já virou produto: segue o caminho do produto (reabre o cálculo dele, se houver).
+    if (planoAvulso.produtoId) redirect(`/admin/produtos/calculadora?produto=${planoAvulso.produtoId}`);
+  }
 
   const produtoId = calculo ? calculo.produtoId : produtoParam;
   const produto = produtoId ? await buscarProdutoPorId(produtoId) : null;
@@ -49,9 +58,17 @@ export default async function CalculadoraPrecoPage({
   return (
     <div className="container">
       <div className={styles.bar}>
-        <h1>{calculo ? `Calculadora de preço: ${calculo.nome}` : produto ? `Calculadora de preço: ${produto.nome}` : "Calculadora de preço"}</h1>
+        <h1>
+          {calculo
+            ? `Calculadora de preço: ${calculo.nome}`
+            : produto
+              ? `Calculadora de preço: ${produto.nome}`
+              : planoAvulso
+                ? `Calculadora de preço: ${planoAvulso.nome}`
+                : "Calculadora de preço"}
+        </h1>
         <div className={styles.barAcoes}>
-          {(calculo || produto) && (
+          {(calculo || produto || planoAvulso) && (
             <Link href="/admin/produtos/calculadora" className={styles.btnGhost}>
               + Novo cálculo
             </Link>
@@ -72,7 +89,8 @@ export default async function CalculadoraPrecoPage({
         }))}
       />
       <CalculadoraRapida
-        key={id ?? (produto ? `produto-${produtoVinculado!.id}` : "novo")}
+        key={id ?? (produto ? `produto-${produtoVinculado!.id}` : planoAvulso ? `plano-${planoParam}` : "novo")}
+        planoImpressaoId={planoAvulso ? planoParam : undefined}
         taxasGlobais={taxasGlobais}
         produtoVinculado={produtoVinculado}
         calculoInicial={
@@ -95,7 +113,13 @@ export default async function CalculadoraPrecoPage({
                   valores: valoresDoProduto(produto),
                   produtoId: produtoVinculado!.id,
                 }
-              : undefined
+              : planoAvulso
+                ? {
+                    // Ainda não salvo: nome e tempo vêm do Tempo de Impressão.
+                    nome: planoAvulso.nome ?? "",
+                    valores: valoresDoTempoImpressao(totalMinutos(planoAvulso.itens)),
+                  }
+                : undefined
         }
       />
     </div>

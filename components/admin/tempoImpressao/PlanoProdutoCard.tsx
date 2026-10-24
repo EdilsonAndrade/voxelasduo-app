@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { terminoPrevisto } from "@/lib/producao/agenda";
 import { minutosEmHoras, quantidadeDoItem } from "@/lib/producao/planosImpressao";
@@ -14,7 +15,13 @@ export interface ItemPlano {
 }
 
 export interface PlanoProduto {
-  produtoId: string;
+  /** Chave na tela: o id do plano, ou um provisório enquanto `novo`. */
+  chave: string;
+  /** Id do plano gravado — ausente enquanto `novo`. */
+  id?: string;
+  /** Produto do catálogo; ausente = item avulso, que ainda não é produto. */
+  produtoId?: string;
+  /** Nome do produto, ou o nome do item avulso. */
   produtoNome: string;
   /** Link do modelo 3D de origem (MakerWorld, Drive…) — o nome do produto leva até ele. */
   linkModelo3d?: string;
@@ -100,19 +107,23 @@ export default function PlanoProdutoCard({
   plano: PlanoProduto;
   destaque: boolean;
   onSalvo: (plano: PlanoProduto) => void;
-  onRemovido: (produtoId: string) => void;
+  onRemovido: (chave: string) => void;
 }) {
   const inicial = useMemo(
     () => (plano.itens.length > 0 ? plano.itens.map(paraLinha) : [novaLinha(plano.produtoNome)]),
     [plano]
   );
+  const avulso = !plano.produtoId;
   const [linhas, setLinhas] = useState<Linha[]>(inicial);
+  /** Nome do item avulso (o do produto vem do catálogo e não muda aqui). */
+  const [nome, setNome] = useState(plano.produtoNome);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
-  const alterado = plano.novo || JSON.stringify(linhas) !== JSON.stringify(inicial);
+  const alterado =
+    plano.novo || JSON.stringify(linhas) !== JSON.stringify(inicial) || (avulso && nome !== plano.produtoNome);
   const pecas = linhas.reduce((soma, linha) => soma + (Number(linha.quantidade) > 0 ? Number(linha.quantidade) : 0), 0);
   const total = linhas.reduce((soma, linha) => soma + (minutosDaLinha(linha) > 0 ? minutosDaLinha(linha) : 0), 0);
 
@@ -149,12 +160,13 @@ export default function PlanoProdutoCard({
     }));
 
     try {
+      const origem = avulso ? { nome } : plano.novo ? { produtoId: plano.produtoId } : {};
       const resposta = await fetch(
-        plano.novo ? "/api/admin/tempo-impressao" : `/api/admin/tempo-impressao/${plano.produtoId}`,
+        plano.novo ? "/api/admin/tempo-impressao" : `/api/admin/tempo-impressao/${plano.id}`,
         {
           method: plano.novo ? "POST" : "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(plano.novo ? { produtoId: plano.produtoId, itens } : { itens }),
+          body: JSON.stringify({ ...origem, itens }),
         }
       );
       const dados = await resposta.json().catch(() => ({}));
@@ -163,12 +175,15 @@ export default function PlanoProdutoCard({
         return;
       }
       const salvo: PlanoProduto = {
+        chave: plano.chave,
+        id: String(dados.plano._id),
         produtoId: plano.produtoId,
-        produtoNome: plano.produtoNome,
+        produtoNome: avulso ? dados.plano.nome : plano.produtoNome,
         linkModelo3d: plano.linkModelo3d,
         itens: dados.plano.itens,
       };
       setLinhas(salvo.itens.map(paraLinha));
+      setNome(salvo.produtoNome);
       setAviso("Tempos salvos.");
       onSalvo(salvo);
     } catch (falha) {
@@ -179,23 +194,24 @@ export default function PlanoProdutoCard({
   }
 
   async function removerDoMenu() {
-    if (!window.confirm(`Tirar "${plano.produtoNome}" do Tempo de Impressão? O produto continua no catálogo.`)) {
+    const nota = avulso ? "" : " O produto continua no catálogo.";
+    if (!window.confirm(`Tirar "${plano.produtoNome}" do Tempo de Impressão?${nota}`)) {
       return;
     }
     if (plano.novo) {
-      onRemovido(plano.produtoId);
+      onRemovido(plano.chave);
       return;
     }
     setEnviando(true);
     setErro(null);
     try {
-      const resposta = await fetch(`/api/admin/tempo-impressao/${plano.produtoId}`, { method: "DELETE" });
+      const resposta = await fetch(`/api/admin/tempo-impressao/${plano.id}`, { method: "DELETE" });
       if (!resposta.ok) {
         const dados = await resposta.json().catch(() => ({}));
         setErro(dados.erro ?? `Falha ao remover (HTTP ${resposta.status}).`);
         return;
       }
-      onRemovido(plano.produtoId);
+      onRemovido(plano.chave);
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : "Falha de rede ao remover.");
     } finally {
@@ -204,15 +220,45 @@ export default function PlanoProdutoCard({
   }
 
   const faixasDoDia = faixas(linhas);
+  /** Calculadora e cadastro leem o que está gravado: com alteração pendente, salvar antes. */
+  const podeSair = !plano.novo && !alterado;
+  const tituloSair = podeSair ? undefined : "Salve antes para levar os tempos atualizados.";
+  const linkCalculadora = avulso
+    ? `/admin/produtos/calculadora?planoImpressao=${plano.id}`
+    : `/admin/produtos/calculadora?produto=${plano.produtoId}`;
+  const linkProduto = avulso ? `/admin/produtos/novo?planoImpressao=${plano.id}` : `/admin/produtos/${plano.produtoId}/editar`;
+
+  function acaoSaida(href: string, rotulo: string) {
+    return podeSair ? (
+      <Link href={href} className={`${styles.botao} ${styles.botaoSecundario}`}>
+        {rotulo}
+      </Link>
+    ) : (
+      <button type="button" className={`${styles.botao} ${styles.botaoSecundario}`} disabled title={tituloSair}>
+        {rotulo}
+      </button>
+    );
+  }
 
   return (
     <article
-      id={`plano-${plano.produtoId}`}
+      id={`plano-${plano.chave}`}
       className={`${styles.produto} ${destaque ? styles.produtoDestaque : ""}`}
     >
       <div className={styles.produtoTopo}>
         <h2 className={styles.produtoNome}>
-          {plano.linkModelo3d ? (
+          {avulso ? (
+            <input
+              className={`${styles.entrada} ${styles.entradaNome}`}
+              value={nome}
+              onChange={(e) => {
+                setNome(e.target.value);
+                setAviso(null);
+              }}
+              placeholder="Nome do item"
+              aria-label="Nome do item"
+            />
+          ) : plano.linkModelo3d ? (
             <a
               href={plano.linkModelo3d}
               target="_blank"
@@ -232,6 +278,7 @@ export default function PlanoProdutoCard({
           {" · "}
           <span className={styles.totalValor}>{pecas}</span> {pecas === 1 ? "peça" : "peças"}
         </span>
+        {avulso && <span className={styles.seloAvulso}>ainda não é produto</span>}
         {alterado && <span className={styles.naoSalvo}>não salvo</span>}
       </div>
 
@@ -339,6 +386,8 @@ export default function PlanoProdutoCard({
           Remover selecionadas{selecionadas.size > 0 ? ` (${selecionadas.size})` : ""}
         </button>
         <div className={styles.acoesDireita}>
+          {acaoSaida(linkCalculadora, "Calculadora de preço")}
+          {acaoSaida(linkProduto, avulso ? "Criar produto" : "Abrir produto")}
           <button
             type="button"
             className={`${styles.botao} ${styles.botaoSecundario}`}

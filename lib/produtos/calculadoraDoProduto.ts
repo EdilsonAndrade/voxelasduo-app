@@ -27,3 +27,21 @@ export function valoresDoProduto(produto: Produto): CalculadoraValoresV2 {
     },
   };
 }
+
+/**
+ * Valores da calculadora para um item do Tempo de Impressão que ainda não é
+ * produto (specs/035): a soma dos tempos das partes vira o tempo da mesa, com
+ * uma peça por mesa — o conjunto inteiro é a unidade vendida.
+ */
+export function valoresDoTempoImpressao(totalMinutos: number): CalculadoraValoresV2 {
+  const padrao = valoresPadrao();
+  return {
+    ...padrao,
+    impressao: {
+      ...padrao.impressao,
+      pecasPorMesa: "1",
+      tempoHoras: totalMinutos > 0 ? String(Math.floor(totalMinutos / 60)) : "",
+      tempoMinutos: totalMinutos > 0 ? String(totalMinutos % 60) : "",
+    },
+  };
+}

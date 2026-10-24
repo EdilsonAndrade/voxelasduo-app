@@ -35,16 +35,39 @@
 .adicionar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
+  align-items: flex-end;
+  gap: 0.9rem 1.6rem;
   background: var(--surface);
   border: 1px solid var(--surface-line);
   border-radius: 14px;
   padding: 0.9rem 1.1rem;
 }
 
+.adicionarGrupo {
+  flex: 1 1 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.adicionarRotulo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-soft);
+}
+
+.adicionarLinha {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .adicionarSelect {
-  flex: 1 1 280px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -85,6 +108,22 @@
   color: var(--preto);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+.entradaNome {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  min-width: min(22rem, 70vw);
+}
+
+.seloAvulso {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  border: 1px dashed var(--texto-soft);
+  color: var(--texto-soft);
 }
 
 .naoSalvo {
@@ -177,7 +216,14 @@
 .acoesDireita {
   margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.6rem;
+}
+
+a.botao {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ------------------------------------------- botões e avisos (Produção) */

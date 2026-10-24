@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-/** Planejamento de impressões (specs/035): todos os produtos do catálogo, publicados ou não. */
+/** Planejamento de impressões (specs/035): produtos do catálogo (publicados ou não) e itens avulsos. */
 export default async function TempoImpressaoPage({ searchParams }: { searchParams: Promise<{ produto?: string }> }) {
   const [{ produto }, planos, produtos] = await Promise.all([searchParams, listarPlanos(), listarProdutos()]);
 
@@ -17,6 +17,8 @@ export default async function TempoImpressaoPage({ searchParams }: { searchParam
     <PlanejamentoImpressao
       destacar={produto}
       planosIniciais={planos.map((plano) => ({
+        chave: plano.id,
+        id: plano.id,
         produtoId: plano.produtoId,
         produtoNome: plano.produtoNome,
         linkModelo3d: plano.linkModelo3d,

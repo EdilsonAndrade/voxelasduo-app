@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validarItens } from "@/lib/producao/planosImpressao";
+import { validarItens, validarNomeAvulso } from "@/lib/producao/planosImpressao";
 import { criarPlano, listarPlanos, mesclarPlano } from "@/lib/producao/planosImpressaoRepository";
 import { buscarProdutoPorId } from "@/lib/produtos/repository";
 
@@ -9,13 +9,16 @@ export async function GET() {
   return NextResponse.json({ planos });
 }
 
-/** `modo: "criar"` (padrão, 409 se o produto já está no menu) ou `"mesclar"` (importação da Produção). */
+/**
+ * Com `produtoId`: `modo: "criar"` (padrão, 409 se o produto já está no menu)
+ * ou `"mesclar"` (importação da Produção). Com `nome` e sem produto: item
+ * avulso, que ainda não existe no catálogo.
+ */
 export async function POST(request: Request) {
   const corpo = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!corpo || typeof corpo !== "object") return NextResponse.json({ erro: "Payload inválido." }, { status: 400 });
 
   const produtoId = typeof corpo.produtoId === "string" ? corpo.produtoId : "";
-  if (!produtoId) return NextResponse.json({ erro: "Escolha o produto." }, { status: 400 });
   const modo = corpo.modo ?? "criar";
   if (modo !== "criar" && modo !== "mesclar") {
     return NextResponse.json({ erro: "Modo inválido." }, { status: 400 });
@@ -23,6 +26,14 @@ export async function POST(request: Request) {
 
   const { itens, erro } = validarItens(corpo.itens);
   if (!itens) return NextResponse.json({ erro }, { status: 400 });
+
+  if (!produtoId) {
+    if (modo === "mesclar") return NextResponse.json({ erro: "Escolha o produto." }, { status: 400 });
+    const { nome, erro: erroNome } = validarNomeAvulso(corpo.nome);
+    if (!nome) return NextResponse.json({ erro: erroNome }, { status: 400 });
+    const plano = await criarPlano({ nome }, itens);
+    return NextResponse.json({ plano }, { status: 201 });
+  }
 
   if (!(await buscarProdutoPorId(produtoId))) {
     return NextResponse.json({ erro: "Produto não encontrado." }, { status: 404 });
@@ -33,7 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ plano }, { status: criado ? 201 : 200 });
   }
 
-  const plano = await criarPlano(produtoId, itens);
+  const plano = await criarPlano({ produtoId }, itens);
   if (!plano) {
     return NextResponse.json({ erro: "Este produto já está no Tempo de Impressão.", produtoId }, { status: 409 });
   }

@@ -58,11 +58,14 @@ export default function CalculadoraRapida({
   taxasGlobais,
   calculoInicial,
   produtoVinculado,
+  planoImpressaoId,
 }: {
   taxasGlobais: TaxasCanaisConfig;
   calculoInicial?: CalculoInicial;
   /** Produto ligado ao cálculo — traz o custo do cadastro para comparar. */
   produtoVinculado?: ProdutoVinculado;
+  /** Item avulso do Tempo de Impressão que abriu a calculadora: vira o plano do produto criado aqui. */
+  planoImpressaoId?: string;
 }) {
   const router = useRouter();
   const [valores, setValores] = useState<CalculadoraValoresV2>(() =>
@@ -236,6 +239,16 @@ export default function CalculadoraRapida({
       const dados = await resposta.json();
       const novoProdutoId = String(dados.produto._id);
       setProdutoId(novoProdutoId);
+      if (planoImpressaoId) {
+        const vinculo = await fetch(`/api/admin/tempo-impressao/${planoImpressaoId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ produtoId: novoProdutoId }),
+        });
+        if (!vinculo.ok) {
+          setErroSalvar(`Produto criado, mas não foi ligado ao Tempo de Impressão: ${await mensagemDeErro(vinculo)}`);
+        }
+      }
       // O cálculo fica guardado com o vínculo ao produto criado.
       await gravarCalculo(novoProdutoId);
     } catch (erro) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Produto } from "@/lib/models/produto";
-import { valoresDoProduto } from "./calculadoraDoProduto";
+import { valoresDoProduto, valoresDoTempoImpressao } from "./calculadoraDoProduto";
 import { calcularCustoUnidade } from "./custoCalculadora";
 import { calcularCustoProducao } from "./custoProducao";
 
@@ -48,5 +48,16 @@ describe("valoresDoProduto", () => {
 
   it("sem custo cadastrado começa com a impressão padrão", () => {
     expect(valoresDoProduto(produto()).impressao.pesoGramas).toBe("");
+  });
+});
+
+describe("valoresDoTempoImpressao", () => {
+  it("a soma dos tempos vira o tempo da mesa com uma peça por mesa", () => {
+    const { impressao } = valoresDoTempoImpressao(29 * 60 + 49);
+    expect(impressao).toMatchObject({ tempoHoras: "29", tempoMinutos: "49", pecasPorMesa: "1" });
+  });
+
+  it("sem tempo deixa os campos vazios", () => {
+    expect(valoresDoTempoImpressao(0).impressao).toMatchObject({ tempoHoras: "", tempoMinutos: "" });
   });
 });

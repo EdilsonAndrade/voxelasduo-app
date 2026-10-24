@@ -21,7 +21,7 @@ export default async function ImprimirTempoImpressaoPage() {
         timeZone: "America/Sao_Paulo",
       })}
       planos={planos
-        .map((plano) => ({ produtoId: plano.produtoId, produtoNome: plano.produtoNome, itens: plano.itens }))
+        .map((plano) => ({ chave: plano.id, id: plano.id, produtoId: plano.produtoId, produtoNome: plano.produtoNome, itens: plano.itens }))
         .sort((a, b) => a.produtoNome.localeCompare(b.produtoNome, "pt-BR", { sensitivity: "base" }))}
     />
   );

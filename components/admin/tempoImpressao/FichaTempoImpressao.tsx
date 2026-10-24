@@ -81,7 +81,7 @@ export default function FichaTempoImpressao({ planos, geradaEm }: { planos: Plan
             const unica = plano.itens.length === 1 ? plano.itens[0] : null;
             return (
               <li
-                key={plano.produtoId}
+                key={plano.chave}
                 className={`${styles.fichaProduto} ${noProduto ? "" : styles.foraDaFicha}`}
               >
                 <div className={styles.fichaProdutoLinha}>

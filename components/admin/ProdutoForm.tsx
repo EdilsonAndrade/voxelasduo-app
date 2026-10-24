@@ -208,10 +208,11 @@ interface ProdutoParaCopiar {
 }
 
 export default function ProdutoForm({
-  valoresIniciais = VAZIO,
+  valoresIniciais: valoresRecebidos,
   taxasGlobais = TAXAS_CANAIS_PADRAO,
   categorias = [],
   margensAntigas,
+  doTempoImpressao,
 }: {
   valoresIniciais?: ProdutoFormValores;
   /** Padrão global das taxas de Shopee/site próprio, definido em /admin/configuracoes. */
@@ -220,7 +221,23 @@ export default function ProdutoForm({
   categorias?: CategoriaResumo[];
   /** Margens próprias da régua antiga (% sobre o custo) aguardando revisão — spec 034. */
   margensAntigas?: MargensParaRevisar;
+  /**
+   * Cadastro aberto a partir de um item avulso do Tempo de Impressão
+   * (specs/035): nome e tempo de impressão já preenchidos, e o item passa a
+   * ser o plano do produto criado.
+   */
+  doTempoImpressao?: { planoId: string; nome: string; tempoImpressaoHoras: string };
 }) {
+  const valoresIniciais: ProdutoFormValores =
+    valoresRecebidos ??
+    (doTempoImpressao
+      ? {
+          ...VAZIO,
+          nome: doTempoImpressao.nome,
+          custoProducao: { ...VAZIO.custoProducao, tempoImpressaoHoras: doTempoImpressao.tempoImpressaoHoras },
+        }
+      : VAZIO);
+  const planoImpressaoId = doTempoImpressao?.planoId;
   const router = useRouter();
   const [valores, setValores] = useState(valoresIniciais);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
@@ -624,6 +641,21 @@ export default function ProdutoForm({
         setToastMensagem("Produto salvo.");
         router.refresh();
       } else {
+        if (planoImpressaoId) {
+          const vinculo = await fetch(`/api/admin/tempo-impressao/${planoImpressaoId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ produtoId: dados.produto._id }),
+          });
+          if (!vinculo.ok) {
+            const erroVinculo = await vinculo.json().catch(() => ({}));
+            setErroGeral(
+              `Produto criado, mas não foi ligado ao Tempo de Impressão: ${erroVinculo.erro ?? `HTTP ${vinculo.status}`}`
+            );
+            router.replace(`/admin/produtos/${dados.produto._id}/editar`);
+            return;
+          }
+        }
         // Produto recém-criado: vai para a edição dele (assim os botões de canal de venda já ficam disponíveis).
         router.replace(`/admin/produtos/${dados.produto._id}/editar`);
       }
