@@ -7,6 +7,7 @@ import {
   removerRedirecionamentosDoProduto,
 } from "@/lib/categorias/redirecionamentos";
 import { PRODUTOS_COLLECTION, type PrecosCanaisProduto, type Produto } from "@/lib/models/produto";
+import { excluirPlano } from "@/lib/producao/planosImpressaoRepository";
 import { FILTRO_PUBLICADO } from "./publicacao";
 
 const garantirIndices = criarGarantiaDeIndices();
@@ -276,6 +277,7 @@ export async function removerProduto(id: string): Promise<Produto | null> {
     await Promise.all([
       removerProdutoDeTodosCarrosseis(resultado._id),
       removerRedirecionamentosDoProduto(resultado._id),
+      excluirPlano(resultado._id.toString()),
     ]);
   }
   return resultado ?? null;

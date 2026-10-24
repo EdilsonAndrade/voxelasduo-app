@@ -1,0 +1,416 @@
+/*
+ * Tempo de Impressão (specs/035). Usa os tokens e o vocabulário visual da
+ * Produção (cards brancos, botões roxos, selos). O único elemento próprio é a
+ * régua do dia (`.regua*`): 24h na horizontal com a faixa de cada parte entre
+ * início e término — mostra de relance sobreposições e o que vira a noite.
+ */
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  padding-bottom: 3rem;
+}
+
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.titulo {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+.subtitulo {
+  color: var(--texto-soft);
+  font-size: 0.9rem;
+  margin: 0.2rem 0 0;
+}
+
+.adicionar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  border-radius: 14px;
+  padding: 0.9rem 1.1rem;
+}
+
+.adicionarSelect {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+/* -------------------------------------------------------------- card */
+
+.produto {
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  border-radius: 14px;
+  padding: 1rem 1.1rem 1.1rem;
+  scroll-margin-top: 1rem;
+}
+
+.produtoDestaque {
+  outline: 3px solid color-mix(in srgb, var(--roxo) 45%, transparent);
+}
+
+.produtoTopo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.9rem;
+  margin-bottom: 0.7rem;
+}
+
+.produtoNome {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.total {
+  font-size: 0.9rem;
+  color: var(--texto-soft);
+}
+
+.totalValor {
+  color: var(--preto);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.naoSalvo {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--amarelo) 35%, transparent);
+}
+
+/* ------------------------------------------------------------ linhas */
+
+.linhas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cabecalho,
+.linha {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(8rem, 1fr) 4.2rem 4.2rem 6.6rem minmax(9rem, auto);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cabecalho {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-soft);
+}
+
+.linha {
+  padding: 0.25rem 0;
+  border-top: 1px dashed var(--surface-line);
+}
+
+.cor {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.entrada {
+  font: inherit;
+  font-size: 0.9rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.38rem 0.5rem;
+  border: 1px solid var(--surface-line);
+  border-radius: 8px;
+  background: var(--creme);
+  color: var(--preto);
+}
+
+.entradaNumero {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.entrada:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 1px;
+}
+
+.termino {
+  font-size: 0.88rem;
+  color: var(--texto-soft);
+}
+
+.terminoValor {
+  color: var(--preto);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  margin-top: 0.8rem;
+}
+
+.acoesDireita {
+  margin-left: auto;
+  display: flex;
+  gap: 0.6rem;
+}
+
+/* ------------------------------------------- botões e avisos (Produção) */
+
+.botao {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.52rem 1rem;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: var(--roxo);
+  color: #fff;
+  cursor: pointer;
+}
+
+.botao:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+
+.botao:disabled,
+.botaoTexto:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.botaoSecundario {
+  background: transparent;
+  color: var(--preto);
+  border-color: var(--surface-line);
+}
+
+.botaoTexto {
+  background: none;
+  border: none;
+  color: var(--roxo);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.84rem;
+  padding: 0.2rem 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.botao:focus-visible,
+.botaoTexto:focus-visible {
+  outline: 3px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+/* Erro mostra a mensagem real da origem com o status HTTP (regra do projeto). */
+.erro {
+  margin: 0.8rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 9px;
+  border-left: 4px solid var(--rosa);
+  background: color-mix(in srgb, var(--rosa) 10%, transparent);
+  font-size: 0.88rem;
+}
+
+.ok {
+  margin: 0.8rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 9px;
+  border-left: 4px solid var(--turquesa);
+  background: color-mix(in srgb, var(--turquesa) 12%, transparent);
+  font-size: 0.88rem;
+}
+
+/* ------------------------------------------------------- régua do dia */
+
+.regua {
+  margin-top: 0.9rem;
+}
+
+.reguaTrilho {
+  position: relative;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--texto-soft) 12%, transparent);
+  overflow: hidden;
+}
+
+.reguaFaixa {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  opacity: 0.75;
+}
+
+.reguaMarcas {
+  position: relative;
+  height: 1rem;
+  font-size: 0.68rem;
+  color: var(--texto-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.reguaMarcas span {
+  position: absolute;
+  top: 0.15rem;
+  transform: translateX(-50%);
+}
+
+.reguaMarcas span:first-child {
+  transform: none;
+}
+
+.reguaMarcas span:last-child {
+  transform: translateX(-100%);
+}
+
+.vazio {
+  color: var(--texto-soft);
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .cabecalho {
+    display: none;
+  }
+
+  .linha {
+    grid-template-columns: 1.6rem 1fr 1fr;
+  }
+
+  .linha > :nth-child(2) {
+    grid-column: 2 / 4;
+  }
+
+  .linha > :nth-child(n + 3) {
+    grid-column: auto;
+  }
+
+  .linha > :last-child {
+    grid-column: 2 / 4;
+  }
+
+  .acoesDireita {
+    margin-left: 0;
+  }
+}
+
+/* ------------------------------------------------------------- ficha */
+
+.ficha {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 1.5rem 0 3rem;
+}
+
+.fichaControles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 1.2rem;
+}
+
+.fichaTitulo {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.fichaData {
+  color: var(--texto-soft);
+  font-size: 0.85rem;
+  margin: 0.1rem 0 1.2rem;
+}
+
+.fichaLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fichaProduto {
+  break-inside: avoid;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--surface-line);
+}
+
+.fichaProdutoLinha,
+.fichaParte {
+  display: grid;
+  grid-template-columns: 1fr 5rem 5rem 7.5rem;
+  gap: 0.6rem;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.fichaProdutoLinha {
+  font-weight: 800;
+}
+
+.fichaPartes {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0 0 0 1.2rem;
+}
+
+.fichaParte {
+  font-size: 0.9rem;
+  padding: 0.15rem 0;
+  border-bottom: 1px dotted var(--surface-line);
+}
+
+.fichaCabecalho {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-soft);
+  font-weight: 700;
+}
+
+.direita {
+  text-align: right;
+}
+
+@media print {
+  .fichaControles {
+    display: none;
+  }
+
+  .ficha {
+    padding: 0;
+    color: #000;
+  }
+
+  .fichaProduto,
+  .fichaParte {
+    border-color: #bbb;
+  }
+}

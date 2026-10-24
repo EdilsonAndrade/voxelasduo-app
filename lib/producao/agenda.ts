@@ -29,6 +29,28 @@ export function inicioMaximo(
   return { horario: `${hh}:${mm}`, diasAntes };
 }
 
+/**
+ * A que horas a placa termina se começar em `inicio` (specs/035).
+ *
+ * `diasDepois` diz em quantos dias depois do início ela termina: 10h02 a partir
+ * das 22:00 termina às 08:02 do dia seguinte (`diasDepois = 1`).
+ */
+export function terminoPrevisto(
+  inicio: string,
+  minutos: number
+): { horario: string; diasDepois: number } | null {
+  const comeco = minutosDe(inicio);
+  if (comeco === null || comeco < 0 || comeco >= MINUTOS_DIA || !(minutos > 0)) return null;
+
+  const fim = comeco + Math.round(minutos);
+  const diasDepois = Math.floor(fim / MINUTOS_DIA);
+  const noDia = fim % MINUTOS_DIA;
+
+  const hh = String(Math.floor(noDia / 60)).padStart(2, "0");
+  const mm = String(noDia % 60).padStart(2, "0");
+  return { horario: `${hh}:${mm}`, diasDepois };
+}
+
 /** "10h05" — mais legível que "10.08 h" quando a conta é de relógio. */
 export function horasEMinutos(horas: number): string {
   const total = Math.round(horas * 60);

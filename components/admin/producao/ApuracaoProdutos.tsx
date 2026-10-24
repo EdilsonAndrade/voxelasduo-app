@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { HORARIO_TERMINO_PADRAO } from "@/lib/models/producao";
 import { horasEMinutos, inicioMaximo } from "@/lib/producao/agenda";
+import { itensDaApuracao } from "@/lib/producao/planosImpressao";
 import styles from "./producao.module.css";
 
 export interface ImpressaoDaParte {
@@ -146,6 +148,8 @@ export function ProdutoApuradoCard({
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  /** Peças já levadas ao Tempo de Impressão — mostra o link para lá. */
+  const [levado, setLevado] = useState(false);
   const [escolhendo, setEscolhendo] = useState(!comAcoes); // na edição do produto já abre listado
   /** Horário digitado e ainda não salvo, por placa. */
   const [terminos, setTerminos] = useState<Record<string, string>>({});
@@ -316,6 +320,41 @@ export function ProdutoApuradoCard({
     }
   }
 
+  /**
+   * Leva as impressões marcadas ao Tempo de Impressão (specs/035): uma linha
+   * por parte com o tempo da placa; parte com o mesmo nome tem o tempo
+   * atualizado lá, as novas são acrescentadas.
+   */
+  async function levarAoTempoImpressao() {
+    const itens = itensDaApuracao(produto.partes, foraDoCusto);
+    if (itens.length === 0) return;
+    setEnviando(true);
+    setErro(null);
+    setAviso(null);
+    setLevado(false);
+
+    try {
+      const resposta = await fetch("/api/admin/tempo-impressao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ produtoId: produto.produtoId, itens, modo: "mesclar" }),
+      });
+      if (!resposta.ok) {
+        const dados = await resposta.json().catch(() => ({}));
+        setErro(dados.erro ?? `Falha ao levar ao Tempo de Impressão (HTTP ${resposta.status}).`);
+        return;
+      }
+      setAviso(
+        `${itens.length} ${itens.length === 1 ? "peça levada" : "peças levadas"} ao Tempo de Impressão.`
+      );
+      setLevado(true);
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "Falha de rede ao levar ao Tempo de Impressão.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   async function salvarTermino(nomeArquivo: string) {
     setEnviando(true);
     setErro(null);
@@ -352,6 +391,7 @@ export function ProdutoApuradoCard({
   const impressoes = produto.partes.flatMap((p) => p.impressoes ?? []);
   const noCusto = impressoes.filter((i) => i.resultado !== "em_andamento" && !foraDoCusto(i)).length;
   const finalizadas = impressoes.filter((i) => i.resultado !== "em_andamento").length;
+  const levaveis = itensDaApuracao(produto.partes, foraDoCusto).length;
 
   return (
     <article className={styles.produto}>
@@ -631,10 +671,36 @@ export function ProdutoApuradoCard({
               Aplicar ao cadastro
             </button>
           )}
+
+          {impressoes.length > 0 && (
+            <button
+              type="button"
+              className={`${styles.botao} ${styles.botaoSecundario}`}
+              onClick={levarAoTempoImpressao}
+              disabled={enviando || levaveis === 0}
+              title={
+                levaveis === 0
+                  ? "Marque ao menos uma impressão concluída em \"Impressões e horários\"."
+                  : "Leva o tempo de cada parte marcada para o menu Tempo de Impressão."
+              }
+            >
+              Levar ao Tempo de Impressão
+            </button>
+          )}
         </div>
       )}
 
-      {aviso && <p className={styles.ok}>{aviso}</p>}
+      {aviso && (
+        <p className={styles.ok}>
+          {aviso}
+          {levado && (
+            <>
+              {" "}
+              <Link href={`/admin/tempo-impressao?produto=${produto.produtoId}`}>Abrir Tempo de Impressão</Link>
+            </>
+          )}
+        </p>
+      )}
       {erro && <p className={styles.erro}>{erro}</p>}
     </article>
   );
