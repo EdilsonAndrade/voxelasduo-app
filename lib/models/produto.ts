@@ -215,6 +215,12 @@ export interface Produto {
    */
   linkModelo3d?: string;
   /**
+   * Caminho do arquivo `.3mf` no computador da loja (ex.: `D:\3D\chaveiro.3mf`).
+   * O admin abre a pasta pelo protocolo `voxelas://` (scripts/abrir-pasta-windows).
+   * Só para administração. Ausente = não registrado.
+   */
+  caminhoArquivo3mf?: string;
+  /**
    * `false` = rascunho: o produto existe no admin mas não aparece na loja, na
    * home nem no feed da Meta. **Ausente = publicado**, para que os produtos
    * cadastrados antes deste campo continuem no ar sem migração; produtos novos

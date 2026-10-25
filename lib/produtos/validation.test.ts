@@ -370,6 +370,33 @@ describe("validarProduto", () => {
     });
   });
 
+  describe("caminho do arquivo .3mf no computador", () => {
+    it("aceita caminho de disco, de rede e o campo vazio", () => {
+      expect(
+        validarProduto({ ...payloadValido, caminhoArquivo3mf: "G:\\Meu Drive\\3D\\dragão.3mf" })
+      ).toEqual({});
+      expect(
+        validarProduto({ ...payloadValido, caminhoArquivo3mf: "\\\\nas\\3d\\dragao.3mf" })
+      ).toEqual({});
+      expect(validarProduto({ ...payloadValido, caminhoArquivo3mf: "" })).toEqual({});
+    });
+
+    it("rejeita caminho relativo, com aspas, longo demais ou que não seja texto", () => {
+      expect(validarProduto({ ...payloadValido, caminhoArquivo3mf: "3D\\dragao.3mf" })).toHaveProperty(
+        "caminhoArquivo3mf"
+      );
+      expect(
+        validarProduto({ ...payloadValido, caminhoArquivo3mf: '"D:\\3D\\dragao.3mf"' })
+      ).toHaveProperty("caminhoArquivo3mf");
+      expect(
+        validarProduto({ ...payloadValido, caminhoArquivo3mf: "D:\\" + "a".repeat(500) })
+      ).toHaveProperty("caminhoArquivo3mf");
+      expect(validarProduto({ ...payloadValido, caminhoArquivo3mf: 42 })).toHaveProperty(
+        "caminhoArquivo3mf"
+      );
+    });
+  });
+
   describe("link do modelo 3D de origem", () => {
     it("aceita um endereço http(s) e o campo vazio", () => {
       expect(

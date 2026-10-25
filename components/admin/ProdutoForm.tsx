@@ -55,6 +55,7 @@ import {
 } from "@/lib/produtos/fichaTecnicaFormulario";
 import { LIMITE_FOTOS_MERCADO_LIVRE } from "@/lib/estoque/canais/mercadoLivre/fotos";
 import { formatarPreco } from "@/lib/produtos/formato";
+import { limparCaminhoArquivo, urlAbrirPasta } from "@/lib/produtos/abrirPasta";
 import { montarTextoMarketplace, type TextoMarketplace } from "@/lib/produtos/textosMeta";
 
 /** Promoção elegível do Mercado Livre já com o veredito de margem calculado no servidor (EDI-108). */
@@ -169,6 +170,8 @@ export interface ProdutoFormValores {
   metaDescricao: string;
   /** Endereço do modelo 3D de origem (página do modelo ou arquivo `.3mf`) — vazio = modelo próprio ou não registrado. */
   linkModelo3d: string;
+  /** Caminho do arquivo `.3mf` no computador da loja — vazio = não registrado. */
+  caminhoArquivo3mf: string;
   /** `true` = o produto aparece na loja. Produto novo começa desmarcado: nasce rascunho para ser revisado. */
   publicado: boolean;
 }
@@ -196,6 +199,7 @@ const VAZIO: ProdutoFormValores = {
   metaTitulo: "",
   metaDescricao: "",
   linkModelo3d: "",
+  caminhoArquivo3mf: "",
   publicado: false,
 };
 
@@ -617,6 +621,7 @@ export default function ProdutoForm({
         descricao: valores.metaDescricao.trim() || undefined,
       },
       linkModelo3d: valores.linkModelo3d.trim(),
+      caminhoArquivo3mf: limparCaminhoArquivo(valores.caminhoArquivo3mf),
       publicado: valores.publicado,
     };
 
@@ -1209,7 +1214,8 @@ export default function ProdutoForm({
       <fieldset className={styles.field}>
         <legend>Modelo 3D de origem (opcional)</legend>
         <span className={styles.mlLinkAviso}>
-          Endereço da página do modelo (MakerWorld, Printables…) ou do arquivo .3mf no Drive. Serve
+          Endereço da página do modelo (MakerWorld, Printables…) ou do arquivo .3mf no Drive, e onde
+          o .3mf está no computador. Serve
           só para a administração: não aparece na loja nem nos anúncios.
         </span>
         <div className={styles.field}>
@@ -1233,6 +1239,30 @@ export default function ProdutoForm({
               rel="noopener noreferrer"
             >
               Abrir o modelo em outra aba
+            </a>
+          )}
+        </div>
+        <div className={styles.field}>
+          <label htmlFor="caminhoArquivo3mf">Caminho do arquivo .3mf no computador</label>
+          <input
+            id="caminhoArquivo3mf"
+            type="text"
+            spellCheck={false}
+            placeholder="D:\3D\modelo.3mf"
+            value={valores.caminhoArquivo3mf}
+            onChange={(e) => atualizarCampo("caminhoArquivo3mf", e.target.value)}
+          />
+          <span className={styles.mlLinkAviso}>
+            No Explorador de Arquivos, clique com o botão direito no arquivo → Copiar como caminho, e
+            cole aqui. Para abrir a pasta, o ajudante do Windows precisa estar instalado neste
+            computador.
+          </span>
+          {camposErro.caminhoArquivo3mf && (
+            <span className={styles.fieldError}>{camposErro.caminhoArquivo3mf}</span>
+          )}
+          {limparCaminhoArquivo(valores.caminhoArquivo3mf) !== "" && (
+            <a className={styles.mlLink} href={urlAbrirPasta(valores.caminhoArquivo3mf)}>
+              Abrir pasta do arquivo
             </a>
           )}
         </div>

@@ -32,6 +32,7 @@ export function produtoParaFormulario(produto: Produto, id: string): ProdutoForm
     metaTitulo: produto.metaCatalogo?.titulo ?? "",
     metaDescricao: produto.metaCatalogo?.descricao ?? "",
     linkModelo3d: produto.linkModelo3d ?? "",
+    caminhoArquivo3mf: produto.caminhoArquivo3mf ?? "",
     // Ausente = publicado: é o estado dos produtos cadastrados antes do campo existir.
     publicado: produto.publicado !== false,
   };

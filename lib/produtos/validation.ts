@@ -23,6 +23,8 @@ export interface ProdutoPayload {
   metaCatalogo?: unknown;
   /** Endereço do modelo 3D de origem (página do modelo ou arquivo `.3mf`) — opcional, só para administração. */
   linkModelo3d?: unknown;
+  /** Caminho do arquivo `.3mf` no computador da loja — opcional, só para administração. */
+  caminhoArquivo3mf?: unknown;
   /** `false` = rascunho, fora da loja; ausente num produto antigo = publicado. */
   publicado?: unknown;
 }
@@ -46,6 +48,30 @@ function validarLinkModelo3d(valor: unknown): string | undefined {
 
   if (!/^https?:\/\/\S+$/.test(link)) {
     return "Informe um endereço começando com http:// ou https://.";
+  }
+
+  return undefined;
+}
+
+/** Tamanho máximo do caminho do arquivo `.3mf` no computador. */
+export const LIMITE_CAMINHO_ARQUIVO_3MF = 500;
+
+/**
+ * Valida `caminhoArquivo3mf` quando presente: caminho absoluto do Windows
+ * (`C:\...` ou rede `\\servidor\...`) dentro do limite. String vazia é aceita.
+ */
+function validarCaminhoArquivo3mf(valor: unknown): string | undefined {
+  if (typeof valor !== "string") return "Caminho do arquivo inválido.";
+
+  const caminho = valor.trim();
+  if (caminho === "") return undefined;
+
+  if (caminho.length > LIMITE_CAMINHO_ARQUIVO_3MF) {
+    return `O caminho do arquivo deve ter no máximo ${LIMITE_CAMINHO_ARQUIVO_3MF} caracteres.`;
+  }
+
+  if (!/^([A-Za-z]:\\|\\\\[^\\]+\\)/.test(caminho) || /["<>|?*]/.test(caminho)) {
+    return "Informe o caminho completo, como D:\\3D\\modelo.3mf.";
   }
 
   return undefined;
@@ -340,6 +366,13 @@ export function validarProduto(
     const erro = validarLinkModelo3d(payload.linkModelo3d);
     if (erro) {
       erros.linkModelo3d = erro;
+    }
+  }
+
+  if (payload.caminhoArquivo3mf !== undefined) {
+    const erro = validarCaminhoArquivo3mf(payload.caminhoArquivo3mf);
+    if (erro) {
+      erros.caminhoArquivo3mf = erro;
     }
   }
 

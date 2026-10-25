@@ -72,6 +72,7 @@ export async function POST(request: Request) {
     fichaTecnica: payload.fichaTecnica as FichaTecnicaProduto | undefined,
     metaCatalogo: payload.metaCatalogo as MetaCatalogoProduto | undefined,
     linkModelo3d: (payload.linkModelo3d as string | undefined)?.trim() || undefined,
+    caminhoArquivo3mf: (payload.caminhoArquivo3mf as string | undefined)?.trim() || undefined,
     publicado,
   });
 
