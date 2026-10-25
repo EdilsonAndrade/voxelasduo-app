@@ -14,6 +14,8 @@ export interface PedidoResumo {
   temItemSemCorrespondencia: boolean;
   rastreio?: Pedido["rastreio"];
   envioAguardandoLiberacaoAte?: Pedido["envioAguardandoLiberacaoAte"];
+  /** Último motivo de pagamento não aprovado (EDI-132) — indicador na lista. */
+  ultimaFalhaPagamento?: Pedido["pagamento"]["ultimaFalha"];
   /** Itens com miniatura — para reconhecer o que foi comprado direto na listagem. */
   itens: ItemPedidoDetalhe[];
 }
@@ -81,6 +83,7 @@ export function paraPedidoResumo(pedido: Pedido, produtos: Map<string, Produto>)
     temItemSemCorrespondencia,
     rastreio: pedido.rastreio,
     envioAguardandoLiberacaoAte: pedido.envioAguardandoLiberacaoAte,
+    ultimaFalhaPagamento: pedido.pagamento?.ultimaFalha,
     itens: pedido.itens.map((item) => resolverItem(item, produtos)),
   };
 }

@@ -19,5 +19,9 @@ export const config: VercelConfig = {
     // diário, e a importação é incremental: ela para na primeira página cujas
     // impressões já estão no banco.
     { path: "/api/producao/importar", schedule: "0 5 * * *" },
+    // Confere no Mercado Pago os Pix pendentes dos últimos 7 dias (EDI-132) —
+    // rede de segurança para avisos que não chegaram; complementa a conferência
+    // feita ao abrir a lista de pedidos no admin.
+    { path: "/api/pagamentos/conferir-pendentes", schedule: "0 6 * * *" },
   ],
 };

@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { buscarPagamento } from "@/lib/pagamentos/mercadopago";
-import { atualizarStatusTentativa, buscarPedidoPorId } from "@/lib/pagamentos/repository";
-import { mapearStatusMercadoPago } from "@/lib/pagamentos/status";
+import { verificarPagamentoPedido } from "@/lib/pagamentos/verificacao";
 
 /**
  * Confere no Mercado Pago o Pix pendente do pedido e atualiza o pedido — rede
- * de segurança para quando o webhook não chega. Idempotente: só promove a
- * "pago" uma vez (mesma lógica do webhook). Só consulta tentativas nossas.
+ * de segurança para quando o webhook não chega, chamada pela tela de
+ * pagamento do cliente a cada 5s. Mesma verificação do admin e do cron
+ * (EDI-132); idempotente — só promove a "pago" uma vez.
  */
 export async function POST(request: Request) {
   const { pedidoId } = (await request.json().catch(() => ({}))) as { pedidoId?: string };
@@ -14,31 +13,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ erro: "pedidoId é obrigatório." }, { status: 400 });
   }
 
-  const pedido = await buscarPedidoPorId(pedidoId);
-  if (!pedido) {
-    return NextResponse.json({ erro: "Pedido não encontrado." }, { status: 404 });
-  }
-  if (pedido.status === "pago") {
-    return NextResponse.json({ pago: true });
-  }
-
-  const pendente = [...pedido.pagamento.tentativas].reverse().find((t) => t.status === "pendente");
-  if (!pendente) {
-    return NextResponse.json({ pago: false });
-  }
-
   try {
-    const pagamento = await buscarPagamento(pendente.referenciaExterna);
-    const status = mapearStatusMercadoPago(pagamento.status ?? "pending");
-    if (status !== "pendente") {
-      await atualizarStatusTentativa(
-        pedidoId,
-        pendente.referenciaExterna,
-        status,
-        pagamento.payment_method_id ?? pendente.metodo
-      );
+    const { resultado, mensagem } = await verificarPagamentoPedido(pedidoId, "cliente");
+    switch (resultado) {
+      case "pedido_inexistente":
+        return NextResponse.json({ erro: mensagem }, { status: 404 });
+      case "falha":
+        return NextResponse.json({ erro: "Falha ao consultar o pagamento." }, { status: 502 });
+      case "pago":
+        return NextResponse.json({ pago: true, status: "aprovado" });
+      case "sem_tentativa":
+        return NextResponse.json({ pago: false });
+      default:
+        return NextResponse.json({ pago: false, status: resultado });
     }
-    return NextResponse.json({ pago: status === "aprovado", status });
   } catch (erro) {
     console.error("Falha ao verificar pagamento no Mercado Pago:", erro);
     return NextResponse.json({ erro: "Falha ao consultar o pagamento." }, { status: 502 });

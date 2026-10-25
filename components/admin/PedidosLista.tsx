@@ -54,6 +54,13 @@ function formatarAvisoLiberacao(data: Date | string): string {
   return `aguardando liberação — libera em ${dataFormatada}`;
 }
 
+const LABEL_ORIGEM_FALHA: Record<NonNullable<PedidoResumo["ultimaFalhaPagamento"]>["origem"], string> = {
+  notificacao: "aviso do Mercado Pago",
+  cliente: "tela de pagamento do cliente",
+  admin: "verificação manual",
+  automatica: "conferência automática",
+};
+
 function formatarData(data: Date | string): string {
   return new Date(data).toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -87,6 +94,7 @@ export default function PedidosLista({
   const [toastMensagem, setToastMensagem] = useState<string | null>(null);
   const [rastreioForm, setRastreioForm] = useState({ codigo: "", transportadora: "" });
   const [salvandoRastreio, setSalvandoRastreio] = useState(false);
+  const [verificandoPagamento, setVerificandoPagamento] = useState(false);
 
   useEffect(() => setPedidos(pedidosIniciais), [pedidosIniciais]);
 
@@ -105,6 +113,39 @@ export default function PedidosLista({
       }
     } finally {
       setSalvandoRastreio(false);
+    }
+  }
+
+  /**
+   * Botão "Verificar pagamento no Mercado Pago" (EDI-132): mesma verificação
+   * do aviso do MP — se aprovado, o pedido vira pago e os e-mails saem.
+   */
+  async function verificarPagamento(pedidoId: string) {
+    setVerificandoPagamento(true);
+    try {
+      const resposta = await fetch(`/api/pedidos/${pedidoId}/verificar-pagamento`, { method: "POST" });
+      const dados = (await resposta.json().catch(() => ({}))) as {
+        resultado?: string;
+        mensagem?: string;
+        erro?: string;
+      };
+      setToastMensagem(dados.mensagem ?? dados.erro ?? "Falha ao verificar o pagamento.");
+
+      // Recarrega o detalhe para refletir status e motivo gravados pela verificação.
+      const respostaDetalhe = await fetch(`/api/pedidos/${pedidoId}`);
+      if (respostaDetalhe.ok) {
+        const pedidoAtual = (await respostaDetalhe.json()).pedido as PedidoDetalhado;
+        setDetalhe(pedidoAtual);
+        setPedidos((atual) =>
+          atual.map((pedido) =>
+            pedido.id === pedidoId
+              ? { ...pedido, status: pedidoAtual.status, ultimaFalhaPagamento: pedidoAtual.pagamento.ultimaFalha }
+              : pedido
+          )
+        );
+      }
+    } finally {
+      setVerificandoPagamento(false);
     }
   }
 
@@ -261,6 +302,12 @@ export default function PedidosLista({
                     item sem correspondência
                   </span>
                 )}
+                {pedido.ultimaFalhaPagamento && (pedido.status === "pendente" || pedido.status === "cancelado") && (
+                  <span className={styles.badgeFalhaPagamento} title={pedido.ultimaFalhaPagamento.mensagem}>
+                    {" "}
+                    ⚠ pagamento
+                  </span>
+                )}
                 {pedido.envioAguardandoLiberacaoAte && (
                   <span
                     className={styles.badgeAguardandoLiberacao}
@@ -363,6 +410,30 @@ export default function PedidosLista({
                         <p>
                           Pagamento: {detalhe.pagamento.metodo} — {detalhe.pagamento.status}
                         </p>
+                      )}
+                      {detalhe.pagamento.ultimaFalha && (
+                        <div className={styles.avisoFalhaPagamento} role="status">
+                          ⚠ {detalhe.pagamento.ultimaFalha.mensagem}
+                          <small>
+                            {LABEL_ORIGEM_FALHA[detalhe.pagamento.ultimaFalha.origem]} —{" "}
+                            {formatarData(detalhe.pagamento.ultimaFalha.em)}
+                          </small>
+                        </div>
+                      )}
+                      {detalhe.canalOrigem === "site" && detalhe.status === "pendente" && (
+                        <div className={styles.verificacaoPagamento}>
+                          <button
+                            type="button"
+                            className={styles.btnPrimary}
+                            disabled={verificandoPagamento}
+                            onClick={() => verificarPagamento(pedido.id)}
+                          >
+                            {verificandoPagamento ? "Verificando..." : "Verificar pagamento no Mercado Pago"}
+                          </button>
+                          <small className={styles.pedidoItensMais}>
+                            Se estiver aprovado, o pedido vira pago e o cliente recebe o e-mail de confirmação.
+                          </small>
+                        </div>
                       )}
                       {detalhe.rastreio && (
                         <p>

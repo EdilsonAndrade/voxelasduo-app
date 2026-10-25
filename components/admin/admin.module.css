@@ -106,6 +106,35 @@
   white-space: nowrap;
 }
 
+/* Último pagamento não aprovado de um pedido do site (EDI-132). */
+.badgeFalhaPagamento {
+  composes: badge;
+  color: var(--laranja);
+  border-color: var(--laranja);
+  white-space: nowrap;
+}
+
+.avisoFalhaPagamento {
+  border-left: 4px solid var(--laranja);
+  background: var(--creme);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin: 0.5rem 0;
+}
+
+.avisoFalhaPagamento small {
+  display: block;
+  color: var(--texto-soft);
+}
+
+.verificacaoPagamento {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
 /* Selos de sincronização com o anúncio do Mercado Livre (ao lado dos rótulos do formulário de produto). */
 .seloSync {
   composes: badge;

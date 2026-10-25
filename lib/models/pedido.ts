@@ -59,6 +59,30 @@ export interface PagamentoPedido {
   /** ID do pagamento no Mercado Pago da tentativa aprovada (ou mais recente). */
   referenciaExterna?: string;
   tentativas: TentativaPagamento[];
+  /**
+   * Último resultado não aprovado de uma verificação/notificação (EDI-132) —
+   * exibido no admin. Removido quando o pedido é promovido a "pago".
+   */
+  ultimaFalha?: FalhaPagamento;
+}
+
+export type CodigoFalhaPagamento =
+  | "pendente"
+  | "recusado"
+  | "expirado"
+  | "sem_tentativa"
+  | "nao_encontrado"
+  | "falha_consulta"
+  | "aprovado_pedido_cancelado";
+
+export type OrigemVerificacaoPagamento = "notificacao" | "cliente" | "admin" | "automatica";
+
+export interface FalhaPagamento {
+  codigo: CodigoFalhaPagamento;
+  /** Texto pt-BR exibido no admin. */
+  mensagem: string;
+  origem: OrigemVerificacaoPagamento;
+  em: Date;
 }
 
 export interface RastreioPedido {

@@ -7,9 +7,10 @@ const { enviarConfirmacaoPedido, notificarAdminVendaSite } = vi.hoisted(() => ({
   enviarConfirmacaoPedido: vi.fn(),
   notificarAdminVendaSite: vi.fn(),
 }));
-const { updateOne, findOneAndUpdate } = vi.hoisted(() => ({
+const { updateOne, findOneAndUpdate, findOne } = vi.hoisted(() => ({
   updateOne: vi.fn().mockResolvedValue({ matchedCount: 1 }),
   findOneAndUpdate: vi.fn(),
+  findOne: vi.fn(),
 }));
 const { buscarPedidoPorId } = vi.hoisted(() => ({ buscarPedidoPorId: vi.fn() }));
 
@@ -17,7 +18,7 @@ vi.mock("@/lib/estoque/abatimento", () => ({ abaterEstoquePedido }));
 vi.mock("@/lib/email/resend", () => ({ enviarConfirmacaoPedido, notificarAdminVendaSite }));
 vi.mock("@/lib/pedidos/repository", () => ({
   buscarPedidoPorId,
-  colecaoPedidos: vi.fn().mockResolvedValue({ updateOne, findOneAndUpdate }),
+  colecaoPedidos: vi.fn().mockResolvedValue({ updateOne, findOneAndUpdate, findOne }),
 }));
 
 const { registrarTentativa, atualizarStatusTentativa } = await import("./repository");
@@ -57,11 +58,13 @@ describe("promoverPedidoSeAprovado (via registrarTentativa/atualizarStatusTentat
   });
 
   it("não dispara de novo quando a mesma aprovação é reprocessada (pedido já estava pago)", async () => {
-    // findOneAndUpdate com filtro { status: { $ne: "pago" } } não encontra o documento na segunda vez.
+    // findOneAndUpdate com filtro { status: { $nin: ["pago", "cancelado"] } } não encontra o documento na segunda vez.
     findOneAndUpdate.mockResolvedValueOnce(null);
+    findOne.mockResolvedValueOnce({ status: "pago" });
 
-    await atualizarStatusTentativa(pedidoId, "pagamento-1", "aprovado", "pix");
+    const resultado = await atualizarStatusTentativa(pedidoId, "pagamento-1", "aprovado", "pix");
 
+    expect(resultado).toBe("ja_pago");
     expect(abaterEstoquePedido).not.toHaveBeenCalled();
     expect(enviarConfirmacaoPedido).not.toHaveBeenCalled();
     expect(notificarAdminVendaSite).not.toHaveBeenCalled();
@@ -73,5 +76,16 @@ describe("promoverPedidoSeAprovado (via registrarTentativa/atualizarStatusTentat
     expect(findOneAndUpdate).not.toHaveBeenCalled();
     expect(enviarConfirmacaoPedido).not.toHaveBeenCalled();
     expect(notificarAdminVendaSite).not.toHaveBeenCalled();
+  });
+
+  it("não reativa pedido cancelado e informa o motivo ao chamador (EDI-132)", async () => {
+    findOneAndUpdate.mockResolvedValueOnce(null);
+    findOne.mockResolvedValueOnce({ status: "cancelado" });
+
+    const resultado = await atualizarStatusTentativa(pedidoId, "pagamento-1", "aprovado", "pix");
+
+    expect(resultado).toBe("cancelado");
+    expect(findOneAndUpdate.mock.calls[0][0]).toMatchObject({ status: { $nin: ["pago", "cancelado"] } });
+    expect(enviarConfirmacaoPedido).not.toHaveBeenCalled();
   });
 });

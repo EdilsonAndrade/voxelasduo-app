@@ -1,0 +1,64 @@
+import { NextResponse } from "next/server";
+import type { NotificacaoMercadoLivre } from "@/lib/notificacoes/identificar";
+import { buscarEnvioMercadoLivre } from "@/lib/estoque/canais/mercadoLivre/envios";
+import { buscarPedidoPorOrigemExterna } from "@/lib/pedidos/repository";
+import {
+  atualizarAguardandoLiberacaoPedido,
+  atualizarRastreioPedido,
+  atualizarStatusPedido,
+} from "@/lib/pedidos/atualizarStatus";
+
+
+/**
+ * Recebe o tópico `shipments` do Mercado Livre (EDI-101). O corpo da
+ * notificação é só o gatilho — status e código de rastreio vêm sempre de
+ * `GET /shipments/{id}` (+ `/items` para o pedido vinculado, research.md #1),
+ * mesmo princípio do webhook de pedidos (`orders_v2`).
+ */
+export async function processarEnvioMercadoLivre(payload: NotificacaoMercadoLivre): Promise<Response> {
+
+  if (String(payload.application_id ?? "") !== (process.env.MERCADOLIVRE_CLIENT_ID ?? "")) {
+    return NextResponse.json({ recebido: true });
+  }
+
+  const shipmentId = payload.resource?.split("/").pop();
+  if (!shipmentId) {
+    return NextResponse.json({ recebido: true });
+  }
+
+  let envio;
+  try {
+    envio = await buscarEnvioMercadoLivre(shipmentId);
+  } catch {
+    // Falha transitória ao consultar o envio — o ML reenvia a notificação depois.
+    return NextResponse.json({ erro: "Falha ao consultar o envio." }, { status: 500 });
+  }
+
+  const pedido = envio.orderId ? await buscarPedidoPorOrigemExterna(envio.orderId) : null;
+  if (!pedido?._id) {
+    // Sem pedido correspondente ainda registrado no site — nada a fazer (FR-009).
+    return NextResponse.json({ recebido: true });
+  }
+
+  const pedidoId = pedido._id.toString();
+
+  if (envio.trackingNumber) {
+    await atualizarRastreioPedido(pedidoId, {
+      codigo: envio.trackingNumber,
+      transportadora: "Mercado Envios",
+    });
+  }
+
+  if (envio.despachado) {
+    await atualizarStatusPedido(pedidoId, "enviado");
+  } else if (envio.entregue) {
+    await atualizarStatusPedido(pedidoId, "entregue");
+  }
+
+  // Aviso de "aguardando liberação para postagem" (EDI-105) — sempre reflete
+  // o estado mais recente do envio, mesmo comportamento de idempotência já
+  // usado para rastreio/status (research.md #3 do EDI-105).
+  await atualizarAguardandoLiberacaoPedido(pedidoId, envio.aguardandoLiberacaoAte ?? null);
+
+  return NextResponse.json({ recebido: true });
+}

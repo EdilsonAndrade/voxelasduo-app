@@ -1,6 +1,10 @@
 import { ObjectId } from "mongodb";
 import { buscarPedidoPorId, colecaoPedidos } from "@/lib/pedidos/repository";
-import type { StatusTentativaPagamento, TentativaPagamento } from "@/lib/models/pedido";
+import type {
+  FalhaPagamento,
+  StatusTentativaPagamento,
+  TentativaPagamento,
+} from "@/lib/models/pedido";
 import { abaterEstoquePedido } from "@/lib/estoque/abatimento";
 import { enviarConfirmacaoPedido, notificarAdminVendaSite } from "@/lib/email/resend";
 
@@ -34,15 +38,20 @@ export async function existeTentativaAtivaRecente(pedidoId: string): Promise<boo
  * promoveu o pedido, reaproveitando a idempotência já resolvida aqui em vez
  * de um mecanismo próprio (research.md #1 da Tarefa 5, research.md #1 da
  * Tarefa 12).
+ *
+ * Pedido cancelado nunca é reativado automaticamente (EDI-132, FR-016) — o
+ * retorno "cancelado" permite ao chamador registrar o motivo para a loja.
  */
+export type ResultadoPromocao = "promovido" | "ja_pago" | "cancelado" | "nao_encontrado";
+
 async function promoverPedidoSeAprovado(
   objectId: ObjectId,
   metodo: string,
   referenciaExterna: string
-): Promise<void> {
+): Promise<ResultadoPromocao> {
   const colecao = await colecaoPedidos();
   const pedidoPromovido = await colecao.findOneAndUpdate(
-    { _id: objectId, status: { $ne: "pago" } },
+    { _id: objectId, status: { $nin: ["pago", "cancelado"] } },
     {
       $set: {
         status: "pago",
@@ -51,17 +60,36 @@ async function promoverPedidoSeAprovado(
         "pagamento.referenciaExterna": referenciaExterna,
         atualizadoEm: new Date(),
       },
+      $unset: { "pagamento.ultimaFalha": "" },
     },
     { returnDocument: "after" }
   );
 
-  if (pedidoPromovido) {
-    await abaterEstoquePedido(pedidoPromovido);
-    // Best-effort (Tarefa 12/EDI-87) — nunca bloqueia a confirmação do pagamento.
-    await enviarConfirmacaoPedido(pedidoPromovido);
-    // Aviso à loja (EDI-110) — mesma condição de no-máximo-uma-vez, também best-effort.
-    await notificarAdminVendaSite(pedidoPromovido);
+  if (!pedidoPromovido) {
+    const atual = await colecao.findOne({ _id: objectId }, { projection: { status: 1 } });
+    if (!atual) return "nao_encontrado";
+    return atual.status === "cancelado" ? "cancelado" : "ja_pago";
   }
+
+  await abaterEstoquePedido(pedidoPromovido);
+  // Best-effort (Tarefa 12/EDI-87) — nunca bloqueia a confirmação do pagamento.
+  await enviarConfirmacaoPedido(pedidoPromovido);
+  // Aviso à loja (EDI-110) — mesma condição de no-máximo-uma-vez, também best-effort.
+  await notificarAdminVendaSite(pedidoPromovido);
+  return "promovido";
+}
+
+/**
+ * Registra no pedido o último resultado não aprovado de uma verificação ou
+ * notificação de pagamento (EDI-132) — substitui o anterior; nunca altera o
+ * status do pedido.
+ */
+export async function registrarFalhaPagamento(pedidoId: string, falha: FalhaPagamento): Promise<void> {
+  const colecao = await colecaoPedidos();
+  await colecao.updateOne(
+    { _id: new ObjectId(pedidoId) },
+    { $set: { "pagamento.ultimaFalha": falha } }
+  );
 }
 
 /**
@@ -100,14 +128,15 @@ export async function registrarTentativa(
  * Atualiza o status de uma tentativa existente (por `referenciaExterna`) e,
  * quando o novo status é "aprovado", promove o pedido para "pago" de forma
  * condicional/idempotente — reprocessar a mesma notificação não tem efeito
- * adicional (data-model.md #3). Usado pelo webhook.
+ * adicional (data-model.md #3). Usado pelo webhook e pelas verificações.
+ * Devolve o resultado da promoção quando aprovado (null nos demais status).
  */
 export async function atualizarStatusTentativa(
   pedidoId: string,
   referenciaExterna: string,
   novoStatus: StatusTentativaPagamento,
   metodo: string
-): Promise<void> {
+): Promise<ResultadoPromocao | null> {
   const colecao = await colecaoPedidos();
   const objectId = new ObjectId(pedidoId);
   const agora = new Date();
@@ -144,6 +173,7 @@ export async function atualizarStatusTentativa(
   }
 
   if (novoStatus === "aprovado") {
-    await promoverPedidoSeAprovado(objectId, metodo, referenciaExterna);
+    return promoverPedidoSeAprovado(objectId, metodo, referenciaExterna);
   }
+  return null;
 }
