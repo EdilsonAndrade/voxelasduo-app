@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Produto } from "@/lib/models/produto";
-import { valoresDoProduto, valoresDoTempoImpressao } from "./calculadoraDoProduto";
+import { custoProducaoDoKit } from "@/lib/kits/produtoDoKit";
+import { calcularTotaisKit } from "@/lib/kits/precificacaoKit";
+import { valoresDoKit, valoresDoProduto, valoresDoTempoImpressao } from "./calculadoraDoProduto";
 import { calcularCustoUnidade } from "./custoCalculadora";
 import { calcularCustoProducao } from "./custoProducao";
 
@@ -59,5 +61,17 @@ describe("valoresDoTempoImpressao", () => {
 
   it("sem tempo deixa os campos vazios", () => {
     expect(valoresDoTempoImpressao(0).impressao).toMatchObject({ tempoHoras: "", tempoMinutos: "" });
+  });
+});
+
+describe("valoresDoKit", () => {
+  it("a calculadora parte do mesmo custo do montador e do preço do kit", () => {
+    const totais = calcularTotaisKit(
+      [{ quantidade: 3, valores: { nome: "Estrela", precoCentavos: 1500, pesoGramas: 10, tempoMinutos: 30, custoCentavos: 700 } }],
+      500
+    );
+    const valores = valoresDoKit(custoProducaoDoKit(totais, [{ nome: "Estrela", quantidade: 3 }], 500), 3900);
+    expect(calcularCustoUnidade(valores.impressao)?.totalCentavos).toBe(totais.custoCentavos);
+    expect(valores.precificacao).toMatchObject({ modo: "alvo", precoAlvoReais: "39.00" });
   });
 });

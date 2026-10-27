@@ -1,5 +1,5 @@
 import type { CalculadoraValoresV2 } from "@/lib/models/calculoPreco";
-import type { Produto } from "@/lib/models/produto";
+import type { CustoProducao, Produto } from "@/lib/models/produto";
 import { valoresPadrao } from "./calculadoraPadrao";
 import { normalizarValores } from "./calculadoraValores";
 import { custoProducaoParaFormulario } from "./custoProducaoFormulario";
@@ -44,4 +44,13 @@ export function valoresDoTempoImpressao(totalMinutos: number): CalculadoraValore
       tempoMinutos: totalMinutos > 0 ? String(totalMinutos % 60) : "",
     },
   };
+}
+
+/**
+ * Valores da calculadora para um kit que ainda não virou produto (specs/037):
+ * o custo agregado do kit entra como o custo de produção de uma peça e o
+ * preço escolhido no montador vira o preço alvo.
+ */
+export function valoresDoKit(custoProducao: CustoProducao, precoCentavos: number): CalculadoraValoresV2 {
+  return valoresDoProduto({ custoProducao, preco: precoCentavos } as Produto);
 }

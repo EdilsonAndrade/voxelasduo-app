@@ -220,6 +220,8 @@ export interface Produto {
    * Só para administração. Ausente = não registrado.
    */
   caminhoArquivo3mf?: string;
+  /** Kit que gerou este produto (specs/037) — produto de kit não pode ser componente de outro kit. */
+  kitId?: string;
   /**
    * `false` = rascunho: o produto existe no admin mas não aparece na loja, na
    * home nem no feed da Meta. **Ausente = publicado**, para que os produtos

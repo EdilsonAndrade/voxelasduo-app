@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/036-notificacoes-unificadas-mp-ml/plan.md
+at specs/037-montador-kits/plan.md
 
 ## RULES
 

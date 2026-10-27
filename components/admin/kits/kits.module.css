@@ -1,0 +1,481 @@
+/*
+ * Montador de kits (specs/037). Usa os tokens e o vocabulário do admin
+ * (cards brancos, botões roxos, rótulos em caixa alta). O elemento próprio é a
+ * régua de margem (`.regua*`): a margem de cada canal numa barra de 0 a 60%
+ * com a marca do piso de lucro — mostra de relance quanto cada faixa de
+ * desconto ainda tem de folga até o piso.
+ */
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  padding-bottom: 3rem;
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  gap: 1.2rem;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .grade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  min-width: 0;
+}
+
+.lateral {
+  composes: coluna;
+  position: sticky;
+  top: 1rem;
+}
+
+@media (max-width: 960px) {
+  .lateral {
+    position: static;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  border-radius: 14px;
+  padding: 1rem 1.1rem 1.1rem;
+  min-width: 0;
+}
+
+.cardTitulo {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin: 0 0 0.2rem;
+}
+
+.cardSub {
+  color: var(--texto-soft);
+  font-size: 0.84rem;
+  margin: 0 0 0.8rem;
+}
+
+.rotulo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-soft);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.input {
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.95rem;
+  color: var(--preto);
+  font-family: var(--font-body);
+  min-width: 0;
+  width: 100%;
+}
+
+.input:focus {
+  border-color: var(--roxo);
+  outline: none;
+}
+
+.inputCurto {
+  composes: input;
+  width: 6.5rem;
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.7rem;
+}
+
+.linha > .campo {
+  flex: 1 1 140px;
+}
+
+.campoNome {
+  flex: 2 1 220px !important;
+}
+
+/* -------------------------------------------------------------- itens */
+
+.tabelaWrap {
+  overflow-x: auto;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabela th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texto-soft);
+  font-weight: 700;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 2px solid var(--surface-line);
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: 0.55rem 0.5rem;
+  border-bottom: 1px solid var(--surface-line);
+  vertical-align: middle;
+}
+
+.num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.qtd {
+  width: 4.2rem;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.9rem;
+  color: var(--preto);
+  text-align: right;
+}
+
+.qtd:focus {
+  border-color: var(--roxo);
+  outline: none;
+}
+
+.faltando {
+  color: var(--texto-soft);
+  font-style: italic;
+  font-size: 0.82rem;
+}
+
+.removido td {
+  opacity: 0.6;
+}
+
+.selo {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  margin-left: 0.35rem;
+  background: var(--surface-line);
+  color: var(--preto);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.seloNovo {
+  composes: selo;
+  background: var(--turquesa);
+  color: #111;
+}
+
+.seloAlerta {
+  composes: selo;
+  background: var(--amarelo);
+  color: #111;
+}
+
+.seloRemovido {
+  composes: selo;
+  background: #f6d4d4;
+  color: #8a1f1f;
+}
+
+.vazio {
+  color: var(--texto-soft);
+  font-size: 0.9rem;
+  padding: 1rem 0 0.3rem;
+}
+
+.botaoIcone {
+  background: transparent;
+  border: 0;
+  color: #c23a3a;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 8px;
+}
+
+.botaoIcone:focus-visible,
+.faixa:focus-visible {
+  outline: 2px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------- item novo */
+
+.previa {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+  margin-top: 0.8rem;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.previa strong {
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------- totalizador */
+
+.totais {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem 1rem;
+  margin: 0;
+}
+
+.totais dt {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-soft);
+}
+
+.totais dd {
+  margin: 0.1rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.totalDestaque {
+  grid-column: 1 / -1;
+}
+
+.totalDestaque dd {
+  font-size: 1.8rem;
+  color: var(--roxo);
+}
+
+.nota {
+  font-size: 0.78rem;
+  color: var(--texto-soft);
+  margin: 0.7rem 0 0;
+}
+
+/* --------------------------------------------------------- faixas */
+
+.faixas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.faixa {
+  text-align: left;
+  width: 100%;
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  cursor: pointer;
+  color: var(--preto);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.faixa:hover:not(:disabled) {
+  border-color: var(--roxo);
+}
+
+.faixa:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.faixaEscolhida {
+  border-color: var(--roxo);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--roxo) 18%, transparent);
+}
+
+.faixaTopo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.faixaDesconto {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--texto-soft);
+}
+
+.faixaPreco {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.faixaEconomia {
+  font-size: 0.8rem;
+  color: var(--texto-soft);
+}
+
+.motivo {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #c23a3a;
+}
+
+/* Régua de margem: 0% a 60% do preço, com a marca do piso. */
+.regua {
+  display: grid;
+  grid-template-columns: 6.6rem minmax(0, 1fr) 3.4rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.reguaTrilho {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-line);
+  overflow: visible;
+}
+
+.reguaBarra {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--turquesa);
+}
+
+.reguaBarraBaixa {
+  background: #e06666;
+}
+
+.reguaPiso {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--preto);
+  border-radius: 2px;
+}
+
+.reguaValor {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.legenda {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  color: var(--texto-soft);
+  margin: 0.5rem 0 0;
+}
+
+.legendaPiso {
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  background: var(--preto);
+}
+
+/* -------------------------------------------------------- avisos */
+
+.aviso {
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.88rem;
+  background: color-mix(in srgb, var(--amarelo) 28%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--amarelo) 70%, var(--surface-line));
+}
+
+.aviso ul {
+  margin: 0.4rem 0 0.5rem 1.1rem;
+  padding: 0;
+}
+
+.erro {
+  composes: aviso;
+  background: color-mix(in srgb, #e06666 16%, var(--surface));
+  border-color: color-mix(in srgb, #e06666 60%, var(--surface-line));
+  color: var(--preto);
+}
+
+.sucesso {
+  composes: aviso;
+  background: color-mix(in srgb, var(--turquesa) 20%, var(--surface));
+  border-color: color-mix(in srgb, var(--turquesa) 60%, var(--surface-line));
+}
+
+.avisoProduto {
+  composes: sucesso;
+  margin: 0 0 1rem;
+}
+
+.avisoProdutoAlerta {
+  composes: aviso;
+  margin: 0 0 1rem;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.botaoLink {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--roxo);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+/* --------------------------------------------------------- lista */
+
+.listaVazia {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--texto-soft);
+}

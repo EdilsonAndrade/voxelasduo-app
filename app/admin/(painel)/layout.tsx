@@ -14,6 +14,7 @@ export default async function AdminPainelLayout({ children }: { children: React.
           <nav className={styles.topoAdminNav}>
             <Link href="/admin/produtos">Produtos</Link>
             <Link href="/admin/produtos/calculadora">Calculadora de preço</Link>
+            <Link href="/admin/kits">Kits</Link>
             <Link href="/admin/categorias">Categorias</Link>
             <Link href="/admin/banners">Banners</Link>
             <Link href="/admin/pedidos">Pedidos</Link>

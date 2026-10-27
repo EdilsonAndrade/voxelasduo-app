@@ -4,7 +4,8 @@ import CalculadoraRapida from "@/components/admin/CalculadoraRapida";
 import CalculosSalvos from "@/components/admin/CalculosSalvos";
 import styles from "@/components/admin/admin.module.css";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
-import { valoresDoProduto, valoresDoTempoImpressao } from "@/lib/produtos/calculadoraDoProduto";
+import { dadosDoKitParaCalculadora } from "@/lib/kits/repository";
+import { valoresDoKit, valoresDoProduto, valoresDoTempoImpressao } from "@/lib/produtos/calculadoraDoProduto";
 import { totalMinutos } from "@/lib/producao/planosImpressao";
 import { buscarPlano } from "@/lib/producao/planosImpressaoRepository";
 import { normalizarValores } from "@/lib/produtos/calculadoraValores";
@@ -18,9 +19,17 @@ export const dynamic = "force-dynamic";
 export default async function CalculadoraPrecoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string; produto?: string; planoImpressao?: string }>;
+  searchParams: Promise<{ id?: string; produto?: string; planoImpressao?: string; kit?: string }>;
 }) {
-  const { id, produto: produtoParam, planoImpressao: planoParam } = await searchParams;
+  const { id, produto: produtoParam, planoImpressao: planoParam, kit: kitParam } = await searchParams;
+
+  // Kit do montador (specs/037): já virou produto = caminho do produto; sem preço = volta ao kit.
+  const kitAvulso = !id && !produtoParam && !planoParam && kitParam ? await dadosDoKitParaCalculadora(kitParam) : null;
+  if (!id && !produtoParam && !planoParam && kitParam) {
+    if (!kitAvulso) notFound();
+    if (kitAvulso.detalhe.produtoId) redirect(`/admin/produtos/calculadora?produto=${kitAvulso.detalhe.produtoId}`);
+    if (!kitAvulso.custoProducao || kitAvulso.detalhe.precoCentavos === null) redirect(`/admin/kits/${kitParam}`);
+  }
 
   // Vindo de um produto: reabre o cálculo dele, se já houver; senão começa um com os dados do cadastro.
   if (!id && produtoParam) {
@@ -65,10 +74,12 @@ export default async function CalculadoraPrecoPage({
               ? `Calculadora de preço: ${produto.nome}`
               : planoAvulso
                 ? `Calculadora de preço: ${planoAvulso.nome}`
-                : "Calculadora de preço"}
+                : kitAvulso
+                  ? `Calculadora de preço: ${kitAvulso.detalhe.nome}`
+                  : "Calculadora de preço"}
         </h1>
         <div className={styles.barAcoes}>
-          {(calculo || produto || planoAvulso) && (
+          {(calculo || produto || planoAvulso || kitAvulso) && (
             <Link href="/admin/produtos/calculadora" className={styles.btnGhost}>
               + Novo cálculo
             </Link>
@@ -89,7 +100,7 @@ export default async function CalculadoraPrecoPage({
         }))}
       />
       <CalculadoraRapida
-        key={id ?? (produto ? `produto-${produtoVinculado!.id}` : planoAvulso ? `plano-${planoParam}` : "novo")}
+        key={id ?? (produto ? `produto-${produtoVinculado!.id}` : planoAvulso ? `plano-${planoParam}` : kitAvulso ? `kit-${kitParam}` : "novo")}
         planoImpressaoId={planoAvulso ? planoParam : undefined}
         taxasGlobais={taxasGlobais}
         produtoVinculado={produtoVinculado}
@@ -119,7 +130,13 @@ export default async function CalculadoraPrecoPage({
                     nome: planoAvulso.nome ?? "",
                     valores: valoresDoTempoImpressao(totalMinutos(planoAvulso.itens)),
                   }
-                : undefined
+                : kitAvulso
+                  ? {
+                      // Ainda não salvo: custo agregado e preço vêm do montador de kits.
+                      nome: kitAvulso.detalhe.nome,
+                      valores: valoresDoKit(kitAvulso.custoProducao!, kitAvulso.detalhe.precoCentavos!),
+                    }
+                  : undefined
         }
       />
     </div>
