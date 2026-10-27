@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TAXAS_CANAIS_PADRAO } from "@/lib/models/configuracao";
 import { comissaoCanal, resolverTaxasCanais } from "./canais";
-import { calcularVerbaDesconto, cupomLojaReal, simularDesconto } from "./verbaDesconto";
+import { calcularVerbaDesconto, cupomLojaReal, descontoMaximoNoPiso, simularDesconto } from "./verbaDesconto";
 
 const shopee = resolverTaxasCanais(TAXAS_CANAIS_PADRAO).shopee;
 const lucroShopee = (custo: number) => (preco: number) => preco - comissaoCanal(shopee, preco) - custo;
@@ -92,6 +92,18 @@ describe("simularDesconto", () => {
     expect(simulacao.precoFinalCentavos).toBe(9450);
     // 14% + R$ 16 na faixa de R$ 80 a R$ 99,99
     expect(simulacao.lucroCentavos).toBe(9450 - (Math.round(9450 * 0.14) + 1600) - 5957);
+  });
+
+  it("desconto máximo no piso: maior que a sobra da regra simples e o próximo 0,1 ponto já fura o piso", () => {
+    const maximo = descontoMaximoNoPiso(verba, lucroEm)!;
+    expect(maximo.descontoPercentual).toBeGreaterThan(verba.sobraPercentual);
+    expect(maximo.abaixoDoPiso).toBe(false);
+    expect(simularDesconto(verba, maximo.descontoPercentual + 0.1, lucroEm)!.abaixoDoPiso).toBe(true);
+  });
+
+  it("desconto máximo é null quando nem o cupom de loja cabe no piso", () => {
+    const apertada = calcularVerbaDesconto({ precoCentavos: 2599, pisoPercentual: 25, cupomLoja: cupom3, lucroEm: lucroShopee(1300) });
+    expect(descontoMaximoNoPiso(apertada, lucroShopee(1300))).toBeNull();
   });
 
   it("rejeita desconto inválido", () => {

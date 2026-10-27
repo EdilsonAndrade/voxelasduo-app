@@ -1183,3 +1183,73 @@
   gap: 0.6rem;
   flex-wrap: wrap;
 }
+
+/* Estratégia de preço da verba de desconto: passos na ordem em que se configuram no canal. */
+.estrategia {
+  margin: 0.2rem 0 0.4rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: passo;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.estrategia li {
+  counter-increment: passo;
+  display: grid;
+  grid-template-columns: 1.6rem 1fr;
+  gap: 0 0.55rem;
+  line-height: 1.4;
+}
+
+.estrategia li::before {
+  content: counter(passo);
+  grid-row: span 2;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  background: color-mix(in srgb, var(--turquesa) 35%, var(--surface));
+  color: var(--preto);
+}
+
+.estrategia small {
+  color: var(--texto-soft);
+}
+
+.estrategiaValor {
+  font-size: 1.15rem;
+  white-space: nowrap;
+}
+
+.estrategiaRegra {
+  font-size: 0.8rem;
+}
+
+.estrategiaRegra summary {
+  cursor: pointer;
+  color: var(--texto-soft);
+}
+
+.estrategiaFinal {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0.2rem 0 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--turquesa) 22%, var(--surface));
+}
+
+.estrategiaFinal span,
+.estrategiaFinal small {
+  font-size: 0.8rem;
+  color: var(--texto-soft);
+}
+
+.estrategiaFinal strong {
+  font-size: 1.4rem;
+  color: var(--preto);
+}

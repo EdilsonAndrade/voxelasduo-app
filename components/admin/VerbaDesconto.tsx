@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import styles from "./admin.module.css";
-import { simularDesconto, type VerbaDesconto as Verba } from "@/lib/produtos/verbaDesconto";
+import { descontoMaximoNoPiso, simularDesconto, type VerbaDesconto as Verba } from "@/lib/produtos/verbaDesconto";
 
 function reais(centavos: number): string {
   return `R$ ${(centavos / 100).toFixed(2)}`;
@@ -36,41 +36,79 @@ export default function VerbaDesconto({
     ? simularDesconto(verba, Number(descontoTexto.trim().replace(",", ".")), lucroEm)
     : null;
 
+  // Desconto máximo de verdade (taxas recalculadas no preço pago), não a regra simples da verba.
+  const maximo = descontoMaximoNoPiso(verba, lucroEm);
+
   return (
     <div className={styles.field}>
-      <strong>Verba de desconto (cupons e promoções)</strong>
-      <span className={styles.mlLinkAviso}>
-        Margem atual {porcento(verba.margemPercentual)} do preço ({reais(verba.lucroCentavos)} de lucro) − piso{" "}
-        {porcento(verba.pisoPercentual)} = <strong>verba de {porcento(verba.verbaPercentual)}</strong>
-      </span>
-      {temCupomLoja && (
-        <span className={styles.mlLinkAviso}>
-          − Cupom de loja: {porcento(verba.cupomLojaPercentual)} ({reais(verba.cupomLojaCentavos)})
-        </span>
+      <strong>Estratégia de preço e descontos</strong>
+      <ol className={styles.estrategia}>
+        <li>
+          <span>
+            Digite <strong className={styles.estrategiaValor}>{reais(verba.precoCentavos)}</strong> no preço do produto
+          </span>
+          <small>
+            É o preço cheio do anúncio. Sem desconto, você ganha {reais(verba.lucroCentavos)} (
+            {porcento(verba.margemPercentual)}).
+          </small>
+        </li>
+        {temCupomLoja && (
+          <li>
+            <span>
+              Cupom de loja: <strong className={styles.estrategiaValor}>{porcento(verba.cupomLojaPercentual)}</strong>
+            </span>
+            <small>Vale para todos os produtos; aqui desconta {reais(verba.cupomLojaCentavos)}.</small>
+          </li>
+        )}
+        {maximo ? (
+          <li>
+            <span>
+              Desconto no produto: até{" "}
+              <strong className={styles.estrategiaValor}>{porcento(maximo.descontoPercentual)}</strong>
+            </span>
+            <small>
+              Na promoção relâmpago, promoção de desconto ou cupom do produto
+              {temCupomLoja ? ", somado ao cupom de loja" : ""}. No máximo, o cliente paga{" "}
+              {reais(maximo.precoFinalCentavos)} e você ganha {reais(maximo.lucroCentavos)} (
+              {porcento(maximo.margemPercentual)}), o piso.
+            </small>
+          </li>
+        ) : (
+          <li>
+            <span className={styles.fieldError}>
+              {verba.estado === "abaixoDoPiso"
+                ? `⚠ Este preço já está abaixo do piso de ${porcento(verba.pisoPercentual)}: suba o preço antes de dar desconto.`
+                : `⚠ Com o cupom de loja o lucro já fica abaixo do piso de ${porcento(verba.pisoPercentual)}: suba o preço para ter espaço para descontos.`}
+            </span>
+          </li>
+        )}
+      </ol>
+
+      {maximo && (
+        <div className={styles.estrategiaFinal}>
+          <span>Valor final para o cliente</span>
+          <strong>{reais(maximo.precoFinalCentavos)}</strong>
+          <small>
+            de <s>{reais(verba.precoCentavos)}</s> · você ganha {reais(maximo.lucroCentavos)} (
+            {porcento(maximo.margemPercentual)})
+          </small>
+        </div>
       )}
 
-      {verba.estado === "abaixoDoPiso" ? (
-        <span className={styles.fieldError}>
-          ⚠ Este preço já está abaixo do piso de {porcento(verba.pisoPercentual)}: não dê desconto nem entre em
-          promoção sem subir o preço.
+      <details className={styles.estrategiaRegra}>
+        <summary>Regra simples da verba (mais conservadora)</summary>
+        <span className={styles.mlLinkAviso}>
+          Margem {porcento(verba.margemPercentual)} − piso {porcento(verba.pisoPercentual)}
+          {temCupomLoja ? ` − cupom de loja ${porcento(verba.cupomLojaPercentual)}` : ""} ={" "}
+          {porcento(verba.sobraPercentual)} de sobra. Não considera que a comissão também cai com o desconto.
         </span>
-      ) : verba.estado === "semCupomLoja" ? (
-        <span className={styles.fieldError}>
-          ⚠ A verba não cobre nem o cupom de loja: com ele, o lucro fica abaixo do piso. Suba o preço para ter
-          espaço para cupons.
-        </span>
-      ) : (
-        <span>
-          = <strong>Sobra livre: {porcento(verba.sobraPercentual)} ({reais(verba.sobraCentavos)})</strong> para
-          promoção relâmpago, cupom do produto etc. Até esse desconto você continua ganhando pelo menos o piso.
-        </span>
-      )}
+      </details>
 
       <label htmlFor={idCampo}>Simular desconto (%)</label>
       <input
         id={idCampo}
         inputMode="decimal"
-        placeholder={`Ex: ${Math.max(0, Math.floor(verba.sobraPercentual))}`}
+        placeholder={`Ex: ${Math.floor(maximo?.descontoPercentual ?? 0)}`}
         value={descontoTexto}
         onChange={(e) => setDescontoTexto(e.target.value)}
       />
@@ -78,15 +116,13 @@ export default function VerbaDesconto({
         <span className={styles.fieldError}>Informe um desconto entre 0 e menos de 100%.</span>
       )}
       {simulacao && (
-        <span className={simulacao.passouDaSobra || simulacao.abaixoDoPiso ? styles.fieldError : styles.mlLinkAviso}>
+        <span className={simulacao.abaixoDoPiso ? styles.fieldError : styles.mlLinkAviso}>
           Cliente paga {reais(simulacao.precoFinalCentavos)}
           {temCupomLoja ? " (com o cupom de loja)" : ""} · seu lucro: {reais(simulacao.lucroCentavos)} (
           {porcento(simulacao.margemPercentual)} do preço pago)
           {simulacao.abaixoDoPiso
             ? ` — ⚠ abaixo do piso de ${porcento(verba.pisoPercentual)}.`
-            : simulacao.passouDaSobra
-              ? " — ⚠ passa da sobra: pela regra da verba, recuse."
-              : " — ✔ dentro da verba."}
+            : " — ✔ no piso ou acima."}
         </span>
       )}
     </div>

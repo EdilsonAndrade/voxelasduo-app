@@ -80,6 +80,26 @@ export interface SimulacaoDesconto {
   abaixoDoPiso: boolean;
 }
 
+/**
+ * Maior desconto no produto (relâmpago, cupom do produto…), em % do preço
+ * cheio e por cima do cupom de loja, que ainda deixa o lucro no piso — medido
+ * sobre o preço pago, com as taxas recalculadas. Varre de 0,1 em 0,1 ponto
+ * porque as faixas de comissão podem fazer o lucro saltar. `null` = nem sem
+ * desconto o piso é atingido.
+ */
+export function descontoMaximoNoPiso(
+  verba: VerbaDesconto,
+  lucroEm: (precoCentavos: number) => number
+): SimulacaoDesconto | null {
+  let ultimoOk: SimulacaoDesconto | null = null;
+  for (let decimos = 0; decimos < 1000; decimos++) {
+    const simulacao = simularDesconto(verba, decimos / 10, lucroEm);
+    if (!simulacao || simulacao.abaixoDoPiso) break;
+    ultimoOk = simulacao;
+  }
+  return ultimoOk;
+}
+
 /** `null` = desconto inválido (negativo, não numérico ou 100% ou mais). */
 export function simularDesconto(
   verba: VerbaDesconto,
