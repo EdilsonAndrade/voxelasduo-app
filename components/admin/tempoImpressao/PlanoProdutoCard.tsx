@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import VerbaDesconto from "@/components/admin/VerbaDesconto";
 import { terminoPrevisto } from "@/lib/producao/agenda";
+import { ganhoDaPlaca, ganhoDoConjunto, lucroNoPreco, type Ganho, type PlacaGanho } from "@/lib/producao/ganhoImpressao";
+import { calcularVerbaDesconto, type CupomLoja } from "@/lib/produtos/verbaDesconto";
 import { minutosEmHoras, quantidadeDoItem } from "@/lib/producao/planosImpressao";
 import styles from "./tempoImpressao.module.css";
 
@@ -11,7 +14,15 @@ export interface ItemPlano {
   nome: string;
   minutos: number;
   quantidade?: number;
+  pesoGramas?: number;
+  margemPercentual?: number;
   inicio?: string;
+}
+
+/** Piso de lucro e cupom de loja da configuração — a estratégia de cupons da Shopee usa os mesmos da calculadora. */
+export interface ReguaDesconto {
+  pisoPercentual: number;
+  cupomLoja: CupomLoja | null;
 }
 
 export interface PlanoProduto {
@@ -37,6 +48,10 @@ interface Linha {
   horas: string;
   minutos: string;
   quantidade: string;
+  /** Peso da placa inteira (g), como o fatiador mostra. */
+  peso: string;
+  /** Ganho em % sobre o custo de uma peça. */
+  margem: string;
   inicio: string;
 }
 
@@ -51,6 +66,8 @@ function paraLinha(item: ItemPlano): Linha {
     horas: String(Math.floor(item.minutos / 60)),
     minutos: String(item.minutos % 60),
     quantidade: String(quantidadeDoItem(item)),
+    peso: item.pesoGramas !== undefined ? String(item.pesoGramas) : "",
+    margem: item.margemPercentual !== undefined ? String(item.margemPercentual) : "",
     inicio: item.inicio ?? "",
   };
 }
@@ -63,7 +80,101 @@ function minutosDaLinha(linha: Linha): number {
 }
 
 function novaLinha(nome = ""): Linha {
-  return { id: crypto.randomUUID(), nome, horas: "", minutos: "", quantidade: "1", inicio: "" };
+  return { id: crypto.randomUUID(), nome, horas: "", minutos: "", quantidade: "1", peso: "", margem: "", inicio: "" };
+}
+
+/** Vazio = sem valor (null); texto inválido vai como está para o servidor recusar com a mensagem. */
+function numeroOpcional(texto: string): number | string | null {
+  const limpo = texto.trim().replace(",", ".");
+  if (limpo === "") return null;
+  const n = Number(limpo);
+  return Number.isFinite(n) ? n : texto;
+}
+
+function placaDaLinha(linha: Linha): PlacaGanho {
+  return {
+    minutos: minutosDaLinha(linha),
+    quantidade: Number(linha.quantidade),
+    pesoGramas: Number(linha.peso.trim().replace(",", ".") || NaN),
+    margemPercentual: Number(linha.margem.trim().replace(",", ".") || NaN),
+  };
+}
+
+function reais(centavos: number): string {
+  return `R$ ${(centavos / 100).toFixed(2).replace(".", ",")}`;
+}
+
+function gramas(valor: number): string {
+  return valor >= 1000
+    ? `${(valor / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg`
+    : `${valor.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} g`;
+}
+
+/** Custo, preço e ganho de verdade em cada canal; a Shopee abre a estratégia de cupons. */
+function ResumoGanho({
+  ganho,
+  rotulo,
+  regua,
+  idCampo,
+}: {
+  ganho: Ganho;
+  rotulo: string;
+  regua: ReguaDesconto;
+  idCampo: string;
+}) {
+  const [cupons, setCupons] = useState(false);
+  const shopee = ganho.canais.shopee;
+  const lucroShopee = shopee ? (preco: number) => lucroNoPreco(shopee, preco) : null;
+  const verba =
+    shopee && shopee.precoCentavos !== null && lucroShopee
+      ? calcularVerbaDesconto({
+          precoCentavos: shopee.precoCentavos,
+          pisoPercentual: regua.pisoPercentual,
+          cupomLoja: regua.cupomLoja,
+          lucroEm: lucroShopee,
+        })
+      : null;
+  const canais = [
+    ["Shopee", shopee],
+    ["Venda direta", ganho.canais.direta],
+  ] as const;
+
+  return (
+    <div className={styles.ganho}>
+      <span className={styles.ganhoRotulo}>{rotulo}</span>
+      <span>
+        Custo <strong className={styles.totalValor}>{reais(ganho.custoCentavos)}</strong>
+      </span>
+      {canais.map(([nome, canal]) => (
+        <span key={nome}>
+          {nome}{" "}
+          {canal && canal.precoCentavos !== null && canal.lucroCentavos !== null ? (
+            <>
+              <strong className={styles.totalValor}>{reais(canal.precoCentavos)}</strong> · você ganha{" "}
+              <strong className={styles.ganhoLucro}>{reais(canal.lucroCentavos)}</strong>
+            </>
+          ) : (
+            "sem preço possível"
+          )}
+        </span>
+      ))}
+      {verba && lucroShopee && (
+        <button
+          type="button"
+          className={styles.botaoTexto}
+          onClick={() => setCupons((atual) => !atual)}
+          aria-expanded={cupons}
+        >
+          {cupons ? "Esconder cupons" : "Cupons da Shopee"}
+        </button>
+      )}
+      {cupons && verba && lucroShopee && (
+        <div className={styles.ganhoCupons}>
+          <VerbaDesconto verba={verba} lucroEm={lucroShopee} idCampo={idCampo} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function textoTermino(inicio: string, minutos: number): React.ReactNode {
@@ -100,6 +211,7 @@ function faixas(linhas: Linha[]): { chave: string; cor: string; esquerda: number
 
 export default function PlanoProdutoCard({
   plano,
+  regua,
   destaque,
   aberto,
   oculto,
@@ -108,6 +220,7 @@ export default function PlanoProdutoCard({
   onRemovido,
 }: {
   plano: PlanoProduto;
+  regua: ReguaDesconto;
   destaque: boolean;
   /** Recolhido = só o cabeçalho (nome e totais), para achar o produto rápido. */
   aberto: boolean;
@@ -134,6 +247,11 @@ export default function PlanoProdutoCard({
     plano.novo || JSON.stringify(linhas) !== JSON.stringify(inicial) || (avulso && nome !== plano.produtoNome);
   const pecas = linhas.reduce((soma, linha) => soma + (Number(linha.quantidade) > 0 ? Number(linha.quantidade) : 0), 0);
   const total = linhas.reduce((soma, linha) => soma + (minutosDaLinha(linha) > 0 ? minutosDaLinha(linha) : 0), 0);
+  const peso = linhas.reduce((soma, linha) => {
+    const valor = Number(linha.peso.trim().replace(",", "."));
+    return soma + (valor > 0 ? valor : 0);
+  }, 0);
+  const conjunto = linhas.length > 1 ? ganhoDoConjunto(linhas.map(placaDaLinha)) : null;
 
   function atualizar(id: string, campo: keyof Linha, valor: string) {
     setLinhas((atual) => atual.map((linha) => (linha.id === id ? { ...linha, [campo]: valor } : linha)));
@@ -164,6 +282,8 @@ export default function PlanoProdutoCard({
       nome: linha.nome,
       minutos: minutosDaLinha(linha),
       quantidade: Number(linha.quantidade),
+      pesoGramas: numeroOpcional(linha.peso),
+      margemPercentual: numeroOpcional(linha.margem),
       inicio: linha.inicio,
     }));
 
@@ -299,10 +419,25 @@ export default function PlanoProdutoCard({
           {linhas.length > 1 && ` em ${linhas.length} partes`}
           {" · "}
           <span className={styles.totalValor}>{pecas}</span> {pecas === 1 ? "peça" : "peças"}
+          {peso > 0 && (
+            <>
+              {" · "}
+              <span className={styles.totalValor}>{gramas(peso)}</span> de filamento
+            </>
+          )}
         </span>
         {avulso && <span className={styles.seloAvulso}>ainda não é produto</span>}
         {alterado && <span className={styles.naoSalvo}>não salvo</span>}
       </div>
+
+      {conjunto && (
+        <ResumoGanho
+          ganho={conjunto}
+          rotulo="Conjunto (1 de cada parte)"
+          regua={regua}
+          idCampo={`cupom-${plano.chave}`}
+        />
+      )}
 
       <div id={`corpo-${plano.chave}`} hidden={!aberto}>
       <div className={styles.linhas}>
@@ -312,11 +447,16 @@ export default function PlanoProdutoCard({
           <span>Horas</span>
           <span>Min</span>
           <span>Qtd</span>
+          <span>Peso (g)</span>
+          <span>Margem %</span>
           <span>Início</span>
           <span>Término</span>
         </div>
-        {linhas.map((linha, indice) => (
-          <div key={linha.id} className={styles.linha}>
+        {linhas.map((linha, indice) => {
+          const ganho = ganhoDaPlaca(placaDaLinha(linha));
+          return (
+          <Fragment key={linha.id}>
+          <div className={styles.linha}>
             <span>
               <input
                 type="checkbox"
@@ -359,6 +499,24 @@ export default function PlanoProdutoCard({
               title="Quantas peças saem nesta impressão"
             />
             <input
+              className={`${styles.entrada} ${styles.entradaNumero}`}
+              value={linha.peso}
+              onChange={(e) => atualizar(linha.id, "peso", e.target.value)}
+              inputMode="decimal"
+              placeholder="0"
+              aria-label="Peso da placa em gramas"
+              title="Peso da impressão toda, como o fatiador mostra"
+            />
+            <input
+              className={`${styles.entrada} ${styles.entradaNumero}`}
+              value={linha.margem}
+              onChange={(e) => atualizar(linha.id, "margem", e.target.value)}
+              inputMode="decimal"
+              placeholder="0"
+              aria-label="Margem de ganho sobre o custo, em %"
+              title="Quanto você quer ganhar, em % sobre o custo de uma peça"
+            />
+            <input
               type="time"
               className={styles.entrada}
               value={linha.inicio}
@@ -367,7 +525,12 @@ export default function PlanoProdutoCard({
             />
             <span className={styles.termino}>{textoTermino(linha.inicio, minutosDaLinha(linha))}</span>
           </div>
-        ))}
+          {ganho && (
+            <ResumoGanho ganho={ganho} rotulo="1 peça" regua={regua} idCampo={`cupom-${plano.chave}-${linha.id}`} />
+          )}
+          </Fragment>
+          );
+        })}
       </div>
 
       {faixasDoDia.length > 0 && (

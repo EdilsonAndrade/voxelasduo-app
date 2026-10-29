@@ -217,7 +217,7 @@
 .cabecalho,
 .linha {
   display: grid;
-  grid-template-columns: 1.6rem minmax(8rem, 1fr) 4.2rem 4.2rem 3.8rem 6.6rem minmax(9rem, auto);
+  grid-template-columns: 1.6rem minmax(8rem, 1fr) 4.2rem 4.2rem 3.8rem 4.8rem 4.4rem 6.6rem minmax(9rem, auto);
   align-items: center;
   gap: 0.5rem;
 }
@@ -264,6 +264,38 @@
 .entrada:focus-visible {
   outline: 3px solid var(--roxo);
   outline-offset: 1px;
+}
+
+/* Custo, preço e ganho por canal — de uma peça (abaixo da linha) ou do conjunto (topo do card). */
+.ganho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 1.1rem;
+  margin: 0 0 0.35rem 2.1rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--turquesa) 8%, transparent);
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+}
+
+.ganhoRotulo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ganhoLucro {
+  color: var(--turquesa);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ganhoCupons {
+  flex-basis: 100%;
+  color: var(--preto);
 }
 
 .termino {

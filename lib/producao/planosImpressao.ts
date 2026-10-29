@@ -5,6 +5,9 @@ export const MAX_NOME_ITEM = 120;
 /** 14 dias — acima disso é quase certamente erro de digitação. */
 export const MAX_MINUTOS_ITEM = 14 * 24 * 60;
 export const MAX_QUANTIDADE_ITEM = 999;
+/** 50 kg por placa — acima disso é erro de digitação. */
+export const MAX_PESO_ITEM = 50_000;
+export const MAX_MARGEM_ITEM = 1000;
 
 const HORARIO = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -70,6 +73,25 @@ export function validarItens(payload: unknown): { itens?: ItemImpressao[]; erro?
       return { erro: `${linha} (${nome}): informe a quantidade de peças da placa (1 a ${MAX_QUANTIDADE_ITEM}).` };
     }
 
+    const pesoGramas = item.pesoGramas ?? undefined;
+    if (
+      pesoGramas !== undefined &&
+      (typeof pesoGramas !== "number" || !Number.isFinite(pesoGramas) || pesoGramas <= 0 || pesoGramas > MAX_PESO_ITEM)
+    ) {
+      return { erro: `${linha} (${nome}): peso da placa inválido (maior que 0 e até ${MAX_PESO_ITEM} g).` };
+    }
+
+    const margemPercentual = item.margemPercentual ?? undefined;
+    if (
+      margemPercentual !== undefined &&
+      (typeof margemPercentual !== "number" ||
+        !Number.isFinite(margemPercentual) ||
+        margemPercentual < 0 ||
+        margemPercentual > MAX_MARGEM_ITEM)
+    ) {
+      return { erro: `${linha} (${nome}): margem inválida (0 a ${MAX_MARGEM_ITEM}% sobre o custo).` };
+    }
+
     const inicio = typeof item.inicio === "string" ? item.inicio.trim() : "";
     if (inicio !== "" && !HORARIO.test(inicio)) {
       return { erro: `${linha} (${nome}): horário de início inválido (use HH:MM).` };
@@ -80,6 +102,8 @@ export function validarItens(payload: unknown): { itens?: ItemImpressao[]; erro?
       nome,
       minutos,
       quantidade,
+      ...(pesoGramas !== undefined ? { pesoGramas } : {}),
+      ...(margemPercentual !== undefined ? { margemPercentual } : {}),
       ...(inicio ? { inicio } : {}),
     });
   }

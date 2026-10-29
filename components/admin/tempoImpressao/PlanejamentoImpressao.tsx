@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import SelectBusca from "@/components/admin/SelectBusca";
-import PlanoProdutoCard, { type PlanoProduto } from "./PlanoProdutoCard";
+import PlanoProdutoCard, { type PlanoProduto, type ReguaDesconto } from "./PlanoProdutoCard";
 import styles from "./tempoImpressao.module.css";
 
 /** Busca sem acento nem maiúsculas: "papai noel" encontra "Papai Noel". */
@@ -28,10 +28,13 @@ function correspondeBusca(plano: PlanoProduto, termo: string): boolean {
 export default function PlanejamentoImpressao({
   planosIniciais,
   produtos,
+  regua,
   destacar,
 }: {
   planosIniciais: PlanoProduto[];
   produtos: { id: string; nome: string; linkModelo3d?: string }[];
+  /** Piso de lucro e cupom de loja da configuração, para a estratégia de cupons da Shopee. */
+  regua: ReguaDesconto;
   /** Produto vindo da Produção (`?produto=`): o card dele abre destacado. */
   destacar?: string;
 }) {
@@ -200,6 +203,7 @@ export default function PlanejamentoImpressao({
           <PlanoProdutoCard
             key={plano.chave}
             plano={plano}
+            regua={regua}
             destaque={plano.chave === destaque}
             aberto={abertos.has(plano.chave)}
             oculto={!correspondeBusca(plano, termo)}

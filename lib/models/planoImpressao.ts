@@ -11,6 +11,10 @@ export interface ItemImpressao {
   minutos: number;
   /** Peças que saem nessa placa (ex.: 5 pares de botas). Ausente = 1 (planos antigos). */
   quantidade?: number;
+  /** Peso da placa inteira em gramas, como o fatiador mostra; ausente = ainda sem peso. */
+  pesoGramas?: number;
+  /** Ganho desejado em % sobre o custo de uma peça; ausente = ainda sem margem. */
+  margemPercentual?: number;
   /** "HH:MM" planejado para mandar para a impressora; ausente = ainda sem horário. */
   inicio?: string;
 }
