@@ -1,0 +1,688 @@
+/*
+ * Romaneios de consignação (specs/038). Usa os tokens e o vocabulário do admin
+ * (cards brancos, botões roxos, rótulos em caixa alta). O elemento próprio é a
+ * "via" de cada lugar: o cartão tem a borda de cima picotada, como a via de
+ * um talão de romaneio, e o lugar acertado recebe um carimbo — dá para ver de
+ * relance o que ainda está fora e o que já foi acertado.
+ */
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  padding-bottom: 3rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  border-radius: 14px;
+  padding: 1rem 1.1rem 1.1rem;
+  min-width: 0;
+}
+
+.cardTitulo {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin: 0 0 0.2rem;
+}
+
+.rotulo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-soft);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.input {
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.95rem;
+  color: var(--preto);
+  font-family: var(--font-body);
+  min-width: 0;
+  width: 100%;
+}
+
+.input:focus,
+.inputNum:focus {
+  border-color: var(--roxo);
+  outline: none;
+}
+
+.inputNum {
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+  color: var(--preto);
+  font-family: var(--font-body);
+  width: 4.6rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.inputPreco {
+  composes: inputNum;
+  width: 6.2rem;
+}
+
+.inputVazio {
+  border-color: var(--laranja);
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.7rem;
+}
+
+.linha > .campo {
+  flex: 1 1 160px;
+}
+
+.campoLargo {
+  flex: 2 1 260px !important;
+}
+
+/* -------------------------------------------------------------- barra de modos */
+
+.barraModos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.alternador {
+  display: inline-flex;
+  border: 2px solid var(--surface-line);
+  border-radius: 999px;
+  padding: 3px;
+  background: var(--surface);
+}
+
+.alternador button {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.4rem 0.95rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--texto-soft);
+  cursor: pointer;
+}
+
+.alternador button[aria-pressed="true"] {
+  background: var(--roxo);
+  color: #fff;
+}
+
+.botaoTexto {
+  border: 0;
+  background: transparent;
+  color: var(--roxo);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.25rem 0.35rem;
+  text-decoration: none;
+}
+
+.botaoTexto:hover {
+  text-decoration: underline;
+}
+
+.botaoPerigo {
+  composes: botaoTexto;
+  color: #c23a3a;
+}
+
+.botaoPequeno {
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  color: var(--preto);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.botaoPequeno:hover {
+  border-color: var(--roxo);
+}
+
+.botaoPequenoForte {
+  composes: botaoPequeno;
+  background: var(--roxo);
+  border-color: var(--roxo);
+  color: #fff;
+}
+
+:where(.alternador button, .botaoTexto, .botaoPequeno):focus-visible {
+  outline: 3px solid var(--turquesa);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------- via do lugar (assinatura) */
+
+.via {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  border-radius: 0 0 14px 14px;
+  padding: 1.1rem 1.1rem 1.1rem;
+  min-width: 0;
+}
+
+/* Borda picotada de talão: meia-luas recortadas na cor do fundo da página. */
+.via::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: -7px;
+  height: 14px;
+  background: radial-gradient(circle at 7px 0, var(--creme) 5px, transparent 5.5px) 0 0 / 14px 14px repeat-x,
+    linear-gradient(var(--surface), var(--surface)) 0 7px / 100% 7px no-repeat;
+  border-left: 1px solid var(--surface-line);
+  border-right: 1px solid var(--surface-line);
+  pointer-events: none;
+}
+
+.viaAcertada {
+  border-color: color-mix(in srgb, var(--turquesa) 55%, var(--surface-line));
+}
+
+.viaTopo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-bottom: 0.8rem;
+  margin-bottom: 0.8rem;
+  border-bottom: 2px dashed var(--surface-line);
+}
+
+.viaNome {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.viaMeta {
+  color: var(--texto-soft);
+  font-size: 0.85rem;
+  margin: 0.15rem 0 0;
+}
+
+.viaAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.carimbo {
+  position: absolute;
+  right: 1.2rem;
+  top: 3.4rem;
+  transform: rotate(-8deg);
+  border: 3px solid var(--turquesa);
+  color: var(--turquesa);
+  border-radius: 8px;
+  padding: 0.1rem 0.6rem 0;
+  font-family: var(--font-hand);
+  font-size: 1.6rem;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .carimbo {
+    top: auto;
+    bottom: 0.8rem;
+    font-size: 1.3rem;
+  }
+}
+
+.formLugar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+/* -------------------------------------------------------------- tabela de itens */
+
+.tabelaWrap {
+  overflow-x: auto;
+  margin: 0 -0.2rem;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabela th {
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-soft);
+  padding: 0.35rem 0.4rem;
+  border-bottom: 2px solid var(--surface-line);
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: 0.45rem 0.4rem;
+  border-bottom: 1px solid var(--surface-line);
+  vertical-align: middle;
+}
+
+.tabela tfoot td {
+  border-bottom: 0;
+  font-weight: 800;
+  padding-top: 0.6rem;
+}
+
+.num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nomeItem {
+  font-weight: 700;
+}
+
+.etiqueta {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  padding: 0.08rem 0.5rem;
+  margin-left: 0.4rem;
+  vertical-align: 0.1em;
+  white-space: nowrap;
+}
+
+.etiqueta_produto {
+  background: color-mix(in srgb, var(--roxo) 14%, transparent);
+  color: var(--roxo);
+}
+
+.etiqueta_tempoImpressao {
+  background: color-mix(in srgb, var(--laranja) 18%, transparent);
+  color: color-mix(in srgb, var(--laranja) 75%, var(--preto));
+}
+
+.etiqueta_livre {
+  background: color-mix(in srgb, var(--texto-soft) 16%, transparent);
+  color: var(--texto-soft);
+}
+
+.etiquetaRascunho {
+  composes: etiqueta etiqueta_livre;
+}
+
+.divisao {
+  color: var(--texto-soft);
+  font-size: 0.8rem;
+}
+
+.zero {
+  color: var(--texto-soft);
+}
+
+.repasse {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.5rem 0.6rem;
+  margin-top: 0.4rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--roxo) 7%, transparent);
+  font-size: 0.85rem;
+}
+
+.repasse select {
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 0.3rem 0.5rem;
+  font-family: var(--font-body);
+  color: var(--preto);
+}
+
+/* -------------------------------------------------------------- busca */
+
+.busca {
+  position: relative;
+  margin-top: 0.9rem;
+}
+
+.buscaLista {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  background: var(--surface);
+  border: 2px solid var(--surface-line);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.12);
+}
+
+.buscaOpcao {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.buscaOpcao[aria-selected="true"] {
+  background: color-mix(in srgb, var(--roxo) 10%, transparent);
+}
+
+.buscaPreco {
+  font-variant-numeric: tabular-nums;
+  color: var(--texto-soft);
+  white-space: nowrap;
+}
+
+.buscaVazia {
+  padding: 0.5rem 0.6rem;
+  color: var(--texto-soft);
+  font-size: 0.88rem;
+}
+
+/* -------------------------------------------------------------- acerto e resumo */
+
+.pagamentos {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pagamento {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.pagamento select,
+.pagamento input {
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 0.3rem 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--preto);
+}
+
+.resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.4rem;
+  margin-top: 0.9rem;
+  padding-top: 0.8rem;
+  border-top: 2px dashed var(--surface-line);
+}
+
+.resumoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.resumoValor {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.aReceber {
+  color: var(--roxo);
+}
+
+.geral {
+  composes: card;
+  position: sticky;
+  bottom: 0.8rem;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.1);
+}
+
+.geral .resumo {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.erro {
+  color: #c23a3a;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.aviso {
+  color: color-mix(in srgb, var(--laranja) 75%, var(--preto));
+  font-size: 0.85rem;
+  margin: 0.3rem 0 0;
+}
+
+/* -------------------------------------------------------------- lista */
+
+.filtros {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+}
+
+.status {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  padding: 0.12rem 0.55rem;
+}
+
+.status_aberto {
+  background: color-mix(in srgb, var(--amarelo) 35%, transparent);
+  color: var(--preto);
+}
+
+.status_acertado {
+  background: color-mix(in srgb, var(--turquesa) 25%, transparent);
+  color: var(--preto);
+}
+
+.listaVazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+/* -------------------------------------------------------------- ficha de impressão */
+
+.ficha {
+  padding: 1.5rem 0 3rem;
+  color: var(--preto);
+}
+
+.fichaControles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 1.2rem;
+}
+
+.fichaControles select {
+  border: 2px solid var(--surface-line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--preto);
+}
+
+.fichaCabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.fichaTitulo {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.fichaMeta {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+}
+
+.fichaLugar {
+  break-inside: avoid;
+  margin-bottom: 1.4rem;
+}
+
+.fichaLugarTitulo {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  margin: 0 0 0.1rem;
+}
+
+.fichaTabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin-top: 0.4rem;
+}
+
+.fichaTabela th,
+.fichaTabela td {
+  border: 1px solid #999;
+  padding: 0.3rem 0.45rem;
+}
+
+.fichaTabela th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.fichaTabela tfoot td {
+  font-weight: 800;
+}
+
+.fichaConferido {
+  width: 2.2rem;
+}
+
+.fichaResumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.4rem;
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.assinaturas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2.4rem;
+}
+
+.assinatura {
+  border-top: 1px solid currentColor;
+  padding-top: 0.3rem;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.fichaTotalGeral {
+  border-top: 2px solid currentColor;
+  padding-top: 0.5rem;
+  font-weight: 800;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.4rem;
+}
+
+@media print {
+  .fichaControles {
+    display: none;
+  }
+
+  .ficha {
+    padding: 0;
+    color: #000;
+  }
+
+  .fichaLugarSeparado + .fichaLugarSeparado {
+    break-before: page;
+  }
+}
