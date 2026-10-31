@@ -64,6 +64,7 @@ async function carregarComponentes(ids: string[]) {
 export interface ItemDetalhe {
   produtoId: string;
   quantidade: number;
+  margemPercentual?: number;
   atual: ValoresComponente;
   removido: boolean;
 }
@@ -96,6 +97,7 @@ function montarDetalhe(kit: Kit, componentes: Awaited<ReturnType<typeof carregar
     return {
       produtoId: item.produtoId,
       quantidade: item.quantidade,
+      ...(item.margemPercentual !== undefined ? { margemPercentual: item.margemPercentual } : {}),
       valores: produto ? componentes.valores(produto) : item.ultimo,
       removido: !produto,
     };
@@ -110,7 +112,7 @@ function montarDetalhe(kit: Kit, componentes: Awaited<ReturnType<typeof carregar
     faixasDesconto: kit.faixasDesconto,
     precoCentavos: kit.precoCentavos,
     ...(produtoDoKit ? { produtoId: kit.produtoId } : {}),
-    itens: itens.map(({ produtoId, quantidade, valores, removido }) => ({ produtoId, quantidade, atual: valores, removido })),
+    itens: itens.map(({ valores, ...item }) => ({ ...item, atual: valores })),
     totais: calcularTotaisKit(itens, kit.embalagemCentavos),
     desatualizacao: kit.precoCentavos === null ? [] : compararReferencia(kit.referencia, itens),
   };
@@ -156,7 +158,16 @@ function montarReferencia(itens: ItemKit[], totais: TotaisKit): ReferenciaPreco 
     custoCentavos: totais.custoCentavos,
     pesoGramas: totais.pesoGramas,
     tempoMinutos: totais.tempoMinutos,
-    itens: Object.fromEntries(itens.map((i) => [i.produtoId, { ...i.ultimo, quantidade: i.quantidade }])),
+    itens: Object.fromEntries(
+      itens.map((i) => [
+        i.produtoId,
+        {
+          ...i.ultimo,
+          quantidade: i.quantidade,
+          ...(i.margemPercentual !== undefined ? { margemPercentual: i.margemPercentual } : {}),
+        },
+      ])
+    ),
     definidoEm: new Date(),
   };
 }
@@ -209,12 +220,13 @@ export async function salvarKit(
   const produtosCriados: { id: string; nome: string }[] = [];
   const itens: ItemKit[] = [];
   for (const item of entrada.itens) {
+    const margem = item.margemPercentual !== undefined ? { margemPercentual: item.margemPercentual } : {};
     if ("produtoId" in item) {
       const produto = componentes.produto(item.produtoId);
       const ultimo = produto
         ? componentes.valores(produto)
         : atual!.itens.find((i) => i.produtoId === item.produtoId)!.ultimo;
-      itens.push({ produtoId: item.produtoId, quantidade: item.quantidade, ultimo });
+      itens.push({ produtoId: item.produtoId, quantidade: item.quantidade, ...margem, ultimo });
       continue;
     }
     const { novo } = item;
@@ -231,11 +243,11 @@ export async function salvarKit(
     });
     const produtoId = produto._id!.toString();
     produtosCriados.push({ id: produtoId, nome: produto.nome });
-    itens.push({ produtoId, quantidade: item.quantidade, ultimo: valoresDoComponente(produto) });
+    itens.push({ produtoId, quantidade: item.quantidade, ...margem, ultimo: valoresDoComponente(produto) });
   }
 
   const totais = calcularTotaisKit(
-    itens.map((i) => ({ quantidade: i.quantidade, valores: i.ultimo })),
+    itens.map((i) => ({ quantidade: i.quantidade, margemPercentual: i.margemPercentual, valores: i.ultimo })),
     entrada.embalagemCentavos
   );
   const regravarReferencia =

@@ -5,6 +5,9 @@ export const KITS_COLLECTION = "kits";
 /** Faixas de desconto sobre a soma dos preços avulsos usadas quando o kit não define as próprias. */
 export const FAIXAS_DESCONTO_PADRAO = [10, 15, 20];
 
+/** Margem máxima por item, em % sobre o custo — a mesma do Tempo de Impressão. */
+export const MAXIMO_MARGEM_ITEM_KIT = 1000;
+
 /** Máximo de itens distintos num kit. */
 export const MAXIMO_ITENS_KIT = 30;
 
@@ -25,17 +28,20 @@ export interface ItemKit {
   produtoId: string;
   /** Inteiro de 1 a 999. */
   quantidade: number;
+  /** Ganho em % sobre o custo da peça: o valor do item no kit vira `custo × (1 + margem)`. Ausente = preço avulso do site. */
+  margemPercentual?: number;
   /** Últimos valores conhecidos — exibidos se o produto for apagado. */
   ultimo: ValoresComponente;
 }
 
 /** Valores do kit e de cada componente quando o preço do kit foi definido — base do aviso de desatualizado. */
 export interface ReferenciaPreco {
+  /** Soma dos valores dos itens (preço avulso ou custo + margem) × quantidade. */
   somaAvulsaCentavos: number;
   custoCentavos: number;
   pesoGramas: number;
   tempoMinutos: number;
-  itens: Record<string, ValoresComponente & { quantidade: number }>;
+  itens: Record<string, ValoresComponente & { quantidade: number; margemPercentual?: number }>;
   definidoEm: Date;
 }
 

@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import SelectBusca from "@/components/admin/SelectBusca";
 import styles from "@/components/admin/admin.module.css";
 import type { TaxasCanaisConfig } from "@/lib/models/configuracao";
-import { FAIXAS_DESCONTO_PADRAO, MAXIMO_ITENS_KIT, type ValoresComponente } from "@/lib/models/kit";
+import { FAIXAS_DESCONTO_PADRAO, MAXIMO_ITENS_KIT, MAXIMO_MARGEM_ITEM_KIT, type ValoresComponente } from "@/lib/models/kit";
 import { custoProducaoItemNovo, custoSemEmbalagem } from "@/lib/kits/componentes";
 import type { CampoDesatualizado, Desatualizacao } from "@/lib/kits/desatualizacao";
 import {
@@ -16,6 +16,7 @@ import {
   margensNoPreco,
   precoSugeridoItemNovo,
   sugerirFaixas,
+  valorDoItem,
   type AvaliacaoPreco,
   type MargemCanal,
 } from "@/lib/kits/precificacaoKit";
@@ -32,11 +33,21 @@ export interface OpcaoProdutoKit {
   deKit: boolean;
 }
 
+/** Item que já chega no kit novo — vindo do Tempo de Impressão. */
+export interface ItemInicialKit {
+  /** Ausente = item novo, vira produto rascunho ao salvar. */
+  produtoId?: string;
+  valores: ValoresComponente;
+  margemPercentual: number | null;
+}
+
 interface LinhaKit {
   chave: string;
   /** Ausente = item novo, vira produto rascunho ao salvar. */
   produtoId?: string;
   quantidade: number;
+  /** Ganho em % sobre o custo, como digitado — vazio = preço avulso. */
+  margem: string;
   valores: ValoresComponente;
   removido: boolean;
 }
@@ -56,6 +67,13 @@ function centavosDeReais(texto: string): number | null {
   if (texto.trim() === "") return null;
   const n = numero(texto);
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null;
+}
+
+/** Vazio = sem margem (vale o preço avulso); `NaN` = texto inválido. */
+function margemDaLinha(linha: Pick<LinhaKit, "margem">): number | null {
+  if (linha.margem.trim() === "") return null;
+  const n = numero(linha.margem);
+  return Number.isFinite(n) && n >= 0 && n <= MAXIMO_MARGEM_ITEM_KIT ? n : NaN;
 }
 
 function formatarPeso(gramas: number): string {
@@ -78,6 +96,7 @@ const ROTULO_MUDANCA: Record<CampoDesatualizado, string> = {
   tempo: "tempo de impressão",
   custo: "custo",
   quantidade: "quantidade",
+  margem: "margem",
   removido: "produto apagado",
   incluido: "item incluído",
   retirado: "item retirado",
@@ -93,7 +112,9 @@ function descreverMudanca(m: Desatualizacao): string {
           ? formatarPeso(v)
           : m.campo === "tempo"
             ? formatarTempo(v)
-            : String(v);
+            : m.campo === "margem"
+              ? `${v.toLocaleString("pt-BR")}%`
+              : String(v);
   if (m.campo === "removido" || m.campo === "incluido" || m.campo === "retirado") {
     return `${m.nome}: ${ROTULO_MUDANCA[m.campo]}`;
   }
@@ -105,8 +126,21 @@ function linhasDoDetalhe(kit: KitDetalhe): LinhaKit[] {
     chave: item.produtoId,
     produtoId: item.produtoId,
     quantidade: item.quantidade,
+    margem: item.margemPercentual !== undefined ? String(item.margemPercentual) : "",
     valores: item.atual,
     removido: item.removido,
+  }));
+}
+
+function linhasDoTempoImpressao(itens: ItemInicialKit[]): LinhaKit[] {
+  return itens.map((item) => ({
+    chave: item.produtoId ?? `novo-${crypto.randomUUID()}`,
+    produtoId: item.produtoId,
+    quantidade: 1,
+    // Sem custo cadastrado a margem não tem base: vale o preço avulso.
+    margem: item.margemPercentual !== null && item.valores.custoCentavos !== null ? String(item.margemPercentual) : "",
+    valores: item.valores,
+    removido: false,
   }));
 }
 
@@ -144,16 +178,20 @@ function Reguas({ avaliacao, piso }: { avaliacao: AvaliacaoPreco; piso: number }
 
 /**
  * Montador de kits (specs/037): produtos do catálogo e itens novos, totalizador
- * ao vivo e sugestão de preço por faixas de desconto sobre a soma avulsa, com
- * a margem de cada canal contra o piso de lucro da loja.
+ * ao vivo e sugestão de preço por faixas de desconto sobre a soma dos valores
+ * dos itens (preço avulso, ou custo + margem do item), com a margem de cada
+ * canal contra o piso de lucro da loja.
  */
 export default function EditorKit({
   kitInicial,
+  doTempoImpressao,
   produtos,
   taxasGlobais,
   embalagemPadraoCentavos,
 }: {
   kitInicial: KitDetalhe | null;
+  /** Kit novo com os itens enviados pelo Tempo de Impressão e o que ficou de fora. */
+  doTempoImpressao?: { itens: ItemInicialKit[]; ignorados: string[] };
   produtos: OpcaoProdutoKit[];
   taxasGlobais: TaxasCanaisConfig;
   embalagemPadraoCentavos: number;
@@ -168,7 +206,9 @@ export default function EditorKit({
   const [faixasTexto, setFaixasTexto] = useState<string[]>(
     (kitInicial?.faixasDesconto ?? FAIXAS_DESCONTO_PADRAO).map(String)
   );
-  const [linhas, setLinhas] = useState<LinhaKit[]>(() => (kitInicial ? linhasDoDetalhe(kitInicial) : []));
+  const [linhas, setLinhas] = useState<LinhaKit[]>(() =>
+    kitInicial ? linhasDoDetalhe(kitInicial) : linhasDoTempoImpressao(doTempoImpressao?.itens ?? [])
+  );
   const [precoCentavos, setPrecoCentavos] = useState<number | null>(kitInicial?.precoCentavos ?? null);
   const [precoProprioReais, setPrecoProprioReais] = useState("");
   const [confirmarAbaixoPiso, setConfirmarAbaixoPiso] = useState(false);
@@ -180,7 +220,7 @@ export default function EditorKit({
   const [novoMinutos, setNovoMinutos] = useState("");
   const [novoPrecoReais, setNovoPrecoReais] = useState("");
   const [repetido, setRepetido] = useState<{ produtoExistenteId: string; nome: string; chaveNovo?: string } | null>(null);
-  const [sujo, setSujo] = useState(false);
+  const [sujo, setSujo] = useState(() => !kitInicial && (doTempoImpressao?.itens.length ?? 0) > 0);
   const [salvando, setSalvando] = useState(false);
   const [gerandoProduto, setGerandoProduto] = useState(false);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
@@ -193,7 +233,11 @@ export default function EditorKit({
 
   const embalagemCentavos = centavosDeReais(embalagemReais);
   const faixas = faixasTexto.map(numero).filter((f) => Number.isFinite(f) && f > 0 && f < 100);
-  const totais = calcularTotaisKit(linhas, embalagemCentavos ?? 0);
+  const totais = calcularTotaisKit(
+    linhas.map((l) => ({ ...l, margemPercentual: margemDaLinha(l) })),
+    embalagemCentavos ?? 0
+  );
+  const margemInvalida = linhas.some((l) => Number.isNaN(margemDaLinha(l)));
   const sugestoes = sugerirFaixas(totais, [...new Set(faixas)].sort((a, b) => a - b), canais, piso);
   const avaliacaoEscolhida = precoCentavos !== null && linhas.length > 0 ? avaliarPreco(precoCentavos, totais, canais, piso) : null;
 
@@ -226,7 +270,7 @@ export default function EditorKit({
       if (existente) {
         return atual.map((l) => (l === existente ? { ...l, quantidade: Math.min(l.quantidade + 1, 999) } : l));
       }
-      return [...atual, { chave: produto.id, produtoId: produto.id, quantidade: 1, valores: produto.valores, removido: false }];
+      return [...atual, { chave: produto.id, produtoId: produto.id, quantidade: 1, margem: "", valores: produto.valores, removido: false }];
     });
   }
 
@@ -253,6 +297,7 @@ export default function EditorKit({
       {
         chave: `novo-${crypto.randomUUID()}`,
         quantidade: 1,
+        margem: "",
         removido: false,
         valores: {
           nome: nomeLimpo,
@@ -285,7 +330,7 @@ export default function EditorKit({
     setLinhas((atual) => {
       const semNovo = repetido.chaveNovo ? atual.filter((l) => l.chave !== repetido.chaveNovo) : atual;
       if (semNovo.some((l) => l.produtoId === produto.id)) return semNovo;
-      return [...semNovo, { chave: produto.id, produtoId: produto.id, quantidade: 1, valores: produto.valores, removido: false }];
+      return [...semNovo, { chave: produto.id, produtoId: produto.id, quantidade: 1, margem: "", valores: produto.valores, removido: false }];
     });
     setNovoNome("");
   }
@@ -295,6 +340,11 @@ export default function EditorKit({
     if (!(quantidade >= 1 && quantidade <= 999)) return;
     alterou();
     setLinhas((atual) => atual.map((l) => (l.chave === chave ? { ...l, quantidade } : l)));
+  }
+
+  function mudarMargem(chave: string, texto: string) {
+    alterou();
+    setLinhas((atual) => atual.map((l) => (l.chave === chave ? { ...l, margem: texto } : l)));
   }
 
   function remover(chave: string) {
@@ -324,6 +374,7 @@ export default function EditorKit({
     nome.trim() !== "" &&
     embalagemCentavos !== null &&
     faixas.length > 0 &&
+    !margemInvalida &&
     linhas.length <= MAXIMO_ITENS_KIT &&
     !precoBloqueado;
 
@@ -342,19 +393,22 @@ export default function EditorKit({
           faixasDesconto: [...new Set(faixas)],
           precoCentavos: linhas.length > 0 ? precoCentavos : null,
           reconfirmarPreco,
-          itens: linhas.map((l) =>
-            l.produtoId
-              ? { produtoId: l.produtoId, quantidade: l.quantidade }
+          itens: linhas.map((l) => {
+            const margem = margemDaLinha(l);
+            const margemPercentual = margem === null ? {} : { margemPercentual: margem };
+            return l.produtoId
+              ? { produtoId: l.produtoId, quantidade: l.quantidade, ...margemPercentual }
               : {
                   quantidade: l.quantidade,
+                  ...margemPercentual,
                   novo: {
                     nome: l.valores.nome,
                     pesoGramas: l.valores.pesoGramas,
                     tempoMinutos: l.valores.tempoMinutos,
                     precoCentavos: l.valores.precoCentavos,
                   },
-                }
-          ),
+                };
+          }),
         }),
       });
       const dados = await resposta.json().catch(() => ({}));
@@ -488,6 +542,16 @@ export default function EditorKit({
           .
         </div>
       )}
+      {doTempoImpressao && doTempoImpressao.ignorados.length > 0 && (
+        <div className={k.aviso} role="status">
+          <strong>Ficou de fora do kit:</strong>
+          <ul>
+            {doTempoImpressao.ignorados.map((motivo) => (
+              <li key={motivo}>{motivo}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {erro && (
         <div className={k.erro} role="alert">
           {erro}
@@ -551,7 +615,10 @@ export default function EditorKit({
 
           <section className={k.card}>
             <h2 className={k.cardTitulo}>Itens do kit</h2>
-            <p className={k.cardSub}>Peso, preço e tempo vêm do cadastro de cada produto. A embalagem da peça não entra: o kit usa a embalagem dele.</p>
+            <p className={k.cardSub}>
+              Peso, preço e tempo vêm do cadastro de cada produto. A embalagem da peça não entra: o kit usa a embalagem dele. Com margem, o
+              valor do item no kit é o custo + a margem; sem margem, vale o preço avulso.
+            </p>
             <div className={k.linha}>
               <div className={`${k.campo} ${k.campoNome}`}>
                 <span className={k.rotulo} id="kit-produto-rotulo">
@@ -585,6 +652,8 @@ export default function EditorKit({
                       <th className={k.num}>Peso</th>
                       <th className={k.num}>Tempo</th>
                       <th className={k.num}>Custo</th>
+                      <th className={k.num}>Margem %</th>
+                      <th className={k.num}>Valor no kit</th>
                       <th aria-label="Ações" />
                     </tr>
                   </thead>
@@ -634,6 +703,30 @@ export default function EditorKit({
                           )}
                         </td>
                         <td className={k.num}>
+                          <input
+                            className={`${k.qtd} ${Number.isNaN(margemDaLinha(l)) ? k.qtdInvalida : ""}`}
+                            inputMode="decimal"
+                            value={l.margem}
+                            placeholder="—"
+                            disabled={l.valores.custoCentavos === null}
+                            title={
+                              l.valores.custoCentavos === null
+                                ? "Produto sem custo cadastrado: vale o preço avulso."
+                                : "Ganho em % sobre o custo da peça. Vazio = preço avulso."
+                            }
+                            aria-label={`Margem de ${l.valores.nome}, em % sobre o custo`}
+                            aria-invalid={Number.isNaN(margemDaLinha(l))}
+                            onChange={(e) => mudarMargem(l.chave, e.target.value)}
+                          />
+                        </td>
+                        <td className={k.num}>
+                          {Number.isNaN(margemDaLinha(l)) ? (
+                            <span className={k.faltando}>margem inválida</span>
+                          ) : (
+                            formatarPreco(valorDoItem(l.valores, margemDaLinha(l)) * l.quantidade)
+                          )}
+                        </td>
+                        <td className={k.num}>
                           <button type="button" className={k.botaoIcone} onClick={() => remover(l.chave)} aria-label={`Remover ${l.valores.nome}`}>
                             Remover
                           </button>
@@ -643,6 +736,9 @@ export default function EditorKit({
                   </tbody>
                 </table>
               </div>
+            )}
+            {margemInvalida && (
+              <p className={k.motivo}>Margem inválida em algum item: use de 0 a {MAXIMO_MARGEM_ITEM_KIT}% ou deixe vazio.</p>
             )}
           </section>
 
@@ -716,7 +812,7 @@ export default function EditorKit({
             <h2 className={k.cardTitulo}>Totalizador</h2>
             <dl className={k.totais}>
               <div className={k.totalDestaque}>
-                <dt>Soma dos preços avulsos</dt>
+                <dt>Soma dos valores dos itens</dt>
                 <dd>{formatarPreco(totais.somaAvulsaCentavos)}</dd>
               </div>
               <div>
@@ -750,7 +846,7 @@ export default function EditorKit({
           <section className={k.card}>
             <h2 className={k.cardTitulo}>Sugestão de preço</h2>
             <p className={k.cardSub}>
-              Desconto sobre a soma avulsa. Margem em % do preço em cada canal; o traço é o piso de lucro ({formatarPercentual(piso)}). Mercado Livre é estimado (14%).
+              Desconto sobre a soma dos valores dos itens. Margem em % do preço em cada canal; o traço é o piso de lucro ({formatarPercentual(piso)}). Mercado Livre é estimado (14%).
             </p>
             <div className={k.linha}>
               {faixasTexto.map((texto, i) => (
@@ -845,7 +941,7 @@ export default function EditorKit({
                   <Reguas avaliacao={avaliacaoEscolhida} piso={piso} />
                 </div>
                 {avaliacaoEscolhida.naoEstaEmConta && (
-                  <p className={k.motivo}>O kit não sai mais em conta que comprar os itens avulsos.</p>
+                  <p className={k.motivo}>O kit não sai mais em conta que a soma dos valores dos itens.</p>
                 )}
                 {avaliacaoEscolhida.bloqueada && (
                   <label className={k.nota} style={{ display: "flex", gap: "0.4rem", alignItems: "flex-start" }}>

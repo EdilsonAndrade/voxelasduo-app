@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { TAXAS_CANAIS_PADRAO } from "@/lib/models/configuracao";
 import type { ValoresComponente } from "@/lib/models/kit";
-import { avaliarPreco, calcularTotaisKit, canaisDoKit, margensNoPreco, precoSugeridoItemNovo, sugerirFaixas } from "./precificacaoKit";
+import {
+  avaliarPreco,
+  calcularTotaisKit,
+  canaisDoKit,
+  margensNoPreco,
+  precoSugeridoItemNovo,
+  sugerirFaixas,
+  valorDoItem,
+} from "./precificacaoKit";
 
 const arvore: ValoresComponente = { nome: "Árvore", precoCentavos: 3000, pesoGramas: 40, tempoMinutos: 120, custoCentavos: 800 };
 const estrela: ValoresComponente = { nome: "Estrela", precoCentavos: 1500, pesoGramas: 10, tempoMinutos: 30, custoCentavos: 300 };
@@ -83,5 +91,24 @@ describe("precoSugeridoItemNovo", () => {
   it("usa a margem desejada da loja e a taxa do site", () => {
     // 1000 / (1 − 0,0499 − 0,40) = 1817,9 → 1818
     expect(precoSugeridoItemNovo(1000, TAXAS_CANAIS_PADRAO)).toBe(1818);
+  });
+});
+
+describe("margem por item", () => {
+  it("valor do item = custo × (1 + margem); sem margem ou sem custo vale o preço avulso", () => {
+    expect(valorDoItem(arvore, 50)).toBe(1200);
+    expect(valorDoItem(arvore, null)).toBe(3000);
+    expect(valorDoItem({ ...arvore, custoCentavos: null }, 50)).toBe(3000);
+  });
+
+  it("a soma usada nas faixas de desconto leva a margem de cada item", () => {
+    const totais = calcularTotaisKit(
+      [
+        { quantidade: 2, valores: arvore, margemPercentual: 100 },
+        { quantidade: 1, valores: estrela },
+      ],
+      0
+    );
+    expect(totais.somaAvulsaCentavos).toBe(1600 * 2 + 1500);
   });
 });

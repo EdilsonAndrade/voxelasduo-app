@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import SelectBusca from "@/components/admin/SelectBusca";
+import { MAXIMO_ITENS_KIT } from "@/lib/models/kit";
 import PlanoProdutoCard, { type PlanoProduto, type ReguaDesconto } from "./PlanoProdutoCard";
 import styles from "./tempoImpressao.module.css";
 
@@ -47,8 +48,13 @@ export default function PlanejamentoImpressao({
   const [busca, setBusca] = useState("");
   /** Cards abertos — começam recolhidos, menos o que veio destacado. */
   const [abertos, setAbertos] = useState<Set<string>>(() => new Set(destaque ? [destaque] : []));
+  /** Cards marcados para o montador de kits (pela chave). */
+  const [paraKit, setParaKit] = useState<Set<string>>(new Set());
 
   const termo = normalizar(busca);
+  // O kit lê o que está gravado: só planos já salvos, na ordem da tela.
+  const idsParaKit = planos.filter((p) => paraKit.has(p.chave) && p.id).map((p) => p.id!);
+  const linkKit = `/admin/kits/novo?planos=${idsParaKit.join(",")}`;
   const visiveis = planos.filter((plano) => correspondeBusca(plano, termo)).length;
 
   function abrir(chave: string) {
@@ -108,6 +114,41 @@ export default function PlanejamentoImpressao({
 
   function removido(chave: string) {
     setPlanos((atual) => atual.filter((p) => p.chave !== chave));
+    setParaKit((atual) => {
+      const novo = new Set(atual);
+      novo.delete(chave);
+      return novo;
+    });
+  }
+
+  /**
+   * Cópia de um item com todas as partes (ids novos), logo abaixo dele. Vira
+   * item avulso: produto do catálogo só tem um plano. Grava no primeiro "Salvar".
+   */
+  function clonar(original: PlanoProduto) {
+    const chave = `novo-${crypto.randomUUID()}`;
+    const copia: PlanoProduto = {
+      chave,
+      produtoNome: `${original.produtoNome} (cópia)`,
+      itens: original.itens.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      novo: true,
+    };
+    setPlanos((atual) => {
+      const indice = atual.findIndex((p) => p.chave === original.chave);
+      return [...atual.slice(0, indice + 1), copia, ...atual.slice(indice + 1)];
+    });
+    setDestaque(chave);
+    abrir(chave);
+    setBusca("");
+  }
+
+  function alternarKit(chave: string) {
+    setParaKit((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(chave)) novo.delete(chave);
+      else if (novo.size < MAXIMO_ITENS_KIT) novo.add(chave);
+      return novo;
+    });
   }
 
   return (
@@ -186,6 +227,26 @@ export default function PlanejamentoImpressao({
           <button type="button" className={styles.botaoTexto} onClick={() => setAbertos(new Set())}>
             Recolher todos
           </button>
+          <div className={styles.enviarKit}>
+            {idsParaKit.length > 0 && (
+              <button type="button" className={styles.botaoTexto} onClick={() => setParaKit(new Set())}>
+                Limpar seleção
+              </button>
+            )}
+            {idsParaKit.length > 0 ? (
+              <Link
+                href={linkKit}
+                className={styles.botao}
+                title="Abre um kit novo com 1 peça de cada item marcado. Leva o que está salvo."
+              >
+                Enviar para kit ({idsParaKit.length})
+              </Link>
+            ) : (
+              <button type="button" className={styles.botao} disabled title="Marque “Kit” nos itens que vão para o kit.">
+                Enviar para kit
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -207,7 +268,10 @@ export default function PlanejamentoImpressao({
             destaque={plano.chave === destaque}
             aberto={abertos.has(plano.chave)}
             oculto={!correspondeBusca(plano, termo)}
+            paraKit={paraKit.has(plano.chave)}
             onAlternar={() => alternar(plano.chave)}
+            onAlternarKit={() => alternarKit(plano.chave)}
+            onClonar={() => clonar(plano)}
             onSalvo={salvo}
             onRemovido={removido}
           />

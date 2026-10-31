@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { FAIXAS_DESCONTO_PADRAO, MAXIMO_ITENS_KIT } from "@/lib/models/kit";
+import { FAIXAS_DESCONTO_PADRAO, MAXIMO_ITENS_KIT, MAXIMO_MARGEM_ITEM_KIT } from "@/lib/models/kit";
 
 export const LIMITE_NOME_KIT = 120;
 
@@ -11,9 +11,13 @@ export interface ItemNovoEntrada {
   precoCentavos: number;
 }
 
-export type ItemKitEntrada =
+export type ItemKitEntrada = (
   | { produtoId: string; quantidade: number }
-  | { novo: ItemNovoEntrada; quantidade: number };
+  | { novo: ItemNovoEntrada; quantidade: number }
+) & {
+  /** Ganho em % sobre o custo da peça — ausente = vale o preço avulso. */
+  margemPercentual?: number;
+};
 
 export interface KitEntrada {
   nome: string;
@@ -35,9 +39,23 @@ function validarItem(bruto: unknown, posicao: number): { item?: ItemKitEntrada; 
   if (!inteiroPositivo(item.quantidade, 999)) return { erro: `Quantidade do item ${posicao} deve ser um inteiro de 1 a 999.` };
   const quantidade = item.quantidade;
 
+  const margemPercentual = item.margemPercentual ?? undefined;
+  if (
+    margemPercentual !== undefined &&
+    !(
+      typeof margemPercentual === "number" &&
+      Number.isFinite(margemPercentual) &&
+      margemPercentual >= 0 &&
+      margemPercentual <= MAXIMO_MARGEM_ITEM_KIT
+    )
+  ) {
+    return { erro: `Margem do item ${posicao} inválida (0 a ${MAXIMO_MARGEM_ITEM_KIT}% sobre o custo).` };
+  }
+  const margem = margemPercentual !== undefined ? { margemPercentual } : {};
+
   if (typeof item.produtoId === "string") {
     if (!ObjectId.isValid(item.produtoId)) return { erro: `Produto do item ${posicao} inválido.` };
-    return { item: { produtoId: item.produtoId, quantidade } };
+    return { item: { produtoId: item.produtoId, quantidade, ...margem } };
   }
 
   const novo = item.novo as Record<string, unknown> | undefined;
@@ -54,6 +72,7 @@ function validarItem(bruto: unknown, posicao: number): { item?: ItemKitEntrada; 
     item: {
       novo: { nome, pesoGramas: novo.pesoGramas, tempoMinutos: novo.tempoMinutos, precoCentavos: novo.precoCentavos },
       quantidade,
+      ...margem,
     },
   };
 }

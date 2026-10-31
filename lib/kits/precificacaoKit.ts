@@ -34,8 +34,19 @@ export function canaisDoKit(taxasGlobais: TaxasCanaisConfig): CanalKit[] {
   ];
 }
 
+/**
+ * Valor de uma peça no kit: `custo × (1 + margem)` quando há margem e custo;
+ * senão o preço avulso do site.
+ */
+export function valorDoItem(valores: ValoresComponente, margemPercentual?: number | null): number {
+  if (margemPercentual === null || margemPercentual === undefined || valores.custoCentavos === null) {
+    return valores.precoCentavos;
+  }
+  return Math.round(valores.custoCentavos * (1 + margemPercentual / 100));
+}
+
 export interface TotaisKit {
-  /** Soma dos preços avulsos (site) × quantidade. */
+  /** Soma dos valores dos itens (preço avulso ou custo + margem) × quantidade. */
   somaAvulsaCentavos: number;
   /** Custo das peças (sem embalagem) × quantidade + embalagem do kit. */
   custoCentavos: number;
@@ -49,7 +60,7 @@ export interface TotaisKit {
 }
 
 export function calcularTotaisKit(
-  itens: { quantidade: number; valores: ValoresComponente }[],
+  itens: { quantidade: number; valores: ValoresComponente; margemPercentual?: number | null }[],
   embalagemCentavos: number
 ): TotaisKit {
   const totais: TotaisKit = {
@@ -62,9 +73,9 @@ export function calcularTotaisKit(
     tempoIncompleto: false,
     custoIncompleto: false,
   };
-  for (const { quantidade, valores } of itens) {
+  for (const { quantidade, valores, margemPercentual } of itens) {
     totais.quantidadePecas += quantidade;
-    totais.somaAvulsaCentavos += valores.precoCentavos * quantidade;
+    totais.somaAvulsaCentavos += valorDoItem(valores, margemPercentual) * quantidade;
     if (valores.pesoGramas === null) totais.pesoIncompleto = true;
     else totais.pesoGramas += valores.pesoGramas * quantidade;
     if (valores.tempoMinutos === null) totais.tempoIncompleto = true;

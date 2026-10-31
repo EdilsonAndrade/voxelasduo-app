@@ -150,6 +150,29 @@
   gap: 0.6rem 1rem;
 }
 
+/* Marcar o card para o montador de kits. */
+.selecionarKit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--texto-soft);
+  cursor: pointer;
+}
+
+.selecionarKit:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.enviarKit {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
 .busca {
   flex: 1 1 320px;
   min-width: 0;

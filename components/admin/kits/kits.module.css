@@ -169,6 +169,16 @@
   outline: none;
 }
 
+.qtd:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qtdInvalida,
+.qtdInvalida:focus {
+  border-color: #e06666;
+}
+
 .faltando {
   color: var(--texto-soft);
   font-style: italic;

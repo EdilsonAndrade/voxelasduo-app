@@ -44,4 +44,14 @@ describe("validarKit", () => {
     expect(validarKit(novo({ tempoMinutos: 1.5 })).erro).toMatch(/tempo/);
     expect(validarKit({ nome: "K", itens: [], precoCentavos: 1000 }).erro).toMatch(/Adicione itens/);
   });
+
+  it("aceita margem por item de 0 a 1000% e recusa fora disso", () => {
+    const { dados } = validarKit({ nome: "K", itens: [{ produtoId: id, quantidade: 1, margemPercentual: 80 }] });
+    expect(dados?.itens[0]).toEqual({ produtoId: id, quantidade: 1, margemPercentual: 80 });
+    expect(validarKit({ nome: "K", itens: [{ produtoId: id, quantidade: 1, margemPercentual: null }] }).dados?.itens[0]).toEqual({
+      produtoId: id,
+      quantidade: 1,
+    });
+    expect(validarKit({ nome: "K", itens: [{ produtoId: id, quantidade: 1, margemPercentual: -1 }] }).erro).toMatch(/Margem/);
+  });
 });

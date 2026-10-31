@@ -1,6 +1,6 @@
 import type { ReferenciaPreco, ValoresComponente } from "@/lib/models/kit";
 
-export type CampoDesatualizado = "preco" | "peso" | "tempo" | "custo" | "removido" | "incluido" | "retirado" | "quantidade";
+export type CampoDesatualizado = "preco" | "peso" | "tempo" | "custo" | "removido" | "incluido" | "retirado" | "quantidade" | "margem";
 
 export interface Desatualizacao {
   produtoId: string;
@@ -13,6 +13,7 @@ export interface Desatualizacao {
 export interface ItemAtual {
   produtoId: string;
   quantidade: number;
+  margemPercentual?: number;
   valores: ValoresComponente;
   removido: boolean;
 }
@@ -20,7 +21,7 @@ export interface ItemAtual {
 /**
  * O que mudou desde que o preço do kit foi definido (specs/037, research #3):
  * preço, peso, tempo ou custo de algum componente, item incluído/retirado,
- * quantidade alterada ou produto apagado. Vazio = preço em dia.
+ * quantidade ou margem alterada, ou produto apagado. Vazio = preço em dia.
  */
 export function compararReferencia(referencia: ReferenciaPreco | undefined, itens: ItemAtual[]): Desatualizacao[] {
   if (!referencia) return [];
@@ -41,6 +42,15 @@ export function compararReferencia(referencia: ReferenciaPreco | undefined, iten
     }
     if (antes.quantidade !== item.quantidade) {
       mudancas.push({ produtoId: item.produtoId, nome, campo: "quantidade", antes: antes.quantidade, depois: item.quantidade });
+    }
+    if ((antes.margemPercentual ?? null) !== (item.margemPercentual ?? null)) {
+      mudancas.push({
+        produtoId: item.produtoId,
+        nome,
+        campo: "margem",
+        antes: antes.margemPercentual ?? null,
+        depois: item.margemPercentual ?? null,
+      });
     }
     const campos: Array<[CampoDesatualizado, keyof ValoresComponente]> = [
       ["preco", "precoCentavos"],

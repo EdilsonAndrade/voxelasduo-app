@@ -43,4 +43,12 @@ describe("compararReferencia", () => {
       ]).map((m) => m.campo)
     ).toEqual(["removido", "quantidade"]);
   });
+
+  it("aponta margem alterada", () => {
+    const mudancas = compararReferencia(referencia, [
+      { produtoId: "a", quantidade: 1, margemPercentual: 60, valores: arvore, removido: false },
+      { produtoId: "b", quantidade: 1, valores: { ...arvore, nome: "Estrela" }, removido: false },
+    ]);
+    expect(mudancas).toEqual([{ produtoId: "a", nome: "Árvore", campo: "margem", antes: null, depois: 60 }]);
+  });
 });

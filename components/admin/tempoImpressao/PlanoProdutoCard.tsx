@@ -215,7 +215,10 @@ export default function PlanoProdutoCard({
   destaque,
   aberto,
   oculto,
+  paraKit,
   onAlternar,
+  onAlternarKit,
+  onClonar,
   onSalvo,
   onRemovido,
 }: {
@@ -226,7 +229,12 @@ export default function PlanoProdutoCard({
   aberto: boolean;
   /** Fora da busca: escondido, mas montado — edições não salvas não se perdem. */
   oculto: boolean;
+  /** Marcado para ir ao montador de kits. */
+  paraKit: boolean;
   onAlternar: () => void;
+  onAlternarKit: () => void;
+  /** Cria uma cópia avulsa com todas as partes, para ajustar uma ou outra. */
+  onClonar: () => void;
   onSalvo: (plano: PlanoProduto) => void;
   onRemovido: (chave: string) => void;
 }) {
@@ -388,6 +396,13 @@ export default function PlanoProdutoCard({
           </span>
           <span className={styles.somenteLeitor}>{aberto ? "Recolher" : "Mostrar"} partes</span>
         </button>
+        <label
+          className={styles.selecionarKit}
+          title={plano.novo ? "Salve antes para enviar ao kit." : "Enviar 1 peça deste item para um kit novo"}
+        >
+          <input type="checkbox" checked={paraKit} onChange={onAlternarKit} disabled={plano.novo} />
+          Kit
+        </label>
         <h2 className={styles.produtoNome}>
           {avulso ? (
             <input
@@ -574,6 +589,15 @@ export default function PlanoProdutoCard({
         <div className={styles.acoesDireita}>
           {acaoSaida(linkCalculadora, "Calculadora de preço")}
           {acaoSaida(linkProduto, avulso ? "Criar produto" : "Abrir produto")}
+          <button
+            type="button"
+            className={`${styles.botao} ${styles.botaoSecundario}`}
+            onClick={onClonar}
+            disabled={enviando || !podeSair}
+            title={podeSair ? "Cria uma cópia com todas as partes, como item avulso" : "Salve antes para clonar."}
+          >
+            Clonar
+          </button>
           <button
             type="button"
             className={`${styles.botao} ${styles.botaoSecundario}`}
