@@ -13,6 +13,9 @@ import { enviarPedidoCriadoCliente, notificarAdminPedidoCriado } from "@/lib/ema
 import { paraPedidoResumo } from "@/lib/pedidos/apresentacao";
 import { ErroEstoque } from "@/lib/pedidos/estoque";
 import { validarCheckout, type CheckoutPayload } from "@/lib/pedidos/validation";
+import { resolverFretePedido } from "@/lib/frete/calculo";
+import { opcoesFreteVigentes } from "@/lib/frete/repository";
+import type { ServicoFrete } from "@/lib/models/frete";
 
 /** Listagem administrativa de pedidos (Tarefa 8/EDI-81) — filtro por canal/status e paginação simples. */
 export async function GET(request: Request) {
@@ -56,6 +59,28 @@ export async function POST(request: Request) {
   // Leitura opcional da sessão do cliente (Tarefa 10/EDI-84) — o checkout
   // continua público (guest checkout); quando há sessão válida, o pedido
   // já nasce associado à conta.
+  // Frete (spec 039): o preço vem sempre do servidor. Se o valor exibido ao
+  // cliente não for o vigente, recusa para nunca cobrar diferente do que ele viu.
+  const freteEscolhido = payload.frete as { servico: ServicoFrete; valorCentavos: number };
+  const opcoesFrete = await opcoesFreteVigentes({ cep: payload.cliente?.endereco?.cep as string });
+  const frete = resolverFretePedido(freteEscolhido.servico, opcoesFrete);
+  if (!frete) {
+    return NextResponse.json(
+      { erro: "Dados inválidos.", campos: { frete: "Escolha a forma de entrega." } },
+      { status: 400 }
+    );
+  }
+  if (frete.valorCentavos !== freteEscolhido.valorCentavos) {
+    return NextResponse.json(
+      {
+        erro: "O valor do frete mudou. Confira a nova opção antes de confirmar.",
+        codigo: "frete_divergente",
+        opcoes: opcoesFrete,
+      },
+      { status: 409 }
+    );
+  }
+
   const session = await auth();
   const clienteId = session?.user?.id ? new ObjectId(session.user.id) : undefined;
 
@@ -69,6 +94,7 @@ export async function POST(request: Request) {
       cliente: payload.cliente as Pedido["cliente"],
       itens,
       clienteId,
+      frete,
     });
     pedido = resultado.pedido;
     duplicado = resultado.duplicado;
@@ -105,6 +131,7 @@ export async function POST(request: Request) {
         id: pedido._id!.toString(),
         status: pedido.status,
         valorTotal: pedido.valorTotal,
+        frete: pedido.frete,
         itens: detalhes,
         cliente: pedido.cliente,
         criadoEm: pedido.criadoEm,

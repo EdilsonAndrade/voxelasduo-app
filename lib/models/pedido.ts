@@ -1,4 +1,5 @@
 import type { ObjectId } from "mongodb";
+import type { FretePedido } from "./frete";
 
 export const PEDIDOS_COLLECTION = "pedidos";
 
@@ -98,8 +99,10 @@ export interface Pedido {
   cliente: ClientePedido;
   status: StatusPedido;
   canalOrigem: CanalOrigem;
-  /** Valor total do pedido, em centavos. */
+  /** Valor total do pedido, em centavos — inclui `frete.valorCentavos` quando houver. */
   valorTotal: number;
+  /** Forma de entrega e frete cobrado (spec 039). Ausente em pedidos antigos e externos. */
+  frete?: FretePedido;
   pagamento: PagamentoPedido;
   /**
    * Token de idempotência gerado pelo checkout (uma compra = um token).

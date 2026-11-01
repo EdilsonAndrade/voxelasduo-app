@@ -1,3 +1,5 @@
+import { SERVICOS_FRETE, type ServicoFrete } from "@/lib/models/frete";
+
 export interface CheckoutItem {
   produtoId?: unknown;
   quantidade?: unknown;
@@ -20,6 +22,8 @@ export interface CheckoutPayload {
     };
   };
   itens?: unknown;
+  /** Forma de entrega escolhida e o valor exibido ao cliente (spec 039) — o preço é sempre recalculado no servidor. */
+  frete?: { servico?: unknown; valorCentavos?: unknown };
 }
 
 export type ErrosValidacao = Record<string, string>;
@@ -108,6 +112,18 @@ export function validarCheckout(payload: CheckoutPayload): ErrosValidacao {
         erros[`itens[${indice}].quantidade`] = "A quantidade deve ser um número inteiro maior que zero.";
       }
     });
+  }
+
+  const frete = payload.frete;
+  if (
+    typeof frete !== "object" ||
+    frete === null ||
+    !SERVICOS_FRETE.includes(frete.servico as ServicoFrete) ||
+    typeof frete.valorCentavos !== "number" ||
+    !Number.isInteger(frete.valorCentavos) ||
+    frete.valorCentavos < 0
+  ) {
+    erros.frete = "Escolha a forma de entrega.";
   }
 
   return erros;

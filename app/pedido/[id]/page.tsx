@@ -5,6 +5,7 @@ import ResumoPedido from "@/components/checkout/ResumoPedido";
 import LimparCarrinhoPago from "@/components/carrinho/LimparCarrinhoPago";
 import PagamentoBrick from "@/components/pagamento/PagamentoBrick";
 import { codigoPedido } from "@/lib/pedidos/numero";
+import { ROTULO_SERVICO_FRETE } from "@/lib/models/frete";
 import styles from "@/components/checkout/checkout.module.css";
 
 export default async function PedidoConfirmacaoPage({
@@ -49,6 +50,12 @@ export default async function PedidoConfirmacaoPage({
             itens={itens}
             totalCentavos={pedido.valorTotal}
             titulo="resumo do seu pedido"
+            frete={
+              pedido.frete
+                ? { rotulo: ROTULO_SERVICO_FRETE[pedido.frete.servico], valorCentavos: pedido.frete.valorCentavos }
+                : null
+            }
+            subtotalCentavos={pedido.frete ? pedido.valorTotal - pedido.frete.valorCentavos : undefined}
           />
           {!pago && (
             <PagamentoBrick pedidoId={id} valorTotalCentavos={pedido.valorTotal} />

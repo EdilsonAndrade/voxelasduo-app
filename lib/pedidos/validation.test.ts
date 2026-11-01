@@ -18,6 +18,7 @@ const payloadValido: CheckoutPayload = {
     },
   },
   itens: [{ produtoId: "665f1", quantidade: 2 }],
+  frete: { servico: "sedex", valorCentavos: 2550 },
 };
 
 describe("validarCheckout", () => {
@@ -115,5 +116,19 @@ describe("validarCheckout", () => {
     expect(validarCheckout({ ...payloadValido, idempotencia: "" })).toHaveProperty(
       "idempotencia"
     );
+  });
+
+  it("exige a forma de entrega", () => {
+    expect(validarCheckout({ ...payloadValido, frete: undefined })).toHaveProperty("frete");
+  });
+
+  it("rejeita serviço de frete desconhecido ou valor inválido", () => {
+    expect(validarCheckout({ ...payloadValido, frete: { servico: "motoboy", valorCentavos: 0 } })).toHaveProperty("frete");
+    expect(validarCheckout({ ...payloadValido, frete: { servico: "pac", valorCentavos: -1 } })).toHaveProperty("frete");
+    expect(validarCheckout({ ...payloadValido, frete: { servico: "pac", valorCentavos: 19.9 } })).toHaveProperty("frete");
+  });
+
+  it("aceita combinar com a loja com valor zero", () => {
+    expect(validarCheckout({ ...payloadValido, frete: { servico: "combinar", valorCentavos: 0 } })).toEqual({});
   });
 });

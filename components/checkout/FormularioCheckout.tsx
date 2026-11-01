@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { useCarrinho } from "@/components/carrinho/carrinho-context";
 import { buscarEnderecoPorCep } from "@/lib/cep/buscarEnderecoPorCep";
+import type { OpcaoFrete, ServicoFrete } from "@/lib/models/frete";
+import { formatarPreco } from "@/lib/produtos/formato";
 import styles from "./checkout.module.css";
 
 interface ItemSemEstoque {
@@ -15,13 +17,30 @@ interface RespostaErro {
   erro?: string;
   campos?: Record<string, string>;
   itens?: ItemSemEstoque[];
+  /** "frete_divergente" quando o valor do frete mudou desde que a página abriu (spec 039). */
+  codigo?: string;
+  opcoes?: OpcaoFrete[];
 }
 
 interface FormularioCheckoutProps {
   aoConcluir: (pedidoId: string) => void;
+  opcoesFrete: OpcaoFrete[];
+  freteSelecionado: OpcaoFrete | null;
+  erroOpcoesFrete: string | null;
+  aoEscolherFrete: (servico: ServicoFrete) => void;
+  aoAtualizarOpcoesFrete: (opcoes: OpcaoFrete[]) => void;
+  aoRecarregarOpcoesFrete: () => void;
 }
 
-export default function FormularioCheckout({ aoConcluir }: FormularioCheckoutProps) {
+export default function FormularioCheckout({
+  aoConcluir,
+  opcoesFrete,
+  freteSelecionado,
+  erroOpcoesFrete,
+  aoEscolherFrete,
+  aoAtualizarOpcoesFrete,
+  aoRecarregarOpcoesFrete,
+}: FormularioCheckoutProps) {
   const { itens } = useCarrinho();
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroEstoque, setErroEstoque] = useState<ItemSemEstoque[] | null>(null);
@@ -103,6 +122,9 @@ export default function FormularioCheckout({ aoConcluir }: FormularioCheckoutPro
           produtoId: item.produtoId,
           quantidade: item.quantidade,
         })),
+        frete: freteSelecionado
+          ? { servico: freteSelecionado.servico, valorCentavos: freteSelecionado.valorCentavos }
+          : undefined,
       }),
     });
 
@@ -116,6 +138,13 @@ export default function FormularioCheckout({ aoConcluir }: FormularioCheckoutPro
       return;
     }
 
+    if (resposta.status === 409 && dados.codigo === "frete_divergente") {
+      aoAtualizarOpcoesFrete(dados.opcoes ?? []);
+      setErroGeral(dados.erro ?? "O valor do frete mudou. Confira a nova opção antes de confirmar.");
+      setEnviando(false);
+      return;
+    }
+
     if (resposta.status === 409) {
       setErroEstoque(dados.itens ?? []);
       setEnviando(false);
@@ -124,7 +153,7 @@ export default function FormularioCheckout({ aoConcluir }: FormularioCheckoutPro
 
     if (!resposta.ok || !dados.pedido) {
       setErroGeral(
-        "Não conseguimos criar seu pedido agora. Verifique sua conexão e tente novamente — seu carrinho foi preservado."
+        `${dados.erro ?? "Não conseguimos criar seu pedido agora. Verifique sua conexão e tente novamente — seu carrinho foi preservado."} (status ${resposta.status})`
       );
       setEnviando(false);
       return;
@@ -324,6 +353,49 @@ export default function FormularioCheckout({ aoConcluir }: FormularioCheckoutPro
             )}
           </div>
         </div>
+      </section>
+
+      <section className={styles.secao}>
+        <p className={styles.secaoTitulo}>entrega</p>
+        {erroOpcoesFrete ? (
+          <>
+            <p className={styles.erroCampo} role="alert">
+              {erroOpcoesFrete}
+            </p>
+            <button type="button" className={styles.botaoTexto} onClick={aoRecarregarOpcoesFrete}>
+              tentar de novo
+            </button>
+          </>
+        ) : opcoesFrete.length === 0 ? (
+          <p className={styles.statusCampo}>carregando formas de entrega…</p>
+        ) : (
+          <fieldset className={styles.opcoesEntrega}>
+            <legend className={styles.rotulo}>
+              forma de entrega <span>*</span>
+            </legend>
+            {opcoesFrete.map((opcao) => (
+              <label key={opcao.servico} className={styles.opcaoEntrega}>
+                <input
+                  type="radio"
+                  name="frete"
+                  value={opcao.servico}
+                  checked={freteSelecionado?.servico === opcao.servico}
+                  onChange={() => aoEscolherFrete(opcao.servico)}
+                />
+                <span className={styles.opcaoEntregaNome}>{opcao.rotulo}</span>
+                <span className={styles.opcaoEntregaValor}>
+                  {opcao.valorCentavos === 0 ? "grátis" : formatarPreco(opcao.valorCentavos)}
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+        {freteSelecionado?.servico === "combinar" && (
+          <p className={styles.avisoEntrega}>
+            Sem custo de frete: depois da compra, a loja entra em contato para combinar a entrega ou a retirada.
+          </p>
+        )}
+        {erroDe("frete") && <p className={styles.erroCampo}>{erroDe("frete")}</p>}
       </section>
 
       <button type="submit" className={styles.submit} disabled={enviando}>

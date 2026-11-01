@@ -1,5 +1,7 @@
 import MargensParaRevisar, { type MargemParaRevisar } from "@/components/admin/MargensParaRevisar";
 import TaxasCanaisForm from "@/components/admin/TaxasCanaisForm";
+import FreteConfigForm from "@/components/admin/FreteConfigForm";
+import { buscarConfigFrete } from "@/lib/frete/repository";
 import styles from "@/components/admin/admin.module.css";
 import { sugerirMargemPreco } from "@/lib/configuracoes/migracaoMargens";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
@@ -13,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesTaxasPage() {
   // As taxas primeiro: a leitura delas é que migra as margens antigas para a revisão.
   const taxas = await buscarTaxasCanais();
-  const produtos = await listarMargensParaRevisar();
+  const [produtos, frete] = await Promise.all([listarMargensParaRevisar(), buscarConfigFrete()]);
 
   const margens: MargemParaRevisar[] = produtos.map((produto) => {
     const antigas = produto.margensParaRevisar!;
@@ -36,6 +38,7 @@ export default async function ConfiguracoesTaxasPage() {
         <h1>Taxas dos canais de venda</h1>
       </div>
       <TaxasCanaisForm valoresIniciais={taxas} />
+      <FreteConfigForm valoresIniciais={frete} />
       <MargensParaRevisar itens={margens} />
     </div>
   );

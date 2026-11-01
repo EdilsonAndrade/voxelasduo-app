@@ -120,6 +120,72 @@
   margin: 0;
 }
 
+.opcoesEntrega {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.opcaoEntrega {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 12px;
+  background: var(--creme);
+  padding: 0.75rem 0.9rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.opcaoEntrega:has(input:checked) {
+  border-color: var(--roxo);
+}
+
+.opcaoEntrega:has(input:focus-visible) {
+  outline: 3px solid var(--roxo);
+  outline-offset: 1px;
+}
+
+.opcaoEntrega input {
+  accent-color: var(--roxo);
+  margin: 0;
+}
+
+.opcaoEntregaNome {
+  flex: 1;
+  font-weight: 700;
+}
+
+.opcaoEntregaValor {
+  font-weight: 700;
+  color: var(--roxo);
+}
+
+.avisoEntrega {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--texto-soft);
+  margin: 0;
+}
+
+.botaoTexto {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--roxo);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .erroGeral {
   border: 2px dashed var(--rosa);
   border-radius: 14px;
@@ -200,6 +266,11 @@
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.resumoSubtotais {
+  border-top: 2px solid var(--surface-line);
+  padding-top: 0.9rem;
 }
 
 .resumoTotal {

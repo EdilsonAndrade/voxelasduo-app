@@ -6,6 +6,7 @@ import { Fragment, useEffect, useState } from "react";
 import { STATUS_PEDIDO, type CanalOrigem, type StatusPedido } from "@/lib/models/pedido";
 import type { PedidoDetalhado, PedidoResumo } from "@/lib/pedidos/apresentacao";
 import { formatarPreco } from "@/lib/produtos/formato";
+import { descreverFrete } from "@/lib/frete/apresentacao";
 import ConfirmModal from "./ConfirmModal";
 import FotoAmpliavel from "./FotoAmpliavel";
 import Toast from "./Toast";
@@ -403,6 +404,11 @@ export default function PedidosLista({
                             </address>
                           ) : (
                             <p className={styles.pedidoItensMais}>Endereço não informado pelo canal.</p>
+                          )}
+                          {detalhe.frete && (
+                            <p>
+                              Entrega: <strong>{descreverFrete(detalhe.frete)}</strong>
+                            </p>
                           )}
                         </section>
                       </div>

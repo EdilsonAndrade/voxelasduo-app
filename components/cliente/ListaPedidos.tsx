@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { PedidoDetalhado } from "@/lib/pedidos/apresentacao";
 import { formatarPreco } from "@/lib/produtos/formato";
+import { descreverFrete } from "@/lib/frete/apresentacao";
 import styles from "./cliente.module.css";
 
 const LABEL_STATUS: Record<PedidoDetalhado["status"], string> = {
@@ -84,6 +85,8 @@ export default function ListaPedidos({ pedidos }: { pedidos: PedidoDetalhado[] }
               </li>
             ))}
           </ul>
+
+          {pedido.frete && <p className={styles.rastreio}>Entrega: {descreverFrete(pedido.frete)}</p>}
 
           <div className={styles.pedidoRodape}>
             <span className={styles.pedidoValor}>{formatarPreco(pedido.valorTotal)}</span>

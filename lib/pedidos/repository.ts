@@ -9,6 +9,7 @@ import {
   type StatusPedido,
 } from "@/lib/models/pedido";
 import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
+import type { FretePedido } from "@/lib/models/frete";
 import { proximoNumeroPedido } from "./numero";
 import { ErroEstoque, validarEstoque } from "./estoque";
 
@@ -119,6 +120,8 @@ export interface CriarPedidoInput {
   itens: { produtoId: string; quantidade: number }[];
   /** Presente quando o checkout foi feito por um cliente autenticado (Tarefa 10/EDI-84). */
   clienteId?: ObjectId;
+  /** Frete já resolvido no servidor (spec 039) — somado ao `valorTotal`. */
+  frete?: FretePedido;
 }
 
 export interface ItemPedidoDetalhado {
@@ -176,10 +179,11 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
     });
   }
 
-  const valorTotal = itensDetalhados.reduce(
+  const subtotal = itensDetalhados.reduce(
     (acc, item) => acc + item.precoUnitario * item.quantidade,
     0
   );
+  const valorTotal = subtotal + (input.frete?.valorCentavos ?? 0);
 
   const agora = new Date();
   const pedido: Omit<Pedido, "_id"> = {
@@ -193,6 +197,7 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
     status: "pendente",
     canalOrigem: "site",
     valorTotal,
+    ...(input.frete ? { frete: input.frete } : {}),
     pagamento: { tentativas: [] },
     idempotencia: input.idempotencia,
     ...(input.clienteId ? { clienteId: input.clienteId } : {}),

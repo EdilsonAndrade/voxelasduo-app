@@ -10,6 +10,8 @@ export interface PedidoResumo {
   status: StatusPedido;
   cliente: { nome: string; email: string };
   valorTotal: number;
+  /** Forma de entrega e frete (spec 039) — ausente em pedidos antigos/externos. */
+  frete?: Pedido["frete"];
   criadoEm: Date;
   temItemSemCorrespondencia: boolean;
   rastreio?: Pedido["rastreio"];
@@ -41,6 +43,7 @@ export interface PedidoDetalhado {
   cliente: Pedido["cliente"];
   itens: ItemPedidoDetalhe[];
   valorTotal: number;
+  frete?: Pedido["frete"];
   pagamento: Pedido["pagamento"];
   origemExterna?: Pedido["origemExterna"];
   criadoEm: Date;
@@ -79,6 +82,7 @@ export function paraPedidoResumo(pedido: Pedido, produtos: Map<string, Produto>)
     status: pedido.status,
     cliente: { nome: pedido.cliente.nome, email: pedido.cliente.email },
     valorTotal: pedido.valorTotal,
+    frete: pedido.frete,
     criadoEm: pedido.criadoEm,
     temItemSemCorrespondencia,
     rastreio: pedido.rastreio,
@@ -100,6 +104,7 @@ export function paraPedidoDetalhado(
     cliente: pedido.cliente,
     itens: pedido.itens.map((item) => resolverItem(item, produtos)),
     valorTotal: pedido.valorTotal,
+    frete: pedido.frete,
     pagamento: pedido.pagamento,
     origemExterna: pedido.origemExterna,
     criadoEm: pedido.criadoEm,

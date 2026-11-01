@@ -21,6 +21,13 @@ vi.mock("@/lib/pedidos/repository", () => ({
 // (Tarefa 10/EDI-84 — `auth()` de clienteConfig.ts é lido opcionalmente no POST).
 vi.mock("@/lib/auth/clienteConfig", () => ({ auth }));
 
+vi.mock("@/lib/frete/repository", async () => {
+  const { calcularOpcoesFrete } = await import("@/lib/frete/calculo");
+  return {
+    opcoesFreteVigentes: async () => calcularOpcoesFrete({ config: { pacCentavos: 1990, sedexCentavos: 2550 } }),
+  };
+});
+
 const { GET, POST } = await import("./route");
 
 function pedido(overrides: Partial<Pedido> = {}): Pedido {
@@ -39,8 +46,11 @@ function pedido(overrides: Partial<Pedido> = {}): Pedido {
   };
 }
 
-function payloadCheckoutValido(overrides: Partial<{ produtoId: string; idempotencia: string }> = {}) {
+function payloadCheckoutValido(
+  overrides: Partial<{ produtoId: string; idempotencia: string; frete: { servico: string; valorCentavos: number } }> = {}
+) {
   return {
+    frete: overrides.frete ?? { servico: "sedex", valorCentavos: 2550 },
     idempotencia: overrides.idempotencia ?? "idem-1",
     cliente: {
       nome: "Ana",
@@ -152,5 +162,50 @@ describe("POST /api/pedidos", () => {
     );
     const chamada = criarPedido.mock.calls[0][0];
     expect(chamada.clienteId.toString()).toBe(clienteId.toString());
+  });
+
+  it("recusa com 400 quando a forma de entrega não foi escolhida", async () => {
+    const { frete, ...semFrete } = payloadCheckoutValido();
+    void frete;
+
+    const resposta = await POST(
+      new Request("http://localhost/api/pedidos", { method: "POST", body: JSON.stringify(semFrete) })
+    );
+    const corpo = await resposta.json();
+
+    expect(resposta.status).toBe(400);
+    expect(corpo.campos).toHaveProperty("frete");
+    expect(criarPedido).not.toHaveBeenCalled();
+  });
+
+  it("recusa com 409 frete_divergente quando o valor exibido não é o vigente", async () => {
+    const resposta = await POST(
+      new Request("http://localhost/api/pedidos", {
+        method: "POST",
+        body: JSON.stringify(payloadCheckoutValido({ frete: { servico: "sedex", valorCentavos: 100 } })),
+      })
+    );
+    const corpo = await resposta.json();
+
+    expect(resposta.status).toBe(409);
+    expect(corpo.codigo).toBe("frete_divergente");
+    expect(corpo.opcoes).toHaveLength(3);
+    expect(criarPedido).not.toHaveBeenCalled();
+  });
+
+  it("cria o pedido com o frete resolvido no servidor", async () => {
+    criarPedido.mockResolvedValue({ pedido: pedido(), duplicado: false, itensDetalhados: [] });
+
+    const resposta = await POST(
+      new Request("http://localhost/api/pedidos", {
+        method: "POST",
+        body: JSON.stringify(payloadCheckoutValido({ frete: { servico: "pac", valorCentavos: 1990 } })),
+      })
+    );
+
+    expect(resposta.status).toBe(201);
+    expect(criarPedido).toHaveBeenCalledWith(
+      expect.objectContaining({ frete: { servico: "pac", valorCentavos: 1990, origem: "fixo" } })
+    );
   });
 });

@@ -5,6 +5,7 @@ import { buscarProdutosPorIds } from "@/lib/pedidos/repository";
 import { codigoPedido } from "@/lib/pedidos/numero";
 import { renderEmailLayout } from "@/lib/email/templates";
 import { urlBaseSite } from "@/lib/site/url";
+import { descreverFrete } from "@/lib/frete/apresentacao";
 
 let clienteResend: Resend | undefined;
 
@@ -45,6 +46,15 @@ function escaparHtml(texto: string): string {
 }
 
 /** Avisos para a loja: ADMIN_NOTIFICACAO_EMAIL (se houver) + e-mail da loja, sem duplicar. */
+/** Linha "Entrega: SEDEX — R$ 25,50" dos e-mails do site (spec 039) — vazia em pedidos sem frete. */
+function linhasEntregaTexto(pedido: Pedido): string[] {
+  return pedido.frete ? [`Entrega: ${descreverFrete(pedido.frete)}`] : [];
+}
+
+function linhaEntregaHtml(pedido: Pedido): string {
+  return pedido.frete ? `<p style="margin:0;">Entrega: ${escaparHtml(descreverFrete(pedido.frete))}</p>` : "";
+}
+
 function destinatariosLoja(): string[] {
   return [...new Set([process.env.ADMIN_NOTIFICACAO_EMAIL?.trim(), EMAIL_LOJA])].filter(
     (email): email is string => Boolean(email)
@@ -188,7 +198,7 @@ export async function enviarConfirmacaoPedido(pedido: Pedido): Promise<void> {
   const valorTotalTexto = formatarValorEmReais(pedido.valorTotal);
   const subject = `Pedido confirmado — #${numeroPedido}`;
 
-  const text = `Recebemos o pagamento do seu pedido #${numeroPedido}!\n\nItens:\n${itensTexto}\n\nValor total: ${valorTotalTexto}\n\nObrigado por comprar na Voxelas Duo.`;
+  const text = `Recebemos o pagamento do seu pedido #${numeroPedido}!\n\nItens:\n${itensTexto}\n\n${linhasEntregaTexto(pedido).map((linha) => `${linha}\n`).join("")}Valor total: ${valorTotalTexto}\n\nObrigado por comprar na Voxelas Duo.`;
 
   const html = renderEmailLayout({
     titulo: "Pagamento confirmado!",
@@ -196,6 +206,7 @@ export async function enviarConfirmacaoPedido(pedido: Pedido): Promise<void> {
       <p>Recebemos o pagamento do seu pedido <strong>#${numeroPedido}</strong>!</p>
       <p style="margin:20px 0 8px;font-weight:700;">Itens</p>
       <ul style="margin:0 0 20px;padding-left:20px;">${itensHtml}</ul>
+      ${linhaEntregaHtml(pedido)}
       <p style="font-weight:700;">Valor total: ${valorTotalTexto}</p>
       <p>Obrigado por comprar na Voxelas Duo.</p>
     `,
@@ -253,6 +264,7 @@ export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
     "Itens:",
     ...itens.map((item) => `${item.quantidade}x ${item.nome} — ${item.subtotal}`),
     "",
+    ...linhasEntregaTexto(pedido),
     `Valor total: ${valorTotalTexto}`,
     `Pagamento: ${formaPagamento}`,
     "",
@@ -276,6 +288,7 @@ export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
       <ul style="margin:0 0 12px;padding-left:20px;">${itens
         .map((item) => `<li>${item.quantidade}x ${escaparHtml(item.nome)} — ${item.subtotal}</li>`)
         .join("")}</ul>
+      ${linhaEntregaHtml(pedido)}
       <p style="margin:0;font-weight:700;">Valor total: ${valorTotalTexto}</p>
       <p style="margin:0 0 16px;">Pagamento: ${escaparHtml(formaPagamento)}</p>
       <p style="margin:20px 0 8px;font-weight:700;">Comprador</p>
@@ -328,6 +341,7 @@ export async function enviarPedidoCriadoCliente(pedido: Pedido): Promise<void> {
     "Itens:",
     ...itens.map((item) => `${item.quantidade}x ${item.nome} — ${item.subtotal}`),
     "",
+    ...linhasEntregaTexto(pedido),
     `Valor total: ${valorTotalTexto}`,
     "",
     `Para pagar: ${linkPagamento}`,
@@ -341,6 +355,7 @@ export async function enviarPedidoCriadoCliente(pedido: Pedido): Promise<void> {
       <ul style="margin:0 0 12px;padding-left:20px;">${itens
         .map((item) => `<li>${item.quantidade}x ${escaparHtml(item.nome)} — ${item.subtotal}</li>`)
         .join("")}</ul>
+      ${linhaEntregaHtml(pedido)}
       <p style="font-weight:700;">Valor total: ${valorTotalTexto}</p>
       <p style="margin:20px 0 0;"><a href="${linkPagamento}">Pagar meu pedido</a></p>
     `,
@@ -384,6 +399,7 @@ export async function notificarAdminPedidoCriado(pedido: Pedido): Promise<void> 
     "Itens:",
     ...itens.map((item) => `${item.quantidade}x ${item.nome} — ${item.subtotal}`),
     "",
+    ...linhasEntregaTexto(pedido),
     `Valor total: ${valorTotalTexto}`,
     `Comprador: ${cliente.nome} — ${cliente.email} — ${telefone}`,
     "",
@@ -398,6 +414,7 @@ export async function notificarAdminPedidoCriado(pedido: Pedido): Promise<void> 
       <ul style="margin:0 0 12px;padding-left:20px;">${itens
         .map((item) => `<li>${item.quantidade}x ${escaparHtml(item.nome)} — ${item.subtotal}</li>`)
         .join("")}</ul>
+      ${linhaEntregaHtml(pedido)}
       <p style="margin:0 0 16px;font-weight:700;">Valor total: ${valorTotalTexto}</p>
       <p style="margin:0;">${escaparHtml(cliente.nome)}</p>
       <p style="margin:0;">E-mail: <a href="mailto:${escaparHtml(cliente.email)}">${escaparHtml(cliente.email)}</a></p>
