@@ -279,6 +279,16 @@
   color: var(--preto);
 }
 
+/* Rótulo de cada campo: some no desktop (o cabeçalho da tabela já diz), aparece no mobile. */
+.campo {
+  display: block;
+  min-width: 0;
+}
+
+.campoRotulo {
+  display: none;
+}
+
 .entradaNumero {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -482,12 +492,27 @@ a.botao {
     grid-column: 2 / 4;
   }
 
-  .linha > :nth-child(n + 3) {
-    grid-column: auto;
+  /* Campos em pares (Horas|Min, Qtd|Peso, Margem|Início), sempre nas colunas 2 e 3. */
+  .linha > :nth-child(2n + 3) {
+    grid-column: 2;
+  }
+
+  .linha > :nth-child(2n + 4) {
+    grid-column: 3;
   }
 
   .linha > :last-child {
     grid-column: 2 / 4;
+  }
+
+  .campoRotulo {
+    display: block;
+    margin-bottom: 0.15rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--texto-soft);
   }
 
   .acoesDireita {

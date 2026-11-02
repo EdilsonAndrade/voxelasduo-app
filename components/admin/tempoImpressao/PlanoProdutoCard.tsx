@@ -488,56 +488,74 @@ export default function PlanoProdutoCard({
               placeholder="Nome da parte ou produto inteiro"
               aria-label="Nome da parte"
             />
-            <input
-              className={`${styles.entrada} ${styles.entradaNumero}`}
-              value={linha.horas}
-              onChange={(e) => atualizar(linha.id, "horas", e.target.value)}
-              inputMode="numeric"
-              placeholder="0"
-              aria-label="Horas de impressão"
-            />
-            <input
-              className={`${styles.entrada} ${styles.entradaNumero}`}
-              value={linha.minutos}
-              onChange={(e) => atualizar(linha.id, "minutos", e.target.value)}
-              inputMode="numeric"
-              placeholder="0"
-              aria-label="Minutos de impressão"
-            />
-            <input
-              className={`${styles.entrada} ${styles.entradaNumero}`}
-              value={linha.quantidade}
-              onChange={(e) => atualizar(linha.id, "quantidade", e.target.value)}
-              inputMode="numeric"
-              placeholder="1"
-              aria-label="Peças nesta placa"
-              title="Quantas peças saem nesta impressão"
-            />
-            <input
-              className={`${styles.entrada} ${styles.entradaNumero}`}
-              value={linha.peso}
-              onChange={(e) => atualizar(linha.id, "peso", e.target.value)}
-              inputMode="decimal"
-              placeholder="0"
-              aria-label="Peso da placa em gramas"
-              title="Peso da impressão toda, como o fatiador mostra"
-            />
-            <input
-              className={`${styles.entrada} ${styles.entradaNumero}`}
-              value={linha.margem}
-              onChange={(e) => atualizar(linha.id, "margem", e.target.value)}
-              inputMode="decimal"
-              placeholder="0"
-              aria-label="Margem de ganho sobre o custo, em %"
-              title="Quanto você quer ganhar, em % sobre o custo de uma peça"
-            />
-            <input
-              type="time"
-              className={styles.entrada}
-              value={linha.inicio}
-              onChange={(e) => atualizar(linha.id, "inicio", e.target.value)}
-              aria-label="Horário de início"
-            />
+            <label className={styles.campo}>
+              <span className={styles.campoRotulo} aria-hidden="true">Horas</span>
+              <input
+                className={`${styles.entrada} ${styles.entradaNumero}`}
+                value={linha.horas}
+                onChange={(e) => atualizar(linha.id, "horas", e.target.value)}
+                inputMode="numeric"
+                placeholder="0"
+                aria-label="Horas de impressão"
+              />
+            </label>
+            <label className={styles.campo}>
+              <span className={styles.campoRotulo} aria-hidden="true">Min</span>
+              <input
+                className={`${styles.entrada} ${styles.entradaNumero}`}
+                value={linha.minutos}
+                onChange={(e) => atualizar(linha.id, "minutos", e.target.value)}
+                inputMode="numeric"
+                placeholder="0"
+                aria-label="Minutos de impressão"
+              />
+            </label>
+            <label className={styles.campo}>
+              <span className={styles.campoRotulo} aria-hidden="true">Qtd</span>
+              <input
+                className={`${styles.entrada} ${styles.entradaNumero}`}
+                value={linha.quantidade}
+                onChange={(e) => atualizar(linha.id, "quantidade", e.target.value)}
+                inputMode="numeric"
+                placeholder="1"
+                aria-label="Peças nesta placa"
+                title="Quantas peças saem nesta impressão"
+              />
+            </label>
+            <label className={styles.campo}>
+              <span className={styles.campoRotulo} aria-hidden="true">Peso (g)</span>
+              <input
+                className={`${styles.entrada} ${styles.entradaNumero}`}
+                value={linha.peso}
+                onChange={(e) => atualizar(linha.id, "peso", e.target.value)}
+                inputMode="decimal"
+                placeholder="0"
+                aria-label="Peso da placa em gramas"
+                title="Peso da impressão toda, como o fatiador mostra"
+              />
+            </label>
+            <label className={styles.campo}>
+              <span className={styles.campoRotulo} aria-hidden="true">Margem %</span>
+              <input
+                className={`${styles.entrada} ${styles.entradaNumero}`}
+                value={linha.margem}
+                onChange={(e) => atualizar(linha.id, "margem", e.target.value)}
+                inputMode="decimal"
+                placeholder="0"
+                aria-label="Margem de ganho sobre o custo, em %"
+                title="Quanto você quer ganhar, em % sobre o custo de uma peça"
+              />
+            </label>
+            <label className={styles.campo}>
+              <span className={styles.campoRotulo} aria-hidden="true">Início</span>
+              <input
+                type="time"
+                className={styles.entrada}
+                value={linha.inicio}
+                onChange={(e) => atualizar(linha.id, "inicio", e.target.value)}
+                aria-label="Horário de início"
+              />
+            </label>
             <span className={styles.termino}>{textoTermino(linha.inicio, minutosDaLinha(linha))}</span>
           </div>
           {ganho && (
