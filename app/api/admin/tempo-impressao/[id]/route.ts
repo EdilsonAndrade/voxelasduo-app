@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validarItens, validarNomeAvulso } from "@/lib/producao/planosImpressao";
+import { validarAnuncioDoPlano, validarItens, validarNomeAvulso } from "@/lib/producao/planosImpressao";
 import {
   atualizarPlano,
   buscarPlano,
@@ -18,6 +18,8 @@ export async function PUT(request: Request, { params }: Contexto) {
   const corpo = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const { itens, erro } = validarItens(corpo?.itens);
   if (!itens) return NextResponse.json({ erro }, { status: 400 });
+  const { anuncio, erro: erroAnuncio } = validarAnuncioDoPlano(corpo?.anuncio);
+  if (erroAnuncio) return NextResponse.json({ erro: erroAnuncio }, { status: 400 });
 
   const atual = await buscarPlano(id);
   if (!atual) return NextResponse.json({ erro: NAO_ENCONTRADO }, { status: 404 });
@@ -29,7 +31,7 @@ export async function PUT(request: Request, { params }: Contexto) {
     nome = validado.nome;
   }
 
-  const plano = await atualizarPlano(id, { itens, ...(nome ? { nome } : {}) });
+  const plano = await atualizarPlano(id, { itens, ...(nome ? { nome } : {}), ...(anuncio !== undefined ? { anuncio } : {}) });
   if (!plano) return NextResponse.json({ erro: NAO_ENCONTRADO }, { status: 404 });
   return NextResponse.json({ plano });
 }

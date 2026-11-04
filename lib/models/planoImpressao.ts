@@ -1,4 +1,5 @@
 import type { ObjectId } from "mongodb";
+import type { AnuncioPago } from "@/lib/models/produto";
 
 export const PLANOS_IMPRESSAO_COLLECTION = "planosImpressao";
 
@@ -13,7 +14,7 @@ export interface ItemImpressao {
   quantidade?: number;
   /** Peso da placa inteira em gramas, como o fatiador mostra; ausente = ainda sem peso. */
   pesoGramas?: number;
-  /** Ganho desejado em % sobre o custo de uma peça; ausente = ainda sem margem. */
+  /** Lucro desejado em % do preço de venda (margem líquida, EDI-137); ausente = usa o piso da loja. */
   margemPercentual?: number;
   /** "HH:MM" planejado para mandar para a impressora; ausente = ainda sem horário. */
   inicio?: string;
@@ -33,6 +34,8 @@ export interface PlanoImpressao {
   /** Nome do item avulso — ignorado quando há `produtoId` (vale o nome do produto). */
   nome?: string;
   itens: ItemImpressao[];
+  /** Anúncio pago na Shopee (EDI-137) — ausente = desligado. */
+  anuncio?: AnuncioPago;
   criadoEm: Date;
   atualizadoEm: Date;
 }

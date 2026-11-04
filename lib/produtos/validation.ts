@@ -1,3 +1,4 @@
+import { validarAnuncioPago } from "./anuncioPago";
 import { LIMITE_DESCRICAO_META, LIMITE_TITULO_META } from "@/lib/models/produto";
 
 export interface ProdutoPayload {
@@ -160,6 +161,11 @@ function validarTaxasCanais(valor: unknown): string | undefined {
     if (!numeroFinito(taxas.siteTaxaFixaCentavos) || taxas.siteTaxaFixaCentavos < 0) {
       return 'A taxa fixa do site próprio não pode ser negativa.';
     }
+  }
+
+  if (taxas.anuncio !== undefined) {
+    const erro = validarAnuncioPago(taxas.anuncio);
+    if (erro) return erro;
   }
 
   // Margens são % do preço de venda (lucro ÷ preço) — sempre menores que 100%.

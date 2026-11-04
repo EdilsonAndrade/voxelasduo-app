@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calcularComparativoCanais,
+  comAnuncio,
   calcularPrecoEscalaCanal,
   calcularPrecoMinimoCanal,
   calcularPrecoPorMarkupCanal,
@@ -10,6 +11,7 @@ import {
   resolverTaxasCanais,
   comissaoCanal,
   taxaNoPreco,
+  type TaxaCanal,
 } from "./canais";
 import { calcularPrecoEscala, calcularPrecoSugerido } from "./precificacao";
 import { TAXAS_CANAIS_PADRAO } from "@/lib/models/configuracao";
@@ -218,5 +220,25 @@ describe("Shopee por faixa (pedido real: R$ 35 → taxas R$ 11,50, repasse R$ 23
     const preco = calcularPrecoSugeridoCanal(6000, 0, shopee)!;
     expect(preco).toBe(Math.max(8000, Math.round((6000 + 1600) / 0.86)));
     expect(calcularResultadoCanal("shopee", shopee, preco, 6000, 0).taxa).toMatchObject({ percentual: 14, fixaCentavos: 1600 });
+  });
+});
+
+describe("anúncio pago (EDI-137)", () => {
+  const taxa: TaxaCanal = { percentual: 14, fixaCentavos: 2000 };
+
+  it("com anúncio, o lucro ao preço sugerido continua sendo a margem do preço", () => {
+    const comAds = comAnuncio(taxa, 12.5);
+    const preco = calcularPrecoSugeridoCanal(5846, 25, comAds)!;
+    const r = calcularResultadoCanal("shopee", comAds, preco, 5846, 25);
+    expect(r.anuncioCentavos).toBe(Math.round(preco * 0.125));
+    expect(r.margemPercentual!).toBeGreaterThanOrEqual(25);
+    expect(r.margemPercentual!).toBeLessThan(25.1);
+  });
+
+  it("sem anúncio, nada muda", () => {
+    expect(comAnuncio(taxa, 0)).toBe(taxa);
+    const preco = calcularPrecoSugeridoCanal(5846, 25, taxa)!;
+    expect(preco).toBe(12863);
+    expect(calcularResultadoCanal("shopee", taxa, preco, 5846, 25).anuncioCentavos).toBe(0);
   });
 });

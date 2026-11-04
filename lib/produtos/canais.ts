@@ -1,5 +1,6 @@
 import type { TaxasCanaisConfig } from "@/lib/models/configuracao";
 import type { TaxasCanaisProduto } from "@/lib/models/produto";
+import { percentualDoAnuncio } from "./anuncioPago";
 import { FAIXAS_SHOPEE_2026, faixaDoPreco, type FaixaTaxa } from "./calculadoraRapida";
 
 /**
@@ -11,13 +12,25 @@ export interface TaxaCanal {
   percentual: number;
   fixaCentavos: number;
   faixas?: FaixaTaxa[];
+  /** % do preço reservado para anúncio pago (100 ÷ ROAS) — ausente = sem anúncio (EDI-137). */
+  anuncioPercentual?: number;
+}
+
+/** A mesma taxa com o anúncio pago reservado no preço (0 = sem anúncio). */
+export function comAnuncio(taxa: TaxaCanal, anuncioPercentual: number): TaxaCanal {
+  return anuncioPercentual > 0 ? { ...taxa, anuncioPercentual } : taxa;
+}
+
+/** Quanto do preço vai para o anúncio pago. */
+export function anuncioCanal(taxa: TaxaCanal, precoCentavos: number): number {
+  return taxa.anuncioPercentual ? Math.round((precoCentavos * taxa.anuncioPercentual) / 100) : 0;
 }
 
 /** Percentual e taxa fixa que o canal cobra num preço (a faixa do preço, quando há faixas). */
 export function taxaNoPreco(taxa: TaxaCanal, precoCentavos: number): TaxaCanal {
   if (!taxa.faixas?.length) return taxa;
   const faixa = faixaDoPreco(taxa.faixas, precoCentavos);
-  return { percentual: faixa.percentual, fixaCentavos: faixa.fixaCentavos, faixas: taxa.faixas };
+  return { ...taxa, percentual: faixa.percentual, fixaCentavos: faixa.fixaCentavos };
 }
 
 /** Quanto o canal desconta da venda num preço: percentual + taxa fixa. */
@@ -47,9 +60,10 @@ function taxaShopee(percentualProduto?: number): TaxaCanal {
 function precoPorTaxa(baseCentavos: number, taxa: TaxaCanal, margemPrecoPercentual = 0): number | null {
   const faixas = taxa.faixas?.length ? taxa.faixas : [{ ateCentavos: null, percentual: taxa.percentual, fixaCentavos: taxa.fixaCentavos }];
   const arredondar = margemPrecoPercentual > 0 ? Math.ceil : Math.round;
+  const anuncio = taxa.anuncioPercentual ?? 0;
   let pisoCentavos = 0;
   for (const faixa of faixas) {
-    const divisor = 1 - (faixa.percentual + margemPrecoPercentual) / 100;
+    const divisor = 1 - (faixa.percentual + anuncio + margemPrecoPercentual) / 100;
     if (divisor > 0) {
       const preco = Math.max(arredondar((baseCentavos + faixa.fixaCentavos) / divisor), pisoCentavos);
       if (faixa.ateCentavos === null || preco <= faixa.ateCentavos) return preco;
@@ -76,6 +90,8 @@ export interface ResultadoCanal {
   precoSugeridoCentavos: number | null;
   /** Taxa percentual + fixa cobrada no preço sugerido, em centavos. */
   comissaoCentavos: number | null;
+  /** Anúncio pago reservado no preço sugerido (0 = sem anúncio). */
+  anuncioCentavos: number | null;
   lucroLiquidoCentavos: number | null;
   /** Lucro em % do preço de venda (a régua do piso e da margem desejada). */
   margemPercentual: number | null;
@@ -92,7 +108,8 @@ export function resolverTaxasCanais(
 ): TaxasCanaisEfetivas {
   return {
     // O percentual global da Shopee não entra mais: só a tabela por faixa ou o % do próprio produto.
-    shopee: taxaShopee(override?.shopeeTaxaPercentual),
+    // Anúncio pago só nos marketplaces; o site próprio fica sem (EDI-137).
+    shopee: comAnuncio(taxaShopee(override?.shopeeTaxaPercentual), percentualDoAnuncio(override?.anuncio)),
     siteProprio: {
       percentual: override?.siteTaxaPercentual ?? global.siteTaxaPercentual,
       fixaCentavos: override?.siteTaxaFixaCentavos ?? global.siteTaxaFixaCentavos,
@@ -157,6 +174,7 @@ export function calcularResultadoCanal(
       taxa,
       precoSugeridoCentavos: null,
       comissaoCentavos: null,
+      anuncioCentavos: null,
       lucroLiquidoCentavos: null,
       margemPercentual: null,
       markupPercentual: null,
@@ -166,7 +184,8 @@ export function calcularResultadoCanal(
   }
 
   const comissaoCentavos = comissaoCanal(taxa, precoSugeridoCentavos);
-  const lucroLiquidoCentavos = precoSugeridoCentavos - custoCentavos - comissaoCentavos;
+  const anuncioCentavos = anuncioCanal(taxa, precoSugeridoCentavos);
+  const lucroLiquidoCentavos = precoSugeridoCentavos - custoCentavos - comissaoCentavos - anuncioCentavos;
   const margemPercentual = precoSugeridoCentavos > 0 ? (lucroLiquidoCentavos / precoSugeridoCentavos) * 100 : 0;
   const markupPercentual = custoCentavos > 0 ? (lucroLiquidoCentavos / custoCentavos) * 100 : null;
 
@@ -176,6 +195,7 @@ export function calcularResultadoCanal(
     taxa: taxaNoPreco(taxa, precoSugeridoCentavos),
     precoSugeridoCentavos,
     comissaoCentavos,
+    anuncioCentavos,
     lucroLiquidoCentavos,
     margemPercentual,
     markupPercentual,

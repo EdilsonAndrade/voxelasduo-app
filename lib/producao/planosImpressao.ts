@@ -1,4 +1,6 @@
 import type { ItemImpressao } from "@/lib/models/planoImpressao";
+import type { AnuncioPago } from "@/lib/models/produto";
+import { validarAnuncioPago } from "@/lib/produtos/anuncioPago";
 
 export const MAX_ITENS_PLANO = 50;
 export const MAX_NOME_ITEM = 120;
@@ -7,7 +9,6 @@ export const MAX_MINUTOS_ITEM = 14 * 24 * 60;
 export const MAX_QUANTIDADE_ITEM = 999;
 /** 50 kg por placa — acima disso é erro de digitação. */
 export const MAX_PESO_ITEM = 50_000;
-export const MAX_MARGEM_ITEM = 1000;
 
 const HORARIO = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -87,9 +88,9 @@ export function validarItens(payload: unknown): { itens?: ItemImpressao[]; erro?
       (typeof margemPercentual !== "number" ||
         !Number.isFinite(margemPercentual) ||
         margemPercentual < 0 ||
-        margemPercentual > MAX_MARGEM_ITEM)
+        margemPercentual >= 100)
     ) {
-      return { erro: `${linha} (${nome}): margem inválida (0 a ${MAX_MARGEM_ITEM}% sobre o custo).` };
+      return { erro: `${linha} (${nome}): margem inválida (0 a 99,9% do preço).` };
     }
 
     const inicio = typeof item.inicio === "string" ? item.inicio.trim() : "";
@@ -109,6 +110,18 @@ export function validarItens(payload: unknown): { itens?: ItemImpressao[]; erro?
   }
 
   return { itens };
+}
+
+/**
+ * `anuncio` do corpo: ausente = não mexe no gravado; `null` = remove; objeto = valida.
+ */
+export function validarAnuncioDoPlano(valor: unknown): { anuncio?: AnuncioPago | null; erro?: string } {
+  if (valor === undefined) return {};
+  if (valor === null) return { anuncio: null };
+  const erro = validarAnuncioPago(valor);
+  if (erro) return { erro };
+  const { ativo, roasMeta } = valor as AnuncioPago;
+  return { anuncio: { ativo, roasMeta } };
 }
 
 /**

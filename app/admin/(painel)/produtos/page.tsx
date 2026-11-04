@@ -6,7 +6,7 @@ import { listarCarrosseis } from "@/lib/home/repository";
 import { listarProdutos } from "@/lib/produtos/repository";
 import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import { listarCalculosPreco } from "@/lib/produtos/calculosPreco";
-import { comissaoCanal, resolverTaxasCanais } from "@/lib/produtos/canais";
+import { anuncioCanal, comissaoCanal, resolverTaxasCanais } from "@/lib/produtos/canais";
 import { calcularVerbaDesconto } from "@/lib/produtos/verbaDesconto";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
 import styles from "@/components/admin/admin.module.css";
@@ -63,7 +63,7 @@ export default async function AdminProdutosPage({
             precoCentavos: produto.precosCanais?.shopee ?? produto.preco,
             pisoPercentual: produto.taxasCanais?.margemMinimaPercentual ?? taxas.margemMinimaPercentual,
             cupomLoja: { percentual: taxas.cupomLojaPercentual, tetoCentavos: taxas.cupomLojaTetoCentavos },
-            lucroEm: (preco) => preco - comissaoCanal(shopee, preco) - custoValido,
+            lucroEm: (preco) => preco - comissaoCanal(shopee, preco) - anuncioCanal(shopee, preco) - custoValido,
           }).estado
         : null;
     return {

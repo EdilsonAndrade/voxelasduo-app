@@ -294,6 +294,13 @@ describe("validarProduto", () => {
       ).toEqual({});
     });
 
+    it("valida o anúncio pago em taxasCanais (EDI-137)", () => {
+      expect(validarProduto({ ...payloadValido, taxasCanais: { anuncio: { ativo: true, roasMeta: 8 } } })).toEqual({});
+      expect(validarProduto({ ...payloadValido, taxasCanais: { anuncio: { ativo: true, roasMeta: 0 } } })).toEqual({
+        taxasCanais: "Anúncio pago: ROAS meta inválido (maior que 0 e até 100).",
+      });
+    });
+
     it("rejeita taxasCanais com percentual fora do intervalo ou taxa fixa negativa", () => {
       expect(validarProduto({ ...payloadValido, taxasCanais: { shopeeTaxaPercentual: 100 } })).toHaveProperty("taxasCanais");
       expect(validarProduto({ ...payloadValido, taxasCanais: { siteTaxaPercentual: -1 } })).toHaveProperty("taxasCanais");

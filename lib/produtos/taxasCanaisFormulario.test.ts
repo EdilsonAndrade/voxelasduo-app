@@ -51,6 +51,8 @@ describe("taxasCanaisFormulario", () => {
       siteTaxaFixaReais: "0.50",
       margemMinimaPercentual: "25",
       margemDesejadaPercentual: "40",
+      anuncioAtivo: false,
+      anuncioRoasMeta: "8",
     });
     expect(montarTaxasCanaisProduto(form)).toEqual(salvo);
   });
@@ -63,6 +65,7 @@ describe("taxasCanaisFormulario", () => {
     expect(camposTaxasCanaisInvalidos(VAZIO_TAXAS_CANAIS)).toEqual([]);
     expect(
       camposTaxasCanaisInvalidos({
+        ...VAZIO_TAXAS_CANAIS,
         shopeeTaxaPercentual: "100",
         siteTaxaPercentual: "-1",
         siteTaxaFixaReais: "abc",
@@ -96,6 +99,35 @@ describe("taxasCanaisFormulario", () => {
       siteTaxaFixaReais: "0.00",
       margemMinimaPercentual: "25",
       margemDesejadaPercentual: "40",
+      anuncioAtivo: false,
+      anuncioRoasMeta: "8",
+    });
+  });
+});
+
+describe("anúncio pago no formulário (EDI-137)", () => {
+  it("desligado com ROAS padrão não grava nada", () => {
+    expect(montarTaxasCanaisProduto(VAZIO_TAXAS_CANAIS)).not.toHaveProperty("anuncio");
+  });
+
+  it("ligado grava ativo e ROAS; desligado guarda o ROAS digitado", () => {
+    expect(montarTaxasCanaisProduto({ ...VAZIO_TAXAS_CANAIS, anuncioAtivo: true, anuncioRoasMeta: "6,5" }).anuncio).toEqual({
+      ativo: true,
+      roasMeta: 6.5,
+    });
+    expect(montarTaxasCanaisProduto({ ...VAZIO_TAXAS_CANAIS, anuncioRoasMeta: "5" }).anuncio).toEqual({ ativo: false, roasMeta: 5 });
+  });
+
+  it("ligado com ROAS inválido aparece nos campos inválidos", () => {
+    expect(camposTaxasCanaisInvalidos({ ...VAZIO_TAXAS_CANAIS, anuncioAtivo: true, anuncioRoasMeta: "0" })).toEqual([
+      "ROAS meta do anúncio pago (maior que 0 e até 100)",
+    ]);
+  });
+
+  it("volta para o formulário como estava", () => {
+    expect(taxasCanaisParaFormulario({ anuncio: { ativo: true, roasMeta: 8 } })).toMatchObject({
+      anuncioAtivo: true,
+      anuncioRoasMeta: "8",
     });
   });
 });

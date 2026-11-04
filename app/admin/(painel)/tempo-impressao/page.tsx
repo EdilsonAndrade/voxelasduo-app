@@ -33,6 +33,7 @@ export default async function TempoImpressaoPage({ searchParams }: { searchParam
         produtoNome: plano.produtoNome,
         linkModelo3d: plano.linkModelo3d,
         itens: plano.itens,
+        ...(plano.anuncio ? { anuncio: { ativo: plano.anuncio.ativo, roasMeta: plano.anuncio.roasMeta } } : {}),
       }))}
       produtos={produtos
         .map((p) => ({ id: p._id!.toString(), nome: p.nome, linkModelo3d: p.linkModelo3d }))

@@ -6,7 +6,9 @@ import VerbaDesconto from "./VerbaDesconto";
 import type { ComissaoMercadoLivre } from "@/lib/produtos/precificacao";
 import { calcularPrecoEscala, calcularPrecoSugerido, calcularSimulacaoPrecificacao } from "@/lib/produtos/precificacao";
 import {
+  anuncioCanal,
   calcularComparativoCanais,
+  comAnuncio,
   comissaoCanal,
   calcularPrecoMinimoCanal,
   calcularResultadoPisoCanal,
@@ -70,6 +72,8 @@ export interface SimuladorPrecificacaoProps {
   margemMinimaPercentual: number;
   /** Margem de lucro desejada efetiva, em % do preço (padrão global com override do produto já aplicado) — usada pro "preço sugerido". */
   margemDesejadaPercentual: number;
+  /** % do preço reservado para anúncio pago nos marketplaces (0 = desligado, EDI-137). A Shopee já vem em `taxasCanais`; aqui entra no Mercado Livre. */
+  anuncioPercentual?: number;
   /** Cupom de loja global da Shopee — sai primeiro da verba de desconto do card da Shopee (spec 034). */
   cupomLoja: CupomLoja | null;
   /** Preço de venda próprio de ML/Shopee, em centavos — ausente num canal = usa `precoVendaReais` (o preço do site) também nesse canal (EDI-108). */
@@ -99,6 +103,7 @@ export default function SimuladorPrecificacao({
   taxasCanais,
   margemMinimaPercentual,
   margemDesejadaPercentual,
+  anuncioPercentual = 0,
   cupomLoja,
   precosCanaisCentavos,
   onAplicarPrecoSugerido,
@@ -226,7 +231,7 @@ export default function SimuladorPrecificacao({
           margemDesejadaPercentual,
           lucroEscalaCentavos: lucroEscalaValido ? paraCentavos(lucroEscalaNumero) : 0,
           margemMinimaPercentual,
-          mercadoLivre: { percentual: taxaValida ? taxaEstimadaNumero : 0, fixaCentavos: 0 },
+          mercadoLivre: comAnuncio({ percentual: taxaValida ? taxaEstimadaNumero : 0, fixaCentavos: 0 }, anuncioPercentual),
           shopee: taxasCanais.shopee,
           siteProprio: taxasCanais.siteProprio,
         })
@@ -389,10 +394,18 @@ export default function SimuladorPrecificacao({
                             − Taxa {NOME_CANAL[resultado.canal]} ({descreverTaxa(resultado.taxa)}):{" "}
                             {formatarReais(resultado.comissaoCentavos ?? 0)}
                           </span>
+                          {(resultado.anuncioCentavos ?? 0) > 0 && (
+                            <span className={styles.mlLinkAviso}>
+                              − Anúncio pago ({(resultado.taxa.anuncioPercentual ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% do preço):{" "}
+                              {formatarReais(resultado.anuncioCentavos ?? 0)}
+                            </span>
+                          )}
                           <span>
                             <strong>
                               = Você recebe: {formatarReais(
-                                resultado.precoSugeridoCentavos - (resultado.comissaoCentavos ?? 0)
+                                resultado.precoSugeridoCentavos -
+                                  (resultado.comissaoCentavos ?? 0) -
+                                  (resultado.anuncioCentavos ?? 0)
                               )}
                             </strong>
                           </span>
@@ -400,6 +413,7 @@ export default function SimuladorPrecificacao({
                             − Custo do produto: {formatarReais(
                               resultado.precoSugeridoCentavos -
                                 (resultado.comissaoCentavos ?? 0) -
+                                (resultado.anuncioCentavos ?? 0) -
                                 (resultado.lucroLiquidoCentavos ?? 0)
                             )}
                           </span>
@@ -449,7 +463,9 @@ export default function SimuladorPrecificacao({
                             const custo = custoBaseCentavos!;
                             // Piso em % do preço: o lucro mínimo é uma fatia do preço atual do canal.
                             const lucroMinimo = Math.round((precoAtualDoCanal * margemMinimaPercentual) / 100);
-                            const comissaoEm = (preco: number) => comissaoCanal(resultado.taxa, preco);
+                            // O anúncio pago também sai do que você recebe em cada preço.
+                            const comissaoEm = (preco: number) =>
+                              comissaoCanal(resultado.taxa, preco) + anuncioCanal(resultado.taxa, preco);
                             // O custo extra (frete grátis etc.) sai do repasse, então soma ao custo do piso.
                             const precoMinimoCom = (extra: number) =>
                               calcularPrecoMinimoCanal(custo + extra, resultado.taxa, margemMinimaPercentual);

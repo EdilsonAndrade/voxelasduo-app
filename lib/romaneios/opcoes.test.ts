@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ganhoDaPlaca, ganhoDoConjunto } from "@/lib/producao/ganhoImpressao";
 import { opcoesDeBusca, precoVendaDiretaDoPlano } from "./opcoes";
 
-const parteA = { id: "a", nome: "Corpo", minutos: 120, quantidade: 1, pesoGramas: 40, margemPercentual: 100 };
-const parteB = { id: "b", nome: "Cabeça", minutos: 60, quantidade: 2, pesoGramas: 30, margemPercentual: 100 };
+const parteA = { id: "a", nome: "Corpo", minutos: 120, quantidade: 1, pesoGramas: 40, margemPercentual: 40 };
+const parteB = { id: "b", nome: "Cabeça", minutos: 60, quantidade: 2, pesoGramas: 30, margemPercentual: 40 };
 
 describe("precoVendaDiretaDoPlano", () => {
   it("uma parte usa a placa; várias usam o conjunto, como a tela", () => {

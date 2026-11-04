@@ -6,6 +6,7 @@ import VerbaDesconto from "@/components/admin/VerbaDesconto";
 import { terminoPrevisto } from "@/lib/producao/agenda";
 import { ganhoDaPlaca, ganhoDoConjunto, lucroNoPreco, type Ganho, type PlacaGanho } from "@/lib/producao/ganhoImpressao";
 import { calcularVerbaDesconto, type CupomLoja } from "@/lib/produtos/verbaDesconto";
+import { ROAS_MAXIMO, ROAS_PADRAO, percentualDoAnuncio } from "@/lib/produtos/anuncioPago";
 import { minutosEmHoras, quantidadeDoItem } from "@/lib/producao/planosImpressao";
 import styles from "./tempoImpressao.module.css";
 
@@ -37,6 +38,8 @@ export interface PlanoProduto {
   /** Link do modelo 3D de origem (MakerWorld, Drive…) — o nome do produto leva até ele. */
   linkModelo3d?: string;
   itens: ItemPlano[];
+  /** Anúncio pago na Shopee — ausente = desligado. */
+  anuncio?: { ativo: boolean; roasMeta: number };
   /** Ainda não gravado: o primeiro "Salvar" cria o plano (POST). */
   novo?: boolean;
 }
@@ -50,7 +53,7 @@ interface Linha {
   quantidade: string;
   /** Peso da placa inteira (g), como o fatiador mostra. */
   peso: string;
-  /** Ganho em % sobre o custo de uma peça. */
+  /** Lucro em % do preço de venda; vazio = piso da loja. */
   margem: string;
   inicio: string;
 }
@@ -91,13 +94,19 @@ function numeroOpcional(texto: string): number | string | null {
   return Number.isFinite(n) ? n : texto;
 }
 
-function placaDaLinha(linha: Linha): PlacaGanho {
+/** Margem vazia = piso de lucro da loja (a meta mínima, 25% por padrão). */
+function placaDaLinha(linha: Linha, margemPadrao: number): PlacaGanho {
+  const margem = linha.margem.trim().replace(",", ".");
   return {
     minutos: minutosDaLinha(linha),
     quantidade: Number(linha.quantidade),
     pesoGramas: Number(linha.peso.trim().replace(",", ".") || NaN),
-    margemPercentual: Number(linha.margem.trim().replace(",", ".") || NaN),
+    margemPercentual: margem === "" ? margemPadrao : Number(margem),
   };
+}
+
+function percentual(valor: number): string {
+  return `${valor.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
 }
 
 function reais(centavos: number): string {
@@ -138,6 +147,7 @@ function ResumoGanho({
     ["Shopee", shopee],
     ["Venda direta", ganho.canais.direta],
   ] as const;
+  const abaixoDoPiso = ganho.margemPercentual < regua.pisoPercentual - 0.005;
 
   return (
     <div className={styles.ganho}>
@@ -151,13 +161,20 @@ function ResumoGanho({
           {canal && canal.precoCentavos !== null && canal.lucroCentavos !== null ? (
             <>
               <strong className={styles.totalValor}>{reais(canal.precoCentavos)}</strong> · você ganha{" "}
-              <strong className={styles.ganhoLucro}>{reais(canal.lucroCentavos)}</strong>
+              <strong className={styles.ganhoLucro}>{reais(canal.lucroCentavos)}</strong> (
+              {percentual((canal.lucroCentavos / canal.precoCentavos) * 100)})
+              {canal.anuncioCentavos !== null && canal.anuncioCentavos > 0 && <> · anúncio {reais(canal.anuncioCentavos)}</>}
             </>
           ) : (
-            "sem preço possível"
+            "sem preço possível: taxas, anúncio e margem passam de 100% do preço"
           )}
         </span>
       ))}
+      {abaixoDoPiso && (
+        <span className={styles.ganhoAviso}>
+          Margem de {percentual(ganho.margemPercentual)}, abaixo da meta mínima de {percentual(regua.pisoPercentual)}.
+        </span>
+      )}
       {verba && lucroShopee && (
         <button
           type="button"
@@ -250,16 +267,32 @@ export default function PlanoProdutoCard({
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [anuncioAtivo, setAnuncioAtivo] = useState(plano.anuncio?.ativo ?? false);
+  const [roas, setRoas] = useState(String(plano.anuncio?.roasMeta ?? ROAS_PADRAO));
+
+  const roasNumero = Number(roas.trim().replace(",", "."));
+  const roasOk = Number.isFinite(roasNumero) && roasNumero > 0 && roasNumero <= ROAS_MAXIMO;
+  const anuncioPercentual = percentualDoAnuncio({ ativo: anuncioAtivo, roasMeta: roasNumero });
+  const anuncioAlterado =
+    anuncioAtivo !== (plano.anuncio?.ativo ?? false) ||
+    (anuncioAtivo && roasNumero !== (plano.anuncio?.roasMeta ?? ROAS_PADRAO));
+  const margemPadrao = regua.pisoPercentual;
 
   const alterado =
-    plano.novo || JSON.stringify(linhas) !== JSON.stringify(inicial) || (avulso && nome !== plano.produtoNome);
+    plano.novo ||
+    JSON.stringify(linhas) !== JSON.stringify(inicial) ||
+    (avulso && nome !== plano.produtoNome) ||
+    anuncioAlterado;
   const pecas = linhas.reduce((soma, linha) => soma + (Number(linha.quantidade) > 0 ? Number(linha.quantidade) : 0), 0);
   const total = linhas.reduce((soma, linha) => soma + (minutosDaLinha(linha) > 0 ? minutosDaLinha(linha) : 0), 0);
   const peso = linhas.reduce((soma, linha) => {
     const valor = Number(linha.peso.trim().replace(",", "."));
     return soma + (valor > 0 ? valor : 0);
   }, 0);
-  const conjunto = linhas.length > 1 ? ganhoDoConjunto(linhas.map(placaDaLinha)) : null;
+  const conjunto =
+    linhas.length > 1
+      ? ganhoDoConjunto(linhas.map((linha) => placaDaLinha(linha, margemPadrao)), anuncioPercentual)
+      : null;
 
   function atualizar(id: string, campo: keyof Linha, valor: string) {
     setLinhas((atual) => atual.map((linha) => (linha.id === id ? { ...linha, [campo]: valor } : linha)));
@@ -279,6 +312,15 @@ export default function PlanoProdutoCard({
     setLinhas((atual) => atual.filter((linha) => !selecionadas.has(linha.id)));
     setSelecionadas(new Set());
     setAviso(null);
+  }
+
+  /**
+   * Ligado vai como está (ROAS inválido volta 400 com a mensagem); desligado
+   * guarda o ROAS válido para religar depois, ou remove o anúncio.
+   */
+  function corpoAnuncio() {
+    if (anuncioAtivo) return { ativo: true, roasMeta: roasOk ? roasNumero : roas };
+    return roasOk ? { ativo: false, roasMeta: roasNumero } : null;
   }
 
   async function salvar() {
@@ -302,7 +344,7 @@ export default function PlanoProdutoCard({
         {
           method: plano.novo ? "POST" : "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...origem, itens }),
+          body: JSON.stringify({ ...origem, itens, anuncio: corpoAnuncio() }),
         }
       );
       const dados = await resposta.json().catch(() => ({}));
@@ -317,6 +359,7 @@ export default function PlanoProdutoCard({
         produtoNome: avulso ? dados.plano.nome : plano.produtoNome,
         linkModelo3d: plano.linkModelo3d,
         itens: dados.plano.itens,
+        ...(dados.plano.anuncio ? { anuncio: dados.plano.anuncio } : {}),
       };
       setLinhas(salvo.itens.map(paraLinha));
       setNome(salvo.produtoNome);
@@ -445,6 +488,45 @@ export default function PlanoProdutoCard({
         {alterado && <span className={styles.naoSalvo}>não salvo</span>}
       </div>
 
+      <div className={styles.anuncio}>
+        <label className={styles.anuncioInterruptor}>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={anuncioAtivo}
+            onChange={(e) => {
+              setAnuncioAtivo(e.target.checked);
+              setAviso(null);
+            }}
+          />
+          Anúncio pago na Shopee
+        </label>
+        {anuncioAtivo ? (
+          <label className={styles.anuncioRoas}>
+            ROAS meta
+            <input
+              className={`${styles.entrada} ${styles.entradaNumero}`}
+              value={roas}
+              onChange={(e) => {
+                setRoas(e.target.value);
+                setAviso(null);
+              }}
+              inputMode="decimal"
+              placeholder={String(ROAS_PADRAO)}
+              aria-invalid={!roasOk}
+              title="R$ vendidos a cada R$ 1 de anúncio"
+            />
+            <span className={roasOk ? styles.anuncioApoio : styles.anuncioErro}>
+              {roasOk
+                ? `${percentual(anuncioPercentual)} do preço vai para o anúncio`
+                : `Informe um ROAS maior que 0 e até ${ROAS_MAXIMO}.`}
+            </span>
+          </label>
+        ) : (
+          <span className={styles.anuncioApoio}>Desligado: o preço não reserva nada para anúncio.</span>
+        )}
+      </div>
+
       {conjunto && (
         <ResumoGanho
           ganho={conjunto}
@@ -463,12 +545,12 @@ export default function PlanoProdutoCard({
           <span>Min</span>
           <span>Qtd</span>
           <span>Peso (g)</span>
-          <span>Margem %</span>
+          <span title="Lucro em % do preço de venda">Margem % preço</span>
           <span>Início</span>
           <span>Término</span>
         </div>
         {linhas.map((linha, indice) => {
-          const ganho = ganhoDaPlaca(placaDaLinha(linha));
+          const ganho = ganhoDaPlaca(placaDaLinha(linha, margemPadrao), anuncioPercentual);
           return (
           <Fragment key={linha.id}>
           <div className={styles.linha}>
@@ -535,15 +617,15 @@ export default function PlanoProdutoCard({
               />
             </label>
             <label className={styles.campo}>
-              <span className={styles.campoRotulo} aria-hidden="true">Margem %</span>
+              <span className={styles.campoRotulo} aria-hidden="true">Margem % preço</span>
               <input
                 className={`${styles.entrada} ${styles.entradaNumero}`}
                 value={linha.margem}
                 onChange={(e) => atualizar(linha.id, "margem", e.target.value)}
                 inputMode="decimal"
-                placeholder="0"
-                aria-label="Margem de ganho sobre o custo, em %"
-                title="Quanto você quer ganhar, em % sobre o custo de uma peça"
+                placeholder={String(margemPadrao)}
+                aria-label="Margem de lucro em % do preço de venda"
+                title={`Quanto sobra do preço depois de custo, taxas e anúncio. Vazio = ${margemPadrao}% (meta mínima).`}
               />
             </label>
             <label className={styles.campo}>

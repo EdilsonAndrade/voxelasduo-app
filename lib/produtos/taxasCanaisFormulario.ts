@@ -1,5 +1,6 @@
 import type { TaxasCanaisConfig } from "@/lib/models/configuracao";
 import type { TaxasCanaisProduto } from "@/lib/models/produto";
+import { ROAS_MAXIMO, ROAS_PADRAO, roasValido } from "./anuncioPago";
 
 /**
  * Override das taxas por produto no formulário (EDI-106) — texto; vazio =
@@ -14,6 +15,10 @@ export interface TaxasCanaisFormValores {
   margemMinimaPercentual: string;
   /** Override da margem desejada (% do preço) só deste produto — vazio = herda o padrão global. */
   margemDesejadaPercentual: string;
+  /** Anúncio pago na Shopee e no Mercado Livre (EDI-137). */
+  anuncioAtivo: boolean;
+  /** Meta de ROAS — fica guardada mesmo com o anúncio desligado. */
+  anuncioRoasMeta: string;
 }
 
 export const VAZIO_TAXAS_CANAIS: TaxasCanaisFormValores = {
@@ -22,6 +27,8 @@ export const VAZIO_TAXAS_CANAIS: TaxasCanaisFormValores = {
   siteTaxaFixaReais: "",
   margemMinimaPercentual: "",
   margemDesejadaPercentual: "",
+  anuncioAtivo: false,
+  anuncioRoasMeta: String(ROAS_PADRAO),
 };
 
 function numeroDeTexto(valor: string): number {
@@ -58,6 +65,9 @@ export function camposTaxasCanaisInvalidos(form: TaxasCanaisFormValores): string
   ) {
     invalidos.push("margem desejada (% do preço, entre 0 e 99,9%)");
   }
+  if (form.anuncioAtivo && !roasValido(numeroDeTexto(form.anuncioRoasMeta))) {
+    invalidos.push(`ROAS meta do anúncio pago (maior que 0 e até ${ROAS_MAXIMO})`);
+  }
   return invalidos;
 }
 
@@ -90,6 +100,11 @@ export function montarTaxasCanaisProduto(form: TaxasCanaisFormValores): TaxasCan
   ) {
     taxas.margemDesejadaPercentual = numeroDeTexto(form.margemDesejadaPercentual);
   }
+  const roas = numeroDeTexto(form.anuncioRoasMeta);
+  // Desligado com o ROAS padrão não grava nada: produto sem anúncio continua igual ao de antes.
+  if (roasValido(roas) && (form.anuncioAtivo || roas !== ROAS_PADRAO)) {
+    taxas.anuncio = { ativo: form.anuncioAtivo, roasMeta: roas };
+  }
   return taxas;
 }
 
@@ -107,6 +122,8 @@ export function taxasCanaisParaFormulario(taxas?: TaxasCanaisProduto): TaxasCana
       taxas.margemMinimaPercentual !== undefined ? String(taxas.margemMinimaPercentual) : "",
     margemDesejadaPercentual:
       taxas.margemDesejadaPercentual !== undefined ? String(taxas.margemDesejadaPercentual) : "",
+    anuncioAtivo: taxas.anuncio?.ativo ?? false,
+    anuncioRoasMeta: String(taxas.anuncio?.roasMeta ?? ROAS_PADRAO),
   };
 }
 
@@ -118,5 +135,7 @@ export function taxasGlobaisParaPlaceholder(global: TaxasCanaisConfig): TaxasCan
     siteTaxaFixaReais: (global.siteTaxaFixaCentavos / 100).toFixed(2),
     margemMinimaPercentual: String(global.margemMinimaPercentual),
     margemDesejadaPercentual: String(global.margemDesejadaPercentual),
+    anuncioAtivo: false,
+    anuncioRoasMeta: String(ROAS_PADRAO),
   };
 }

@@ -34,6 +34,7 @@ import {
   type PrecosCanaisFormValores,
 } from "@/lib/produtos/precosCanaisFormulario";
 import { resolverTaxasCanais, type CanalVenda } from "@/lib/produtos/canais";
+import { percentualDoAnuncio } from "@/lib/produtos/anuncioPago";
 import { TAXAS_CANAIS_PADRAO, type TaxasCanaisConfig } from "@/lib/models/configuracao";
 import {
   LIMITE_DESCRICAO_META,
@@ -353,7 +354,7 @@ export default function ProdutoForm({
 
   function atualizarCampoTaxasCanais<K extends keyof TaxasCanaisFormValores>(
     campo: K,
-    valor: string
+    valor: TaxasCanaisFormValores[K]
   ) {
     setValores((atual) => ({
       ...atual,
@@ -506,6 +507,8 @@ export default function ProdutoForm({
       taxasGlobais.margemDesejadaPercentual,
     [taxasGlobais, valores.taxasCanais]
   );
+  /** % do preço do anúncio pago nos marketplaces (EDI-137) — 0 desligado ou com ROAS inválido. */
+  const anuncioPercentualProduto = percentualDoAnuncio(montarTaxasCanaisProduto(valores.taxasCanais).anuncio);
   const placeholderTaxasGlobais = taxasGlobaisParaPlaceholder(taxasGlobais);
   const precosCanaisCentavos = useMemo(
     () => montarPrecosCanaisProduto(valores.precosCanais),
@@ -1409,6 +1412,34 @@ export default function ProdutoForm({
             />
           </div>
         </div>
+        <label className={styles.channelToggle}>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={valores.taxasCanais.anuncioAtivo}
+            onChange={(e) => atualizarCampoTaxasCanais("anuncioAtivo", e.target.checked)}
+          />
+          Anúncio pago na Shopee e no Mercado Livre
+        </label>
+        {valores.taxasCanais.anuncioAtivo ? (
+          <div className={styles.field}>
+            <label htmlFor="anuncioRoasProduto">ROAS meta do anúncio</label>
+            <input
+              id="anuncioRoasProduto"
+              inputMode="decimal"
+              placeholder="8"
+              value={valores.taxasCanais.anuncioRoasMeta}
+              onChange={(e) => atualizarCampoTaxasCanais("anuncioRoasMeta", e.target.value)}
+            />
+            <span className={styles.mlLinkAviso}>
+              {anuncioPercentualProduto > 0
+                ? `${anuncioPercentualProduto.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% do preço vai para o anúncio na Shopee e no Mercado Livre. O site próprio não muda.`
+                : "Informe um ROAS maior que 0 e até 100 (ex.: 8 = R$ 8 vendidos a cada R$ 1 de anúncio)."}
+            </span>
+          </div>
+        ) : (
+          <span className={styles.mlLinkAviso}>Desligado: o preço não reserva nada para anúncio.</span>
+        )}
         <span className={styles.mlLinkAviso}>
           Margens em % do preço de venda: de cada R$ 100 vendidos, quanto fica com você. Em branco = padrão
           global ({taxasGlobais.margemMinimaPercentual}% de piso, {taxasGlobais.margemDesejadaPercentual}% desejada).
@@ -1476,6 +1507,7 @@ export default function ProdutoForm({
         taxasCanais={taxasCanaisEfetivas}
         margemMinimaPercentual={margemMinimaEfetiva}
         margemDesejadaPercentual={margemDesejadaEfetiva}
+        anuncioPercentual={anuncioPercentualProduto}
         cupomLoja={{ percentual: taxasGlobais.cupomLojaPercentual, tetoCentavos: taxasGlobais.cupomLojaTetoCentavos }}
         precosCanaisCentavos={precosCanaisCentavos}
         onAplicarPrecoSugerido={(preco) => atualizarCampo("precoReais", preco)}

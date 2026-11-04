@@ -6,7 +6,7 @@ import {
   type ItemImpressao,
   type PlanoImpressao,
 } from "@/lib/models/planoImpressao";
-import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
+import { PRODUTOS_COLLECTION, type AnuncioPago, type Produto } from "@/lib/models/produto";
 import { mesclarItens } from "./planosImpressao";
 
 const garantirIndices = criarGarantiaDeIndices();
@@ -77,11 +77,12 @@ export async function buscarPlanoDoProduto(produtoId: string): Promise<PlanoImpr
 /** `null` = o produto já está no menu (índice único). */
 export async function criarPlano(
   origem: { produtoId: string } | { nome: string },
-  itens: ItemImpressao[]
+  itens: ItemImpressao[],
+  anuncio?: AnuncioPago | null
 ): Promise<PlanoImpressao | null> {
   const colecao = await colecaoPlanos();
   const agora = new Date();
-  const plano: PlanoImpressao = { ...origem, itens, criadoEm: agora, atualizadoEm: agora };
+  const plano: PlanoImpressao = { ...origem, itens, ...(anuncio ? { anuncio } : {}), criadoEm: agora, atualizadoEm: agora };
   try {
     const { insertedId } = await colecao.insertOne(plano);
     return { ...plano, _id: insertedId };
@@ -111,16 +112,20 @@ export async function mesclarPlano(
   return { plano: atualizado ?? existente, criado: false };
 }
 
-/** Troca a lista de itens e, no plano avulso, o nome. */
+/** Troca a lista de itens e, no plano avulso, o nome; `anuncio: null` remove o anúncio pago. */
 export async function atualizarPlano(
   id: string,
-  dados: { itens: ItemImpressao[]; nome?: string }
+  dados: { itens: ItemImpressao[]; nome?: string; anuncio?: AnuncioPago | null }
 ): Promise<PlanoImpressao | null> {
   if (!ObjectId.isValid(id)) return null;
   const colecao = await colecaoPlanos();
+  const { anuncio, ...resto } = dados;
   return colecao.findOneAndUpdate(
     { _id: new ObjectId(id) },
-    { $set: { ...dados, atualizadoEm: new Date() } },
+    {
+      $set: { ...resto, ...(anuncio ? { anuncio } : {}), atualizadoEm: new Date() },
+      ...(anuncio === null ? { $unset: { anuncio: "" as const } } : {}),
+    },
     { returnDocument: "after" }
   );
 }

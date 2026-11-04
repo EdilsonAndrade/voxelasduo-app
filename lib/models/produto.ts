@@ -68,7 +68,19 @@ export interface CustoProducao {
  * Taxas dos canais sobrescritas para este produto (EDI-106) — cada campo é
  * opcional; ausente = herda o padrão global (`TaxasCanaisConfig`).
  */
+/**
+ * Anúncio pago nos marketplaces (EDI-137): ligado, o preço reserva
+ * `preço ÷ ROAS` para o anúncio. O ROAS fica gravado mesmo desligado.
+ */
+export interface AnuncioPago {
+  ativo: boolean;
+  /** Meta de ROAS (ex.: 8 = R$ 8 vendidos a cada R$ 1 de anúncio). */
+  roasMeta: number;
+}
+
 export interface TaxasCanaisProduto {
+  /** Anúncio pago na Shopee e no Mercado Livre — ausente = desligado. */
+  anuncio?: AnuncioPago;
   shopeeTaxaPercentual?: number;
   siteTaxaPercentual?: number;
   siteTaxaFixaCentavos?: number;

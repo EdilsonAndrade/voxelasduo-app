@@ -13,7 +13,7 @@ export interface PlacaGanho {
   quantidade: number;
   /** Peso da placa inteira, em gramas. */
   pesoGramas: number;
-  /** Ganho desejado, em % sobre o custo de uma peça. */
+  /** Lucro desejado em % do preço de venda (margem líquida, EDI-137). */
   margemPercentual: number;
 }
 
@@ -21,19 +21,26 @@ export interface GanhoCanal {
   canal: CanalMontado;
   /** Custo da peça + custos do pedido (frete grátis, cupom próprio). */
   custoPedidoCentavos: number;
-  /** Preço que deixa o ganho desejado — `null` = impossível nesse canal. */
+  /** % do preço reservado para anúncio pago neste canal (0 = sem anúncio). */
+  anuncioPercentual: number;
+  /** Preço que deixa a margem pedida — `null` = impossível nesse canal. */
   precoCentavos: number | null;
-  /** O que sobra de verdade nesse preço, já sem taxas e imposto. */
+  /** Anúncio pago no preço — `null` junto com o preço. */
+  anuncioCentavos: number | null;
+  /** O que sobra de verdade nesse preço, já sem taxas, anúncio e imposto. */
   lucroCentavos: number | null;
 }
 
 export interface Ganho {
   /** Custo de uma peça (ou do conjunto), com os padrões da calculadora de preço. */
   custoCentavos: number;
-  /** Ganho pedido: custo × margem. */
-  lucroDesejadoCentavos: number;
+  /** Margem pedida, em % do preço (no conjunto, a média ponderada pelo custo de cada parte). */
+  margemPercentual: number;
   canais: Record<CanalGanho, GanhoCanal | null>;
 }
+
+/** Canais em que o anúncio pago entra: só os marketplaces (a venda direta não tem Ads). */
+const CANAIS_COM_ANUNCIO: CanalGanho[] = ["shopee"];
 
 const PADRAO = valoresPadrao();
 const EMBALAGEM_CENTAVOS = Math.round(Number(PADRAO.impressao.embalagemReais) * 100);
@@ -52,61 +59,81 @@ export function custoDaPeca(placa: Pick<PlacaGanho, "minutos" | "quantidade" | "
   return custo?.totalCentavos ?? null;
 }
 
-/** Lucro em centavos num preço, com as taxas e o imposto padrão do canal. */
-export function lucroNoPreco(canal: GanhoCanal, precoCentavos: number): number {
+function detalhar(canal: GanhoCanal, precoCentavos: number) {
   return detalharVenda({
     precoCentavos,
     faixas: canal.canal.faixas,
     custoCentavos: canal.custoPedidoCentavos,
-    anuncioPercentual: 0,
+    anuncioPercentual: canal.anuncioPercentual,
     impostoPercentual: IMPOSTO_PERCENTUAL,
-  }).lucroCentavos;
+  });
+}
+
+/** Lucro em centavos num preço, com as taxas, o anúncio e o imposto padrão do canal. */
+export function lucroNoPreco(canal: GanhoCanal, precoCentavos: number): number {
+  return detalhar(canal, precoCentavos).lucroCentavos;
 }
 
 /**
- * Preço em cada canal para sobrar `lucroDesejado` depois das taxas: o ganho
- * entra como custo e a margem sobre o preço fica zero — a mesma conta da
- * calculadora (faixas da Shopee, pagamento e frete da venda direta).
+ * Preço em cada canal para sobrar `margemPercentual` do preço depois de custo,
+ * taxas, anúncio e imposto — a mesma conta da calculadora (faixas da Shopee,
+ * pagamento e frete da venda direta). O anúncio só entra nos marketplaces.
  */
-export function calcularGanho(custoCentavos: number, lucroDesejadoCentavos: number): Ganho {
+export function calcularGanho(custoCentavos: number, margemPercentual: number, anuncioPercentual = 0): Ganho {
   function noCanal(nome: CanalGanho): GanhoCanal | null {
     const canal = montarCanal(nome, PADRAO);
     if (!canal) return null;
+    const anuncio = CANAIS_COM_ANUNCIO.includes(nome) ? anuncioPercentual : 0;
     const custoPedidoCentavos = custoCentavos + canal.custoVendaCentavos;
     const precoCentavos = calcularPrecoPorMargem({
-      custoCentavos: custoPedidoCentavos + lucroDesejadoCentavos,
+      custoCentavos: custoPedidoCentavos,
       faixas: canal.faixas,
-      margemPrecoPercentual: 0,
-      anuncioPercentual: 0,
+      margemPrecoPercentual: margemPercentual,
+      anuncioPercentual: anuncio,
       impostoPercentual: IMPOSTO_PERCENTUAL,
     });
-    const resultado: GanhoCanal = { canal, custoPedidoCentavos, precoCentavos, lucroCentavos: null };
-    return { ...resultado, lucroCentavos: precoCentavos === null ? null : lucroNoPreco(resultado, precoCentavos) };
+    const base: GanhoCanal = {
+      canal,
+      custoPedidoCentavos,
+      anuncioPercentual: anuncio,
+      precoCentavos,
+      anuncioCentavos: null,
+      lucroCentavos: null,
+    };
+    if (precoCentavos === null) return base;
+    const venda = detalhar(base, precoCentavos);
+    return { ...base, anuncioCentavos: venda.anuncioCentavos, lucroCentavos: venda.lucroCentavos };
   }
 
-  return { custoCentavos, lucroDesejadoCentavos, canais: { shopee: noCanal("shopee"), direta: noCanal("direta") } };
+  return { custoCentavos, margemPercentual, canais: { shopee: noCanal("shopee"), direta: noCanal("direta") } };
 }
 
-/** Ganho de uma peça da placa — `null` enquanto faltar tempo, peso ou margem. */
-export function ganhoDaPlaca(placa: PlacaGanho): Ganho | null {
+function margemValida(margem: number): boolean {
+  return Number.isFinite(margem) && margem >= 0 && margem < 100;
+}
+
+/** Ganho de uma peça da placa — `null` enquanto faltar tempo, peso ou margem válida. */
+export function ganhoDaPlaca(placa: PlacaGanho, anuncioPercentual = 0): Ganho | null {
   const custo = custoDaPeca(placa);
-  if (custo === null || !(placa.margemPercentual >= 0)) return null;
-  return calcularGanho(custo, Math.round((custo * placa.margemPercentual) / 100));
+  if (custo === null || !margemValida(placa.margemPercentual)) return null;
+  return calcularGanho(custo, placa.margemPercentual, anuncioPercentual);
 }
 
 /**
- * Ganho do conjunto (uma peça de cada placa, numa embalagem só): os custos e os
- * ganhos de cada parte somados. `null` se alguma parte ainda não tem o cálculo.
+ * Ganho do conjunto (uma peça de cada placa, numa embalagem só): custos somados
+ * e margem média ponderada pelo custo de cada parte. `null` se alguma parte
+ * ainda não tem o cálculo.
  */
-export function ganhoDoConjunto(placas: PlacaGanho[]): Ganho | null {
+export function ganhoDoConjunto(placas: PlacaGanho[], anuncioPercentual = 0): Ganho | null {
   if (placas.length === 0) return null;
   let custo = 0;
-  let lucro = 0;
+  let ponderada = 0;
   for (const placa of placas) {
     const custoPeca = custoDaPeca(placa);
-    if (custoPeca === null || !(placa.margemPercentual >= 0)) return null;
+    if (custoPeca === null || !margemValida(placa.margemPercentual)) return null;
     custo += custoPeca;
-    lucro += Math.round((custoPeca * placa.margemPercentual) / 100);
+    ponderada += custoPeca * placa.margemPercentual;
   }
-  return calcularGanho(custo - EMBALAGEM_CENTAVOS * (placas.length - 1), lucro);
+  const margem = custo > 0 ? ponderada / custo : 0;
+  return calcularGanho(custo - EMBALAGEM_CENTAVOS * (placas.length - 1), margem, anuncioPercentual);
 }

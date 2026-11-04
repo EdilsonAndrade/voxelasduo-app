@@ -42,15 +42,26 @@ describe("/api/admin/tempo-impressao", () => {
     expect(resposta.status).toBe(201);
     expect(repo.criarPlano).toHaveBeenCalledWith({ produtoId: "p1" }, [
       expect.objectContaining({ nome: "base", minutos: 222 }),
-    ]);
+    ], undefined);
   });
 
   it("POST 201 cria item avulso só com nome, sem consultar o catálogo", async () => {
     repo.criarPlano.mockResolvedValue({ nome: "Boneco de neve" });
     const resposta = await colecao.POST(req("POST", { nome: " Boneco de neve ", itens }));
     expect(resposta.status).toBe(201);
-    expect(repo.criarPlano).toHaveBeenCalledWith({ nome: "Boneco de neve" }, expect.any(Array));
+    expect(repo.criarPlano).toHaveBeenCalledWith({ nome: "Boneco de neve" }, expect.any(Array), undefined);
     expect(produtos.buscarProdutoPorId).not.toHaveBeenCalled();
+  });
+
+  it("POST grava o anúncio pago e recusa ROAS inválido com 400 (EDI-137)", async () => {
+    repo.criarPlano.mockResolvedValue({ nome: "Vaso" });
+    const ok = await colecao.POST(req("POST", { nome: "Vaso", itens, anuncio: { ativo: true, roasMeta: 8 } }));
+    expect(ok.status).toBe(201);
+    expect(repo.criarPlano).toHaveBeenCalledWith({ nome: "Vaso" }, expect.any(Array), { ativo: true, roasMeta: 8 });
+
+    const ruim = await colecao.POST(req("POST", { nome: "Vaso", itens, anuncio: { ativo: true, roasMeta: 0 } }));
+    expect(ruim.status).toBe(400);
+    expect(await ruim.json()).toEqual({ erro: "Anúncio pago: ROAS meta inválido (maior que 0 e até 100)." });
   });
 
   it("POST 400 sem produto e sem nome; mesclar exige produto", async () => {

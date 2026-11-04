@@ -3,12 +3,12 @@
 import type { AnuncioCalculadoraValores, ModoAnuncio } from "@/lib/models/calculoPreco";
 import type { ProducaoMensal } from "@/lib/produtos/calculadoraRapida";
 import calc from "../calculadoraRapida.module.css";
-import { Campo, Opcoes } from "./campos";
+import { Campo, Interruptor, Opcoes } from "./campos";
 import Secao from "./Secao";
 import { formatarAcos, formatarRoas, numero, reais } from "./formato";
 
-const MODOS_ANUNCIO: Array<{ valor: ModoAnuncio; titulo: string; apoio: string }> = [
-  { valor: "sem", titulo: "Sem anúncio", apoio: "Preço só com custo, taxas e o seu lucro" },
+/** Com o anúncio pago ligado (EDI-137): como ele é pago. Desligado = modo "sem". */
+const MODOS_ANUNCIO: Array<{ valor: Exclude<ModoAnuncio, "sem">; titulo: string; apoio: string }> = [
   { valor: "embutido", titulo: "Embutido no preço", apoio: "O preço sobe para pagar o anúncio" },
   { valor: "bolso", titulo: "Do meu bolso", apoio: "Verba à parte; mostra se ela volta com lucro" },
 ];
@@ -23,8 +23,29 @@ export function SecaoAds({
   const roas = numero(anuncio.roasMeta);
   const roasValido = Number.isFinite(roas) && roas > 0;
   return (
-    <Secao icone="ads" titulo="Ads / Tráfego pago" resumo={MODOS_ANUNCIO.find((m) => m.valor === anuncio.modo)?.titulo}>
-      <Opcoes rotulo="Como vai pagar o anúncio?" valor={anuncio.modo} onChange={(modo) => alterar({ modo })} opcoes={MODOS_ANUNCIO} />
+    <Secao
+      icone="ads"
+      titulo="Ads / Tráfego pago"
+      resumo={MODOS_ANUNCIO.find((m) => m.valor === anuncio.modo)?.titulo ?? "Sem anúncio"}
+    >
+      <Interruptor
+        id="anuncioPago"
+        titulo="Anúncio pago"
+        apoio={
+          anuncio.modo === "sem"
+            ? "Desligado: o preço não reserva nada para anúncio."
+            : "Ligado: o anúncio entra na conta dos marketplaces."
+        }
+        ligado={anuncio.modo !== "sem"}
+        onChange={(ligado) => alterar({ modo: ligado ? "embutido" : "sem" })}
+      >
+        <Opcoes
+          rotulo="Como vai pagar o anúncio?"
+          valor={anuncio.modo as Exclude<ModoAnuncio, "sem">}
+          onChange={(modo) => alterar({ modo })}
+          opcoes={MODOS_ANUNCIO}
+        />
+      </Interruptor>
       <div className={calc.campos3}>
         <Campo
           id="roasMeta"
