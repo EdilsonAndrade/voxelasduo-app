@@ -551,9 +551,11 @@ export default function ProdutoForm({
         const formData = new FormData();
         formData.append("arquivo", arquivo);
         const resposta = await fetch("/api/produtos/upload", { method: "POST", body: formData });
-        const dados = await resposta.json();
-        if (!resposta.ok) {
-          setErroGeral(dados.erro ?? "Não foi possível enviar a foto.");
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok || typeof dados.url !== "string") {
+          setErroGeral(
+            `${arquivo.name}: ${dados.erro ?? `não foi possível enviar a foto (erro ${resposta.status}).`}`
+          );
           continue;
         }
         setValores((atual) => ({ ...atual, fotos: [...atual.fotos, dados.url as string] }));

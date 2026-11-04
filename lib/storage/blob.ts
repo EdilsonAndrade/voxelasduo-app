@@ -5,6 +5,19 @@ const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5MB
 
 export class ArquivoInvalidoError extends Error {}
 
+/** Nome do arquivo sem acento, espaço ou símbolo (ex.: "Foto #1 ção.JPG" → "foto-1-cao.jpg"). */
+export function nomeSeguro(nome: string): string {
+  const limpo = nome
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/-\./g, ".")
+    .replace(/^-|-$/g, "");
+  return limpo || "foto";
+}
+
 export async function enviarFotoProduto(arquivo: File): Promise<string> {
   return enviarImagem(arquivo, "produtos");
 }
@@ -45,7 +58,7 @@ export async function enviarMiniaturaProducao(
 async function enviarImagem(
   arquivo: File,
   pasta: "produtos" | "banners" | "encomendas" | "eventos" | "producao",
-  nome = `${crypto.randomUUID()}-${arquivo.name}`
+  nome = `${crypto.randomUUID()}-${nomeSeguro(arquivo.name)}`
 ): Promise<string> {
   if (!TIPOS_ACEITOS.includes(arquivo.type)) {
     throw new ArquivoInvalidoError(

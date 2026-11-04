@@ -16,6 +16,9 @@ export async function POST(request: Request) {
     if (erro instanceof ArquivoInvalidoError) {
       return NextResponse.json({ erro: erro.message }, { status: 400 });
     }
-    throw erro;
+    // Erro do armazenamento (token, loja do Blob, rede): devolve o motivo em vez de um 500 vazio.
+    console.error("[upload de foto de produto]", erro);
+    const detalhe = erro instanceof Error ? erro.message : String(erro);
+    return NextResponse.json({ erro: `Não foi possível guardar a foto: ${detalhe}` }, { status: 500 });
   }
 }
