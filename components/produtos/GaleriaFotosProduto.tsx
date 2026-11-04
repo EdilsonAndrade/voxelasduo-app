@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import styles from "./produtos.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 interface GaleriaFotosProdutoProps {
   fotos: string[];
@@ -14,8 +15,7 @@ export default function GaleriaFotosProduto({ fotos, nome }: GaleriaFotosProduto
   return (
     <div>
       <div className={styles.galleryMain}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={fotos[fotoAtiva]} alt={nome} />
+        <ImagemOtimizada sizes="(max-width: 900px) 100vw, 600px" src={fotos[fotoAtiva]} alt={nome} />
       </div>
       {fotos.length > 1 && (
         <div className={styles.thumbs}>
@@ -28,8 +28,7 @@ export default function GaleriaFotosProduto({ fotos, nome }: GaleriaFotosProduto
               aria-label={`Ver foto ${indice + 1} de ${nome}`}
               aria-current={indice === fotoAtiva}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={foto} alt="" />
+              <ImagemOtimizada sizes="96px" src={foto} alt="" />
             </button>
           ))}
         </div>

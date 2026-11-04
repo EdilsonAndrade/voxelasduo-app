@@ -10,6 +10,13 @@ import {
   type SecaoBanner,
 } from "@/lib/models/secaoHome";
 import styles from "./home.module.css";
+import { propsImagem } from "@/components/ImagemOtimizada";
+
+/** `<source>` do banner no celular, também otimizado (só aceita srcSet). */
+function fonteMobile(src: string): { srcSet: string; sizes?: string } {
+  const { src: unica, srcSet, sizes } = propsImagem(src, "100vw");
+  return { srcSet: srcSet ?? unica, sizes };
+}
 
 export interface BannerSecaoProps {
   tipo: SecaoBanner["tipo"];
@@ -77,10 +84,12 @@ export default function BannerSecao({
   return (
     <section className={classes} aria-label={titulo ?? "Destaque"}>
       <picture className={styles.bannerImagem}>
-        {imagemMobile && !modoMobile && <source media="(max-width: 767px)" srcSet={imagemMobile} />}
+        {imagemMobile && !modoMobile && (
+          <source media="(max-width: 767px)" {...fonteMobile(imagemMobile)} />
+        )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={modoMobile ? (imagemMobile ?? imagemDesktop) : imagemDesktop}
+          {...propsImagem(modoMobile ? (imagemMobile ?? imagemDesktop) : imagemDesktop, "100vw")}
           alt={temTexto ? "" : (titulo ?? "Banner")}
           fetchPriority={tipo === "bannerHero" ? "high" : "auto"}
           loading={tipo === "bannerHero" ? "eager" : "lazy"}

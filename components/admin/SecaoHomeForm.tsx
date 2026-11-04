@@ -20,6 +20,7 @@ import {
 } from "@/lib/models/secaoHome";
 import adminStyles from "./admin.module.css";
 import styles from "./secoesHome.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 interface Props {
   /** Ausente = criação. */
@@ -186,8 +187,7 @@ export default function SecaoHomeForm({ id, inicial, mensagemInicial }: Props) {
                 </label>
                 <div className={styles.upload}>
                   {dados[campo] && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={dados[campo]} alt="" className={styles.uploadMiniatura} />
+                    <ImagemOtimizada sizes="256px" src={dados[campo]} alt="" className={styles.uploadMiniatura} />
                   )}
                   <input
                     id={campo}

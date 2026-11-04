@@ -58,6 +58,8 @@ import { LIMITE_FOTOS_MERCADO_LIVRE } from "@/lib/estoque/canais/mercadoLivre/fo
 import { formatarPreco } from "@/lib/produtos/formato";
 import { limparCaminhoArquivo, urlAbrirPasta } from "@/lib/produtos/abrirPasta";
 import { montarTextoMarketplace, type TextoMarketplace } from "@/lib/produtos/textosMeta";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
+import { comprimirFotoProduto } from "@/components/evento/offline/foto";
 
 /** Promoção elegível do Mercado Livre já com o veredito de margem calculado no servidor (EDI-108). */
 interface PromocaoElegivelML {
@@ -549,7 +551,7 @@ export default function ProdutoForm({
         }
 
         const formData = new FormData();
-        formData.append("arquivo", arquivo);
+        formData.append("arquivo", await comprimirFotoProduto(arquivo));
         const resposta = await fetch("/api/produtos/upload", { method: "POST", body: formData });
         const dados = await resposta.json().catch(() => ({}));
         if (!resposta.ok || typeof dados.url !== "string") {
@@ -1851,8 +1853,7 @@ export default function ProdutoForm({
                 }}
               >
                 <span className={styles.fotoOrdem}>{index + 1}</span>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" />
+                <ImagemOtimizada sizes="256px" src={url} alt="" />
                 <button type="button" className={styles.fotoRemover} onClick={() => removerFoto(url)}>
                   remover
                 </button>

@@ -31,6 +31,7 @@ import {
 } from "@/lib/produtos/precoLista";
 import adminStyles from "./admin.module.css";
 import styles from "./listaProdutos.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 /** Produto já preparado pelo servidor para a lista do admin (EDI-126). */
 export interface ProdutoLinha {
@@ -614,8 +615,7 @@ export default function ListaProdutosAdmin({
                   </td>
                   <td className={styles.colFoto}>
                     {produto.fotos[0] && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={produto.fotos[0]} alt={produto.nome} className={styles.miniatura} loading="lazy" />
+                      <ImagemOtimizada sizes="96px" src={produto.fotos[0]} alt={produto.nome} className={styles.miniatura} loading="lazy" />
                     )}
                   </td>
                   <td className={styles.colNome}>

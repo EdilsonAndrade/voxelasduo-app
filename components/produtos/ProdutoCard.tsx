@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Produto } from "@/lib/models/produto";
 import { formatarPreco } from "@/lib/produtos/formato";
 import styles from "./produtos.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 export default function ProdutoCard({
   produto,
@@ -17,8 +18,7 @@ export default function ProdutoCard({
   return (
     <Link href={`/produtos/${produto.categoria}/${produto.slug}`} className={styles.card}>
       <div className={styles.cardPhoto}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={produto.fotos[0]} alt={produto.nome} />
+        <ImagemOtimizada sizes="(max-width: 600px) 50vw, 300px" src={produto.fotos[0]} alt={produto.nome} />
       </div>
       <div className={styles.cardBody}>
         <div

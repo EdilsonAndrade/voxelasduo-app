@@ -8,6 +8,7 @@ import type { ItemControleJson, ProducaoControlePayload, VendaControlePayload } 
 import { formatarPreco } from "@/lib/produtos/formato";
 import LinhaVenda from "./LinhaVenda";
 import styles from "./controleVendas.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 /**
  * Um produto: produção e preços editáveis no cabeçalho, a régua produzido ×
@@ -69,8 +70,7 @@ export default function CartaoProduto({
       <div className={styles.cabecalhoCartao}>
         <div className={styles.identidade}>
           {item.foto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.foto} alt="" className={styles.foto} />
+            <ImagemOtimizada sizes="96px" src={item.foto} alt="" className={styles.foto} />
           ) : (
             <span className={styles.fotoVazia} aria-hidden="true" />
           )}

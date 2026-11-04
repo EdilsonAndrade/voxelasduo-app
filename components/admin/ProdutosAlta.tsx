@@ -6,6 +6,7 @@ import css from "./produtosAlta.module.css";
 import { CATEGORIAS_NICHO } from "@/lib/nichos/categorias";
 import { mesclarListas } from "@/lib/produtosAlta/mesclar";
 import type { CategoriaNavegavel, CategoriaResumo, ItemEmAlta, OrdemLista } from "@/lib/models/produtosAlta";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 /** Mesma concorrência da Pesquisa de nichos: no "Todas" as 16 categorias vão de 4 em 4. */
 const CONCORRENCIA_TODAS = 4;
@@ -61,8 +62,7 @@ function Card({ item, mostrarCategoria }: { item: ItemEmAlta; mostrarCategoria: 
       <div className={css.foto}>
         {item.foto ? (
           // Foto do CDN do ML; sem otimização do Next para não depender de domínio configurado.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.foto} alt="" loading="lazy" />
+          <ImagemOtimizada sizes="96px" src={item.foto} alt="" loading="lazy" />
         ) : (
           <span className={css.semFoto} aria-hidden="true">
             ?

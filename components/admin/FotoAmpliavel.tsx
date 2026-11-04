@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import styles from "./admin.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 /**
  * Miniatura que amplia na própria página ao clicar — mesmo comportamento de
@@ -36,8 +37,7 @@ export default function FotoAmpliavel({ url, nome }: { url?: string; nome: strin
         onClick={() => setAmpliada(true)}
         title={`Ampliar foto de ${nome}`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <ImagemOtimizada sizes="96px"
           className={styles.miniatura}
           src={url}
           alt={nome}
@@ -54,8 +54,7 @@ export default function FotoAmpliavel({ url, nome }: { url?: string; nome: strin
           aria-label={nome}
           onClick={() => setAmpliada(false)}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={styles.fotoAmpliada} src={url} alt={nome} />
+          <ImagemOtimizada sizes="100vw" className={styles.fotoAmpliada} src={url} alt={nome} />
           <p className={styles.fotoLegenda}>{nome}</p>
           <button type="button" className={styles.fotoFechar} onClick={() => setAmpliada(false)}>
             Fechar

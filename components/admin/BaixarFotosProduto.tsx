@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import styles from "./baixarFotos.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 /** URL da foto com o parâmetro que faz o Blob responder como anexo. */
 function urlDeDownload(foto: string): string {
@@ -71,8 +72,7 @@ export default function BaixarFotosProduto({ produtoNome, fotos }: { produtoNome
                   className={`${styles.item} ${baixadas.has(indice) ? styles.itemBaixado : ""}`}
                   onClick={() => setBaixadas((atual) => new Set(atual).add(indice))}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={foto} alt={`${produtoNome} — foto ${indice + 1}`} loading="lazy" />
+                  <ImagemOtimizada sizes="256px" src={foto} alt={`${produtoNome} — foto ${indice + 1}`} loading="lazy" />
                   <span className={styles.rodape}>
                     <span className={styles.ordem}>
                       {indice + 1}

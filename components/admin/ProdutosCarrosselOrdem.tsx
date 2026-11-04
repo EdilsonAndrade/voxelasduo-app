@@ -6,6 +6,7 @@ import type { ProdutoCarrossel } from "@/lib/home/secoesPublicas";
 import { formatarPreco } from "@/lib/produtos/formato";
 import adminStyles from "./admin.module.css";
 import styles from "./secoesHome.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 /** Ordem dos produtos do carrossel (FR-011) — a marcação em si é feita na lista de Produtos. */
 export default function ProdutosCarrosselOrdem({
@@ -73,8 +74,7 @@ export default function ProdutosCarrosselOrdem({
                   ↓
                 </button>
               </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {produto.foto ? <img src={produto.foto} alt="" /> : <span />}
+              {produto.foto ? <ImagemOtimizada sizes="96px" src={produto.foto} alt="" /> : <span />}
               <div className={styles.linhaInfo}>
                 <span className={styles.linhaTitulo}>{produto.nome}</span>
                 <span className={styles.linhaTipo}>

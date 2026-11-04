@@ -7,6 +7,7 @@ import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import { letraIndice, ordenarPorNome, parseItensLista } from "@/lib/produtos/precoLista";
 import adminStyles from "@/components/admin/admin.module.css";
 import styles from "./listaPrecos.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 export const dynamic = "force-dynamic";
 
@@ -102,8 +103,7 @@ export default async function ListaPrecosPage({
                     return (
                       <li key={id} className={styles.item}>
                         {produto.fotos?.[0] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={produto.fotos[0]} alt="" className={styles.miniatura} loading="eager" />
+                          <ImagemOtimizada sizes="96px" src={produto.fotos[0]} alt="" className={styles.miniatura} loading="eager" />
                         ) : (
                           <span className={styles.semFoto} />
                         )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import styles from "./producao.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 /**
  * Miniatura da placa que amplia na própria página (EDI-127).
@@ -67,8 +68,7 @@ export default function FotoPlaca({
         onClick={() => setAmpliada(true)}
         title="Ver a placa maior"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <ImagemOtimizada sizes="256px"
           className={className}
           src={url}
           alt={`Placa de ${nome}`}
@@ -85,8 +85,7 @@ export default function FotoPlaca({
           aria-label={`Placa de ${nome}`}
           onClick={() => setAmpliada(false)}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={styles.fotoAmpliada} src={url} alt={`Placa de ${nome}`} />
+          <ImagemOtimizada sizes="100vw" className={styles.fotoAmpliada} src={url} alt={`Placa de ${nome}`} />
           <p className={styles.legendaAmpliada}>{nome}</p>
           <button type="button" className={styles.fecharFoto} onClick={() => setAmpliada(false)}>
             Fechar

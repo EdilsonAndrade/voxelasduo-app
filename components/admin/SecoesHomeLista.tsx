@@ -8,6 +8,7 @@ import Toast from "@/components/admin/Toast";
 import { ROTULOS_TIPO_SECAO, type TipoSecaoHome } from "@/lib/models/secaoHome";
 import adminStyles from "./admin.module.css";
 import styles from "./secoesHome.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 export interface SecaoResumo {
   id: string;
@@ -129,8 +130,7 @@ export default function SecoesHomeLista({ secoesIniciais }: { secoesIniciais: Se
             </div>
 
             {secao.miniatura ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={secao.miniatura} alt="" className={styles.miniatura} />
+              <ImagemOtimizada sizes="96px" src={secao.miniatura} alt="" className={styles.miniatura} />
             ) : (
               <span className={styles.miniatura} aria-hidden="true">
                 {ICONE_TIPO[secao.tipo]}

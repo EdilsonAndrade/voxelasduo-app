@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProdutoCarrossel } from "@/lib/home/secoesPublicas";
 import { formatarPreco } from "@/lib/produtos/formato";
 import styles from "./home.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 export interface CarrosselProdutosProps {
   titulo: string;
@@ -83,8 +84,7 @@ export default function CarrosselProdutos({ titulo, linkVerTudo, produtos }: Car
             <Link key={produto.id} href={produto.href} className={styles.item}>
               <div className={styles.itemFoto}>
                 {produto.foto && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={produto.foto} alt={produto.nome} loading="lazy" />
+                  <ImagemOtimizada sizes="(max-width: 600px) 60vw, 260px" src={produto.foto} alt={produto.nome} loading="lazy" />
                 )}
                 {produto.esgotado && <span className={styles.esgotado}>Esgotado</span>}
               </div>

@@ -5,6 +5,7 @@ import { useCarrinho } from "@/components/carrinho/carrinho-context";
 import { calcularTotais } from "@/lib/carrinho/carrinho";
 import { formatarPreco } from "@/lib/produtos/formato";
 import styles from "@/components/carrinho/carrinho.module.css";
+import ImagemOtimizada from "@/components/ImagemOtimizada";
 
 export default function CarrinhoPage() {
   const { itens, alterar, remover } = useCarrinho();
@@ -28,8 +29,7 @@ export default function CarrinhoPage() {
             <div className={styles.lista}>
               {itens.map((item) => (
                 <div className={styles.item} key={item.produtoId}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img className={styles.itemFoto} src={item.foto} alt={item.nome} />
+                  <ImagemOtimizada sizes="96px" className={styles.itemFoto} src={item.foto} alt={item.nome} />
                   <div className={styles.itemInfo}>
                     <Link
                       href={`/produtos/${encodeURIComponent(item.categoria)}/${encodeURIComponent(item.slug)}`}
