@@ -262,7 +262,10 @@ export default function Resumo({
                   <span>Por dia</span>
                   <strong>{reais(lucro * pecasDia)}</strong>
                   <small>
-                    {pecasDia} peças · {res.producao!.mesasPorDia} mesas/dia
+                    {pecasDia} peças ·{" "}
+                    {res.producao!.mesasPorDia > 0
+                      ? `${res.producao!.mesasPorDia} mesas/dia`
+                      : `${res.producao!.mesasPorMes} mesas/mês`}
                   </small>
                 </div>
               )}

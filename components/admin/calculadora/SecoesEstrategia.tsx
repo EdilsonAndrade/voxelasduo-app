@@ -141,7 +141,9 @@ export function SecaoProducao({
           onChange={setPecasMes}
           dica={
             producao
-              ? `Automático: ${producao.mesasPorDia} mesas/dia = ${producao.pecasPorDia} peças/dia. Pode alterar.`
+              ? producao.mesasPorDia > 0
+                ? `Automático: ${producao.mesasPorDia} mesas/dia = ${producao.pecasPorDia} peças/dia. Pode alterar.`
+                : `Automático: a mesa leva mais que um dia, ${producao.mesasPorMes} mesas/mês = ${producao.pecasPorMes} peças. Pode alterar.`
               : "Calculado pela mesa (Impressão), ou digite."
           }
         />

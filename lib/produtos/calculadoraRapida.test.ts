@@ -18,7 +18,14 @@ describe("calcularProducaoMensal", () => {
   it("conta só mesas inteiras no dia", () => {
     expect(
       calcularProducaoMensal({ pecasPorMesa: 8, horasMesaCheia: 3, horasPorDia: 20, diasPorMes: 30 })
-    ).toEqual({ mesasPorDia: 6, pecasPorDia: 48, pecasPorMes: 1440 });
+    ).toEqual({ mesasPorDia: 6, mesasPorMes: 180, pecasPorDia: 48, pecasPorMes: 1440 });
+  });
+
+  it("mesa mais longa que o dia conta pelas horas do mês", () => {
+    // 24h40 de mesa, 20 h/dia × 30 dias = 600 h → 24 mesas × 51 peças.
+    expect(
+      calcularProducaoMensal({ pecasPorMesa: 51, horasMesaCheia: 24 + 40 / 60, horasPorDia: 20, diasPorMes: 30 })
+    ).toEqual({ mesasPorDia: 0, mesasPorMes: 24, pecasPorDia: 40, pecasPorMes: 1224 });
   });
 
   it("devolve null com entrada inválida", () => {

@@ -1,14 +1,18 @@
 /** Capacidade de produção a partir da mesa de impressão cheia. */
 export interface ProducaoMensal {
-  /** Mesas completas que cabem nas horas trabalhadas do dia (só mesa inteira conta). */
+  /** Mesas completas que cabem nas horas trabalhadas do dia (só mesa inteira conta) — 0 quando a mesa leva mais que um dia. */
   mesasPorDia: number;
+  /** Mesas completas no mês. */
+  mesasPorMes: number;
   pecasPorDia: number;
   pecasPorMes: number;
 }
 
 /**
  * Quantas peças saem por dia e por mês: `⌊horasDia ÷ horasMesa⌋` mesas por dia,
- * cada uma com `pecasPorMesa` peças. Entradas inválidas (zero/negativas) → `null`.
+ * cada uma com `pecasPorMesa` peças. Mesa mais longa que o dia de impressão
+ * conta pelas horas do mês: `⌊horasDia × dias ÷ horasMesa⌋` mesas no mês.
+ * Entradas inválidas (zero/negativas) → `null`.
  */
 export function calcularProducaoMensal(entrada: {
   pecasPorMesa: number;
@@ -21,9 +25,16 @@ export function calcularProducaoMensal(entrada: {
     return null;
   }
 
+  const pecas = Math.floor(pecasPorMesa);
   const mesasPorDia = Math.floor(horasPorDia / horasMesaCheia);
-  const pecasPorDia = mesasPorDia * Math.floor(pecasPorMesa);
-  return { mesasPorDia, pecasPorDia, pecasPorMes: Math.floor(pecasPorDia * diasPorMes) };
+  if (mesasPorDia > 0) {
+    const pecasPorDia = mesasPorDia * pecas;
+    return { mesasPorDia, mesasPorMes: Math.floor(mesasPorDia * diasPorMes), pecasPorDia, pecasPorMes: Math.floor(pecasPorDia * diasPorMes) };
+  }
+  // Mesa mais longa que o dia: as horas do mês decidem quantas mesas inteiras saem.
+  const mesasPorMes = Math.floor((horasPorDia * diasPorMes) / horasMesaCheia);
+  const pecasPorMes = mesasPorMes * pecas;
+  return { mesasPorDia: 0, mesasPorMes, pecasPorDia: Math.floor(pecasPorMes / diasPorMes), pecasPorMes };
 }
 
 /** Taxa de um marketplace numa faixa de preço: percentual + valor fixo por venda. */

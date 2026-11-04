@@ -88,7 +88,7 @@ describe("calcularResultado", () => {
 
   it("produção vem da mesa: 20 h por dia ÷ 1h30 = 13 mesas", () => {
     const r = calcularResultado(valores(), SITE);
-    expect(r.producao).toEqual({ mesasPorDia: 13, pecasPorDia: 13, pecasPorMes: 390 });
+    expect(r.producao).toEqual({ mesasPorDia: 13, mesasPorMes: 390, pecasPorDia: 13, pecasPorMes: 390 });
     expect(r.pecasMes).toBe(390);
   });
 });
