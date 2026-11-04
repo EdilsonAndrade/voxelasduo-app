@@ -167,9 +167,11 @@ export default function Resumo({
         anuncioPercentual: r.anuncioPercentual,
         impostoPercentual: res.impostoPercentual,
       }).lucroCentavos;
+    // Com margem de folga, o piso dos descontos é o "quero ganhar"; sem folga, o piso global.
+    const comFolga = aba !== "direta" && res.margemDescontosPercentual !== null && res.margemPercentual !== null;
     const verba = calcularVerbaDesconto({
       precoCentavos: r.precoCentavos,
-      pisoPercentual,
+      pisoPercentual: comFolga ? res.margemPercentual! : pisoPercentual,
       cupomLoja: aba === "shopee" ? cupomLoja : null,
       lucroEm,
     });

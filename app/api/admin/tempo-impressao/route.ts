@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validarAnuncioDoPlano, validarItens, validarNomeAvulso } from "@/lib/producao/planosImpressao";
+import { validarAnuncioDoPlano, validarItens, validarMargemDescontos, validarNomeAvulso } from "@/lib/producao/planosImpressao";
 import { criarPlano, listarPlanos, mesclarPlano } from "@/lib/producao/planosImpressaoRepository";
 import { buscarProdutoPorId } from "@/lib/produtos/repository";
 
@@ -28,12 +28,14 @@ export async function POST(request: Request) {
   if (!itens) return NextResponse.json({ erro }, { status: 400 });
   const { anuncio, erro: erroAnuncio } = validarAnuncioDoPlano(corpo.anuncio);
   if (erroAnuncio) return NextResponse.json({ erro: erroAnuncio }, { status: 400 });
+  const { margem: folga, erro: erroFolga } = validarMargemDescontos(corpo.margemDescontosPercentual);
+  if (erroFolga) return NextResponse.json({ erro: erroFolga }, { status: 400 });
 
   if (!produtoId) {
     if (modo === "mesclar") return NextResponse.json({ erro: "Escolha o produto." }, { status: 400 });
     const { nome, erro: erroNome } = validarNomeAvulso(corpo.nome);
     if (!nome) return NextResponse.json({ erro: erroNome }, { status: 400 });
-    const plano = await criarPlano({ nome }, itens, anuncio);
+    const plano = await criarPlano({ nome }, itens, anuncio, folga);
     return NextResponse.json({ plano }, { status: 201 });
   }
 
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ plano }, { status: criado ? 201 : 200 });
   }
 
-  const plano = await criarPlano({ produtoId }, itens, anuncio);
+  const plano = await criarPlano({ produtoId }, itens, anuncio, folga);
   if (!plano) {
     return NextResponse.json({ erro: "Este produto já está no Tempo de Impressão.", produtoId }, { status: 409 });
   }

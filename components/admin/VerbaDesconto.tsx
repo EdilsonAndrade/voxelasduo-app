@@ -63,12 +63,12 @@ export default function VerbaDesconto({
         {maximo ? (
           <li>
             <span>
-              Desconto no produto: até{" "}
+              Desconto do produto ou oferta relâmpago: até{" "}
               <strong className={styles.estrategiaValor}>{porcento(maximo.descontoPercentual)}</strong>
             </span>
             <small>
-              Na promoção relâmpago, promoção de desconto ou cupom do produto
-              {temCupomLoja ? ", somado ao cupom de loja" : ""}. No máximo, o cliente paga{" "}
+              Use o mesmo % nos dois: eles não se somam entre si
+              {temCupomLoja ? ", só cada um com o cupom de loja" : ""}. No máximo, o cliente paga{" "}
               {reais(maximo.precoFinalCentavos)} e você ganha {reais(maximo.lucroCentavos)} (
               {porcento(maximo.margemPercentual)}), o piso.
             </small>

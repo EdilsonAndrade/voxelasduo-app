@@ -125,6 +125,19 @@ export function validarAnuncioDoPlano(valor: unknown): { anuncio?: AnuncioPago |
 }
 
 /**
+ * `margemDescontosPercentual` do corpo: ausente = não mexe; `null` = remove;
+ * número de 0 a menos de 100 (% do preço).
+ */
+export function validarMargemDescontos(valor: unknown): { margem?: number | null; erro?: string } {
+  if (valor === undefined) return {};
+  if (valor === null) return { margem: null };
+  if (typeof valor !== "number" || !Number.isFinite(valor) || valor < 0 || valor >= 100) {
+    return { erro: "Margem do anúncio com folga inválida (0 a 99,9% do preço)." };
+  }
+  return { margem: valor };
+}
+
+/**
  * Importação da Produção: parte com o mesmo nome tem tempo e quantidade atualizados (mantém
  * id e horário planejado), parte nova entra no fim, e as que não vieram ficam.
  */

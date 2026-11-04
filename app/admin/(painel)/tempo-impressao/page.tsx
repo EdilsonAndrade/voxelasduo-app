@@ -34,6 +34,7 @@ export default async function TempoImpressaoPage({ searchParams }: { searchParam
         linkModelo3d: plano.linkModelo3d,
         itens: plano.itens,
         ...(plano.anuncio ? { anuncio: { ativo: plano.anuncio.ativo, roasMeta: plano.anuncio.roasMeta } } : {}),
+        ...(plano.margemDescontosPercentual !== undefined ? { margemDescontosPercentual: plano.margemDescontosPercentual } : {}),
       }))}
       produtos={produtos
         .map((p) => ({ id: p._id!.toString(), nome: p.nome, linkModelo3d: p.linkModelo3d }))

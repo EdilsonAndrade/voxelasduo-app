@@ -38,6 +38,7 @@ export const PRECIFICACAO_PADRAO: PrecificacaoCalculadora = {
   impostoPercentual: "0",
   promocaoAtiva: false,
   promocaoPercentual: "",
+  margemDescontosPercentual: "",
 };
 
 export const VENDA_DIRETA_PADRAO: VendaDiretaCalculadora = {

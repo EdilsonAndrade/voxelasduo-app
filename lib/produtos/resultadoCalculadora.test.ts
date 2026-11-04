@@ -105,3 +105,28 @@ describe("repasse do canal", () => {
     expect(shopee.venda!.anuncioCentavos).toBeGreaterThan(0);
   });
 });
+
+describe("margem do anúncio com folga para descontos", () => {
+  it("Shopee e Mercado Livre usam a folga; a venda direta fica no quero ganhar", () => {
+    const v = valores();
+    v.margemMinimaPrecoPercentual = "25";
+    const sem = calcularResultado(v, SITE);
+    v.precificacao = { ...v.precificacao, margemDescontosPercentual: "40" };
+    const com = calcularResultado(v, SITE);
+    expect(com.margemDescontosPercentual).toBe(40);
+    expect(com.canais.shopee!.venda!.margemPrecoPercentual).toBeCloseTo(40, 1);
+    expect(com.canais.shopee!.precoCentavos!).toBeGreaterThan(sem.canais.shopee!.precoCentavos!);
+    expect(com.canais.direta!.precoCentavos).toBe(sem.canais.direta!.precoCentavos);
+  });
+
+  it("folga menor ou igual ao quero ganhar, vazia ou no modo alvo é ignorada", () => {
+    const v = valores();
+    v.margemMinimaPrecoPercentual = "25";
+    v.precificacao = { ...v.precificacao, margemDescontosPercentual: "20" };
+    expect(calcularResultado(v, SITE).margemDescontosPercentual).toBeNull();
+    v.precificacao = { ...v.precificacao, margemDescontosPercentual: "" };
+    expect(calcularResultado(v, SITE).margemDescontosPercentual).toBeNull();
+    v.precificacao = { ...v.precificacao, modo: "alvo", precoAlvoReais: "30", margemDescontosPercentual: "40" };
+    expect(calcularResultado(v, SITE).margemDescontosPercentual).toBeNull();
+  });
+});

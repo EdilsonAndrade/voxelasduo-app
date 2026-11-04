@@ -36,6 +36,11 @@ export interface PlanoImpressao {
   itens: ItemImpressao[];
   /** Anúncio pago na Shopee (EDI-137) — ausente = desligado. */
   anuncio?: AnuncioPago;
+  /**
+   * Margem do anúncio na Shopee com folga para cupom de loja + desconto ou
+   * oferta relâmpago, em % do preço — ausente = sem folga.
+   */
+  margemDescontosPercentual?: number;
   criadoEm: Date;
   atualizadoEm: Date;
 }
