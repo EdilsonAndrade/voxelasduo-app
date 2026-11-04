@@ -8,7 +8,7 @@ import { NOME_CANAL, type CanalVenda } from "@/lib/produtos/canaisCalculadora";
 import type { CustoUnidade } from "@/lib/produtos/custoCalculadora";
 import { CANAIS_VENDA, type ResultadoCalculadora } from "@/lib/produtos/resultadoCalculadora";
 import { detalharVenda } from "@/lib/produtos/calculadoraRapida";
-import { calcularVerbaDesconto, type CupomLoja } from "@/lib/produtos/verbaDesconto";
+import { calcularVerbaDesconto, descontoMaximoNoPiso, type CupomLoja } from "@/lib/produtos/verbaDesconto";
 import VerbaDesconto from "../VerbaDesconto";
 import { AnuncioCanal, ConcorrenteCanal, KitsCanal } from "./BlocosCanal";
 import { numero, porcentagem, reais } from "./formato";
@@ -24,6 +24,62 @@ const CAMADAS: Array<{ chave: keyof CustoUnidade; rotulo: string; cor: string }>
   { chave: "maoDeObraCentavos", rotulo: "Mão de obra", cor: "color-mix(in srgb, var(--laranja) 60%, var(--rosa))" },
   { chave: "outrosCentavos", rotulo: "Outros", cor: "var(--texto-soft)" },
 ];
+
+/** Lucro do dia e do mês vendendo tudo num mesmo preço (com desconto máximo ou cheio). */
+function FaixaPotencial({
+  titulo,
+  lucroPeca,
+  recebidoPeca,
+  rotuloRecebido,
+  pecasDia,
+  pecasMes,
+  verbaCentavos,
+  apoioDia,
+}: {
+  titulo: string;
+  lucroPeca: number;
+  /** O que o canal deposita por peça (preço − taxas do pedido) — `null` = não se aplica. */
+  recebidoPeca: number | null;
+  rotuloRecebido: string;
+  pecasDia: number;
+  pecasMes: number;
+  verbaCentavos: number;
+  apoioDia: string;
+}) {
+  const mes = lucroPeca * pecasMes - verbaCentavos;
+  // Recebido → lucro: o que sai do depósito é custo da peça, anúncio, imposto (e a verba no mês).
+  const conta = (pecas: number, verba: number) =>
+    recebidoPeca === null ? null : (
+      <small>
+        {rotuloRecebido} {reais(recebidoPeca * pecas)} − custos {reais(recebidoPeca * pecas - lucroPeca * pecas + verba)}
+      </small>
+    );
+  return (
+    <div className={calc.potencialFaixa}>
+      <span className={calc.potencialTitulo}>{titulo}</span>
+      <div className={calc.potencialGrade}>
+        {pecasDia > 0 && (
+          <div>
+            <span>Lucro por dia</span>
+            <strong className={lucroPeca < 0 ? calc.precoPrejuizo : undefined}>{reais(lucroPeca * pecasDia)}</strong>
+            {conta(pecasDia, 0)}
+            <small>
+              {pecasDia} peças · {apoioDia}
+            </small>
+          </div>
+        )}
+        {pecasMes > 0 && (
+          <div>
+            <span>Lucro por mês{verbaCentavos > 0 ? " (− verba)" : ""}</span>
+            <strong className={mes < 0 ? calc.precoPrejuizo : undefined}>{reais(mes)}</strong>
+            {conta(pecasMes, verbaCentavos)}
+            <small>{pecasMes} peças</small>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function Estatistica({ rotulo, valor, apoio, destaque }: { rotulo: string; valor: ReactNode; apoio?: ReactNode; destaque?: "bom" | "ruim" }) {
   return (
@@ -175,6 +231,21 @@ export default function Resumo({
       cupomLoja: aba === "shopee" ? cupomLoja : null,
       lucroEm,
     });
+    const maximo = descontoMaximoNoPiso(verba, lucroEm);
+    const comDesconto = maximo !== null && maximo.precoFinalCentavos < r.precoCentavos;
+    // Depósito do canal num preço: o repasse do preço cheio ajustado pela taxa da plataforma no outro preço.
+    const taxaEm = (precoCentavos: number) =>
+      detalharVenda({ precoCentavos, faixas: r.canal.faixas, custoCentavos: 0, anuncioPercentual: 0 }).taxaCentavos;
+    const recebidoEm = (precoCentavos: number) =>
+      r.repasseCentavos === null || r.precoCentavos === null
+        ? null
+        : r.repasseCentavos - (r.precoCentavos - precoCentavos) + (taxaEm(r.precoCentavos) - taxaEm(precoCentavos));
+    const rotuloRecebido = aba === "direta" ? "Recebe" : `Recebe da ${NOME_CANAL[aba]}`;
+    const apoioDia = res.producao
+      ? res.producao.mesasPorDia > 0
+        ? `${res.producao.mesasPorDia} mesas/dia`
+        : `${res.producao.mesasPorMes} mesas/mês`
+      : "";
     corpo = (
       <>
         <div className={calc.precoConsumidor}>
@@ -256,29 +327,32 @@ export default function Resumo({
         {(pecasDia > 0 || res.pecasMes > 0) && (
           <div className={calc.potencial}>
             <span className={calc.rotuloGrupo}>Potencial de lucro</span>
-            <div>
-              {pecasDia > 0 && (
-                <div>
-                  <span>Por dia</span>
-                  <strong>{reais(lucro * pecasDia)}</strong>
-                  <small>
-                    {pecasDia} peças ·{" "}
-                    {res.producao!.mesasPorDia > 0
-                      ? `${res.producao!.mesasPorDia} mesas/dia`
-                      : `${res.producao!.mesasPorMes} mesas/mês`}
-                  </small>
-                </div>
-              )}
-              {res.pecasMes > 0 && (
-                <div>
-                  <span>Por mês{verbaCanal > 0 ? " (− verba)" : ""}</span>
-                  <strong className={lucro * res.pecasMes - verbaCanal < 0 ? calc.precoPrejuizo : undefined}>{reais(lucro * res.pecasMes - verbaCanal)}</strong>
-                  <small>
-                    {res.pecasMes} peças · bruto {reais(r.precoCentavos * res.pecasMes)}
-                  </small>
-                </div>
-              )}
-            </div>
+            {comDesconto && (
+              <FaixaPotencial
+                titulo={`Mínimo: tudo com desconto máximo (cliente paga ${reais(maximo!.precoFinalCentavos)})`}
+                lucroPeca={maximo!.lucroCentavos}
+                recebidoPeca={recebidoEm(maximo!.precoFinalCentavos)}
+                rotuloRecebido={rotuloRecebido}
+                pecasDia={pecasDia}
+                pecasMes={res.pecasMes}
+                verbaCentavos={verbaCanal}
+                apoioDia={apoioDia}
+              />
+            )}
+            <FaixaPotencial
+              titulo={comDesconto ? `Máximo: tudo a preço cheio (${reais(r.precoCentavos)})` : `Tudo a ${reais(r.precoCentavos)}`}
+              lucroPeca={lucro}
+              recebidoPeca={r.repasseCentavos}
+              rotuloRecebido={rotuloRecebido}
+              pecasDia={pecasDia}
+              pecasMes={res.pecasMes}
+              verbaCentavos={verbaCanal}
+              apoioDia={apoioDia}
+            />
+            {comDesconto && (
+              <small>O ganho real fica entre os dois, conforme quantas vendas saem com desconto.</small>
+            )}
+            <small>Lucro = o que sobra depois de repor filamento, energia, máquina, embalagem, extras, anúncio e imposto.</small>
           </div>
         )}
 
