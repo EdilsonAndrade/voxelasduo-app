@@ -77,6 +77,11 @@ export interface PrecificacaoCalculadora {
   impostoPercentual: string;
   promocaoAtiva: boolean;
   promocaoPercentual: string;
+  /**
+   * Mínimo que sobra depois do cupom de loja + oferta relâmpago/desconto, em %
+   * do preço — vazio/ausente = mínimo da loja (configuração global).
+   */
+  pisoDescontoPercentual?: string;
 }
 
 export type FormaPagamento = "debito" | "credito" | "pix" | "outra";

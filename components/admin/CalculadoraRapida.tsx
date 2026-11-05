@@ -29,6 +29,7 @@ import SecaoModelo from "./calculadora/SecaoModelo";
 import SecaoPrecificacao from "./calculadora/SecaoPrecificacao";
 import { SecaoAds, SecaoConcorrente, SecaoProducao } from "./calculadora/SecoesEstrategia";
 import { numero, reais } from "./calculadora/formato";
+import { pisoDigitado } from "@/lib/produtos/verbaDesconto";
 
 /** Cálculo salvo reaberto na calculadora — ausente = cálculo novo. */
 export interface CalculoInicial {
@@ -366,6 +367,7 @@ export default function CalculadoraRapida({
           margem={valores.margemMinimaPrecoPercentual ?? ""}
           setMargem={(margemMinimaPrecoPercentual) => mudar({ margemMinimaPrecoPercentual })}
           precoConcorrenteReais={valores.precoConcorrenteReais ?? ""}
+          pisoLoja={taxasGlobais.margemMinimaPercentual}
           resumo={valores.precificacao.modo === "alvo" ? "Preço alvo" : `Margem de ${valores.margemMinimaPrecoPercentual || "?"}%`}
         />
         <SecaoCanalVenda valores={valores} aba={aba} setAba={setAba} alterarDireta={alterarDireta} alterarCanal={alterarCanal} />
@@ -401,7 +403,10 @@ export default function CalculadoraRapida({
         onUsarVerba={(verbaMesReais) => alterarAnuncio({ verbaMesReais })}
         rodape={rodape}
         custoCadastroCentavos={produtoVinculado?.custoCadastroCentavos ?? null}
-        pisoPercentual={taxasGlobais.margemMinimaPercentual}
+        pisoPercentual={
+          pisoDigitado(valores.precificacao.pisoDescontoPercentual, numero(valores.margemMinimaPrecoPercentual ?? "")) ??
+          taxasGlobais.margemMinimaPercentual
+        }
         cupomLoja={{ percentual: taxasGlobais.cupomLojaPercentual, tetoCentavos: taxasGlobais.cupomLojaTetoCentavos }}
       />
     </div>

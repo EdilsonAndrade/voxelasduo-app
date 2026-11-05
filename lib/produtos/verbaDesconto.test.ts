@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TAXAS_CANAIS_PADRAO } from "@/lib/models/configuracao";
 import { comissaoCanal, resolverTaxasCanais } from "./canais";
-import { calcularVerbaDesconto, cupomLojaReal, descontoMaximoNoPiso, simularDesconto } from "./verbaDesconto";
+import { calcularVerbaDesconto, cupomLojaReal, descontoMaximoNoPiso, pisoDigitado, simularDesconto } from "./verbaDesconto";
 
 const shopee = resolverTaxasCanais(TAXAS_CANAIS_PADRAO).shopee;
 const lucroShopee = (custo: number) => (preco: number) => preco - comissaoCanal(shopee, preco) - custo;
@@ -110,5 +110,20 @@ describe("simularDesconto", () => {
     expect(simularDesconto(verba, -1, lucroEm)).toBeNull();
     expect(simularDesconto(verba, 100, lucroEm)).toBeNull();
     expect(simularDesconto(verba, Number.NaN, lucroEm)).toBeNull();
+  });
+});
+
+describe("pisoDigitado", () => {
+  it("aceita um piso menor que o quero ganhar", () => {
+    expect(pisoDigitado("30", 45)).toBe(30);
+    expect(pisoDigitado("27,5", 45)).toBe(27.5);
+  });
+
+  it("vazio, inválido ou maior/igual ao quero ganhar = null (usa o mínimo da loja)", () => {
+    expect(pisoDigitado("", 45)).toBeNull();
+    expect(pisoDigitado(undefined, 45)).toBeNull();
+    expect(pisoDigitado("abc", 45)).toBeNull();
+    expect(pisoDigitado("45", 45)).toBeNull();
+    expect(pisoDigitado("-1", 45)).toBeNull();
   });
 });

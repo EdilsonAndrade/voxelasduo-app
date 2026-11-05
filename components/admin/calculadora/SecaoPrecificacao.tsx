@@ -5,6 +5,7 @@ import type { PrecificacaoCalculadora } from "@/lib/models/calculoPreco";
 import { Campo, Interruptor, Opcoes } from "./campos";
 import Secao from "./Secao";
 import { numero, reais } from "./formato";
+import { pisoDigitado } from "@/lib/produtos/verbaDesconto";
 
 export default function SecaoPrecificacao({
   precificacao,
@@ -13,6 +14,7 @@ export default function SecaoPrecificacao({
   setMargem,
   precoConcorrenteReais,
   resumo,
+  pisoLoja,
 }: {
   precificacao: PrecificacaoCalculadora;
   alterar: (parcial: Partial<PrecificacaoCalculadora>) => void;
@@ -20,9 +22,24 @@ export default function SecaoPrecificacao({
   setMargem: (valor: string) => void;
   precoConcorrenteReais: string;
   resumo?: string;
+  /** Mínimo da loja depois dos descontos (configuração global), em % do preço. */
+  pisoLoja: number;
 }) {
   const concorrente = numero(precoConcorrenteReais);
   const alvo = precificacao.modo === "alvo";
+  const margemNumero = numero(margem);
+  const margemValida = margem.trim() !== "" && Number.isFinite(margemNumero) && margemNumero >= 0 && margemNumero < 100;
+  const pisoTexto = (precificacao.pisoDescontoPercentual ?? "").trim();
+  const piso = pisoDigitado(pisoTexto, margemNumero);
+  const pisoInvalido = pisoTexto !== "" && piso === null;
+  const pisoUsado = piso ?? pisoLoja;
+  const espaco = margemNumero - pisoUsado;
+  const pontos = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+  const dicaPiso = pisoInvalido
+    ? `⚠ Precisa ser menor que o "quero ganhar" (${pontos(margemNumero)}%). Enquanto isso, vale o mínimo da loja (${pontos(pisoLoja)}%).`
+    : espaco > 0
+      ? `${pisoTexto === "" ? `Vazio = mínimo da loja (${pontos(pisoLoja)}%). ` : ""}${pontos(espaco)} pontos para cupom de loja + oferta relâmpago ou desconto.`
+      : `Sem espaço para desconto: o "quero ganhar" precisa ser maior que ${pontos(pisoUsado)}%.`;
 
   return (
     <Secao icone="preco" titulo="Precificação" resumo={resumo} aberta>
@@ -68,6 +85,18 @@ export default function SecaoPrecificacao({
               : "O que sobra de cada venda, já pagos custo, taxas, imposto e anúncio."
           }
         />
+        {!alvo && margemValida && (
+          <Campo
+            id="pisoDesconto"
+            rotulo="Mínimo com desconto"
+            unidade="% do preço"
+            valor={precificacao.pisoDescontoPercentual ?? ""}
+            onChange={(v) => alterar({ pisoDescontoPercentual: v })}
+            placeholder={pontos(pisoLoja)}
+            dica={dicaPiso}
+            erro={pisoInvalido}
+          />
+        )}
         <Campo
           id="imposto"
           rotulo="Imposto"

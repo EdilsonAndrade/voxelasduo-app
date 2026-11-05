@@ -124,3 +124,15 @@ export function simularDesconto(
     abaixoDoPiso: precoFinalCentavos <= 0 || margemPercentual < verba.pisoPercentual - 0.005,
   };
 }
+
+/**
+ * Piso dos descontos digitado no cálculo: vale de 0 até menos que a margem
+ * ("quero ganhar"). Vazio ou fora disso = `null` (usa o mínimo da loja).
+ */
+export function pisoDigitado(texto: string | undefined, margemPercentual: number): number | null {
+  const limpo = (texto ?? "").trim().replace(",", ".");
+  if (limpo === "") return null;
+  const valor = Number(limpo);
+  if (!Number.isFinite(valor) || valor < 0 || !(valor < margemPercentual)) return null;
+  return valor;
+}
