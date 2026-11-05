@@ -77,12 +77,6 @@ export interface PrecificacaoCalculadora {
   impostoPercentual: string;
   promocaoAtiva: boolean;
   promocaoPercentual: string;
-  /**
-   * Margem do anúncio nos marketplaces, em % do preço (maior que "quero ganhar"):
-   * a folga paga cupom de loja + desconto do produto ou oferta relâmpago e ainda
-   * sobra o "quero ganhar". Vazio/ausente = sem folga.
-   */
-  margemDescontosPercentual?: string;
 }
 
 export type FormaPagamento = "debito" | "credito" | "pix" | "outra";

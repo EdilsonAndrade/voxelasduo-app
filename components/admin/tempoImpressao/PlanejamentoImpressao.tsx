@@ -132,7 +132,6 @@ export default function PlanejamentoImpressao({
       produtoNome: `${original.produtoNome} (cópia)`,
       itens: original.itens.map((item) => ({ ...item, id: crypto.randomUUID() })),
       ...(original.anuncio ? { anuncio: original.anuncio } : {}),
-      ...(original.margemDescontosPercentual !== undefined ? { margemDescontosPercentual: original.margemDescontosPercentual } : {}),
       novo: true,
     };
     setPlanos((atual) => {

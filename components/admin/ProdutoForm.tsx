@@ -1396,7 +1396,7 @@ export default function ProdutoForm({
             />
           </div>
           <div className={styles.field}>
-            <label htmlFor="margemMinimaProduto">Quero ganhar: piso depois dos descontos (% do preço)</label>
+            <label htmlFor="margemMinimaProduto">Piso de lucro deste produto (% do preço)</label>
             <input
               id="margemMinimaProduto"
               inputMode="decimal"
@@ -1406,7 +1406,7 @@ export default function ProdutoForm({
             />
           </div>
           <div className={styles.field}>
-            <label htmlFor="margemDesejadaProduto">Margem do anúncio, com folga para descontos (% do preço)</label>
+            <label htmlFor="margemDesejadaProduto">Margem de lucro desejada deste produto (% do preço)</label>
             <input
               id="margemDesejadaProduto"
               inputMode="decimal"
@@ -1445,9 +1445,7 @@ export default function ProdutoForm({
           <span className={styles.mlLinkAviso}>Desligado: o preço não reserva nada para anúncio.</span>
         )}
         <span className={styles.mlLinkAviso}>
-          Margens em % do preço de venda: de cada R$ 100 vendidos, quanto fica com você. A margem do anúncio forma o preço
-          sugerido; a diferença até o piso paga o cupom de loja + desconto do produto ou oferta relâmpago (os dois não
-          se somam entre si). Em branco = padrão
+          Margens em % do preço de venda: de cada R$ 100 vendidos, quanto fica com você. Em branco = padrão
           global ({taxasGlobais.margemMinimaPercentual}% de piso, {taxasGlobais.margemDesejadaPercentual}% desejada).
         </span>
         {margensAntigas && (

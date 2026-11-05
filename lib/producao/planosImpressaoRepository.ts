@@ -78,19 +78,11 @@ export async function buscarPlanoDoProduto(produtoId: string): Promise<PlanoImpr
 export async function criarPlano(
   origem: { produtoId: string } | { nome: string },
   itens: ItemImpressao[],
-  anuncio?: AnuncioPago | null,
-  margemDescontosPercentual?: number | null
+  anuncio?: AnuncioPago | null
 ): Promise<PlanoImpressao | null> {
   const colecao = await colecaoPlanos();
   const agora = new Date();
-  const plano: PlanoImpressao = {
-    ...origem,
-    itens,
-    ...(anuncio ? { anuncio } : {}),
-    ...(typeof margemDescontosPercentual === "number" ? { margemDescontosPercentual } : {}),
-    criadoEm: agora,
-    atualizadoEm: agora,
-  };
+  const plano: PlanoImpressao = { ...origem, itens, ...(anuncio ? { anuncio } : {}), criadoEm: agora, atualizadoEm: agora };
   try {
     const { insertedId } = await colecao.insertOne(plano);
     return { ...plano, _id: insertedId };
@@ -123,30 +115,16 @@ export async function mesclarPlano(
 /** Troca a lista de itens e, no plano avulso, o nome; `anuncio: null` remove o anúncio pago. */
 export async function atualizarPlano(
   id: string,
-  dados: {
-    itens: ItemImpressao[];
-    nome?: string;
-    anuncio?: AnuncioPago | null;
-    margemDescontosPercentual?: number | null;
-  }
+  dados: { itens: ItemImpressao[]; nome?: string; anuncio?: AnuncioPago | null }
 ): Promise<PlanoImpressao | null> {
   if (!ObjectId.isValid(id)) return null;
   const colecao = await colecaoPlanos();
-  const { anuncio, margemDescontosPercentual, ...resto } = dados;
-  const remover = {
-    ...(anuncio === null ? { anuncio: "" as const } : {}),
-    ...(margemDescontosPercentual === null ? { margemDescontosPercentual: "" as const } : {}),
-  };
+  const { anuncio, ...resto } = dados;
   return colecao.findOneAndUpdate(
     { _id: new ObjectId(id) },
     {
-      $set: {
-        ...resto,
-        ...(anuncio ? { anuncio } : {}),
-        ...(typeof margemDescontosPercentual === "number" ? { margemDescontosPercentual } : {}),
-        atualizadoEm: new Date(),
-      },
-      ...(Object.keys(remover).length > 0 ? { $unset: remover } : {}),
+      $set: { ...resto, ...(anuncio ? { anuncio } : {}), atualizadoEm: new Date() },
+      ...(anuncio === null ? { $unset: { anuncio: "" as const } } : {}),
     },
     { returnDocument: "after" }
   );

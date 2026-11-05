@@ -21,11 +21,8 @@ export default function VerbaDesconto({
   verba,
   lucroEm,
   idCampo,
-  nota,
 }: {
   verba: Verba;
-  /** Explica de onde vem o piso dos descontos (ex.: "quero ganhar" ou mínimo da loja). */
-  nota?: string;
   /** Lucro em centavos num preço — o mesmo usado para montar a verba. */
   lucroEm: (precoCentavos: number) => number;
   /** Id único do campo do simulador (um por canal na mesma tela). */
@@ -97,7 +94,6 @@ export default function VerbaDesconto({
           </small>
         </div>
       )}
-      {nota && <span className={styles.mlLinkAviso}>{nota}</span>}
 
       <details className={styles.estrategiaRegra}>
         <summary>Regra simples da verba (mais conservadora)</summary>

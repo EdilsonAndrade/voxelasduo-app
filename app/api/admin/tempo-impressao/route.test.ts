@@ -42,14 +42,14 @@ describe("/api/admin/tempo-impressao", () => {
     expect(resposta.status).toBe(201);
     expect(repo.criarPlano).toHaveBeenCalledWith({ produtoId: "p1" }, [
       expect.objectContaining({ nome: "base", minutos: 222 }),
-    ], undefined, undefined);
+    ], undefined);
   });
 
   it("POST 201 cria item avulso só com nome, sem consultar o catálogo", async () => {
     repo.criarPlano.mockResolvedValue({ nome: "Boneco de neve" });
     const resposta = await colecao.POST(req("POST", { nome: " Boneco de neve ", itens }));
     expect(resposta.status).toBe(201);
-    expect(repo.criarPlano).toHaveBeenCalledWith({ nome: "Boneco de neve" }, expect.any(Array), undefined, undefined);
+    expect(repo.criarPlano).toHaveBeenCalledWith({ nome: "Boneco de neve" }, expect.any(Array), undefined);
     expect(produtos.buscarProdutoPorId).not.toHaveBeenCalled();
   });
 
@@ -57,7 +57,7 @@ describe("/api/admin/tempo-impressao", () => {
     repo.criarPlano.mockResolvedValue({ nome: "Vaso" });
     const ok = await colecao.POST(req("POST", { nome: "Vaso", itens, anuncio: { ativo: true, roasMeta: 8 } }));
     expect(ok.status).toBe(201);
-    expect(repo.criarPlano).toHaveBeenCalledWith({ nome: "Vaso" }, expect.any(Array), { ativo: true, roasMeta: 8 }, undefined);
+    expect(repo.criarPlano).toHaveBeenCalledWith({ nome: "Vaso" }, expect.any(Array), { ativo: true, roasMeta: 8 });
 
     const ruim = await colecao.POST(req("POST", { nome: "Vaso", itens, anuncio: { ativo: true, roasMeta: 0 } }));
     expect(ruim.status).toBe(400);

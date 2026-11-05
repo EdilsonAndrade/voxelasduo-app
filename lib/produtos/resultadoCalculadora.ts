@@ -43,8 +43,6 @@ export interface ResultadoCalculadora {
   custo: CustoUnidade | null;
   faltando: string[];
   margemPercentual: number | null;
-  /** Margem com folga para descontos (Shopee e Mercado Livre) — `null` = sem folga; sempre maior que `margemPercentual`. */
-  margemDescontosPercentual: number | null;
   impostoPercentual: number;
   roas: number | null;
   /** Anúncio embutido nos marketplaces (modo "embutido"), em %. */
@@ -81,16 +79,6 @@ export function calcularResultado(
     (v.margemMinimaPrecoPercentual ?? "").trim() !== "" && Number.isFinite(margemBruta) && margemBruta >= 0 && margemBruta < 100
       ? margemBruta
       : null;
-  const folgaBruta = numero(v.precificacao.margemDescontosPercentual);
-  const margemDescontosPercentual =
-    margemPercentual !== null &&
-    v.precificacao.modo === "margem" &&
-    (v.precificacao.margemDescontosPercentual ?? "").trim() !== "" &&
-    Number.isFinite(folgaBruta) &&
-    folgaBruta > margemPercentual &&
-    folgaBruta < 100
-      ? folgaBruta
-      : null;
   const impostoBruto = opcional(v.precificacao.impostoPercentual);
   const impostoPercentual = Number.isFinite(impostoBruto) && impostoBruto < 100 ? impostoBruto : 0;
 
@@ -119,13 +107,11 @@ export function calcularResultado(
     const anuncioPercentual = nome === "direta" ? 0 : anuncioEmbutidoPercentual;
     const custoPedidoCentavos = custo.totalCentavos + canal.custoVendaCentavos;
     const base = { custoCentavos: custoPedidoCentavos, faixas: canal.faixas, impostoPercentual };
-    // Marketplaces com folga: o preço sai da margem do anúncio; a venda direta fica no "quero ganhar".
-    const margemPreco = nome !== "direta" && margemDescontosPercentual !== null ? margemDescontosPercentual : margemPercentual;
 
     const precoMargemCentavos =
-      margemPreco !== null ? calcularPrecoPorMargem({ ...base, margemPrecoPercentual: margemPreco, anuncioPercentual }) : null;
+      margemPercentual !== null ? calcularPrecoPorMargem({ ...base, margemPrecoPercentual: margemPercentual, anuncioPercentual }) : null;
     const precoSemAnuncioCentavos =
-      margemPreco !== null ? calcularPrecoPorMargem({ ...base, margemPrecoPercentual: margemPreco, anuncioPercentual: 0 }) : null;
+      margemPercentual !== null ? calcularPrecoPorMargem({ ...base, margemPrecoPercentual: margemPercentual, anuncioPercentual: 0 }) : null;
     const precoCentavos = modo === "alvo" ? precoAlvoCentavos : precoMargemCentavos;
 
     if (precoCentavos === null) {
@@ -173,7 +159,6 @@ export function calcularResultado(
     custo,
     faltando,
     margemPercentual,
-    margemDescontosPercentual,
     impostoPercentual,
     roas,
     anuncioEmbutidoPercentual,

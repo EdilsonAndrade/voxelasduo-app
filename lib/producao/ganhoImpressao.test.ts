@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calcularGanho, custoDaPeca, ganhoDaPlaca, ganhoDoConjunto } from "./ganhoImpressao";
-import { validarItens, validarMargemDescontos } from "./planosImpressao";
+import { validarItens } from "./planosImpressao";
 
 const placa = { minutos: 120, quantidade: 2, pesoGramas: 100, margemPercentual: 50 };
 
@@ -89,31 +89,5 @@ describe("validarItens com peso e margem", () => {
     expect(validarItens([{ ...base, pesoGramas: "abc" }]).erro).toMatch(/peso/);
     expect(validarItens([{ ...base, margemPercentual: -1 }]).erro).toMatch(/margem/);
     expect(validarItens([{ ...base, margemPercentual: 100 }]).erro).toMatch(/margem inválida \(0 a 99,9% do preço\)/);
-  });
-});
-
-describe("margem do anúncio com folga (Shopee)", () => {
-  it("o preço da Shopee sai da folga e a venda direta continua no quero ganhar", () => {
-    const sem = calcularGanho(5846, 25);
-    const com = calcularGanho(5846, 25, 0, 40);
-    expect(com.margemDescontosPercentual).toBe(40);
-    const shopee = com.canais.shopee!;
-    expect(shopee.lucroCentavos! / shopee.precoCentavos!).toBeGreaterThanOrEqual(0.4);
-    expect(com.canais.direta!.precoCentavos).toBe(sem.canais.direta!.precoCentavos);
-  });
-
-  it("folga que não passa do quero ganhar é ignorada", () => {
-    expect(calcularGanho(5846, 25, 0, 20).margemDescontosPercentual).toBeNull();
-    expect(calcularGanho(5846, 25, 0, 25).canais.shopee!.precoCentavos).toBe(calcularGanho(5846, 25).canais.shopee!.precoCentavos);
-  });
-});
-
-describe("validarMargemDescontos", () => {
-  it("ausente não mexe, null remove, número de 0 a menos de 100", () => {
-    expect(validarMargemDescontos(undefined)).toEqual({});
-    expect(validarMargemDescontos(null)).toEqual({ margem: null });
-    expect(validarMargemDescontos(40)).toEqual({ margem: 40 });
-    expect(validarMargemDescontos(100).erro).toMatch(/folga inválida/);
-    expect(validarMargemDescontos("40").erro).toMatch(/folga inválida/);
   });
 });

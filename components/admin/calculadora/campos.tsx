@@ -16,7 +16,6 @@ export function Campo({
   dica,
   desabilitado,
   placeholder,
-  erro,
 }: {
   id: string;
   rotulo: string;
@@ -27,8 +26,6 @@ export function Campo({
   dica?: ReactNode;
   desabilitado?: boolean;
   placeholder?: string;
-  /** `true` = a dica é um erro (texto em vermelho). */
-  erro?: boolean;
 }) {
   return (
     <div className={styles.field}>
@@ -45,7 +42,7 @@ export function Campo({
         />
         {unidade && <span>{unidade}</span>}
       </div>
-      {dica && <span className={erro ? styles.fieldError : styles.mlLinkAviso}>{dica}</span>}
+      {dica && <span className={styles.mlLinkAviso}>{dica}</span>}
     </div>
   );
 }

@@ -36,8 +36,6 @@ export interface Ganho {
   custoCentavos: number;
   /** Margem pedida, em % do preço (no conjunto, a média ponderada pelo custo de cada parte). */
   margemPercentual: number;
-  /** Margem com folga para descontos na Shopee — `null` = sem folga (sempre maior que `margemPercentual`). */
-  margemDescontosPercentual: number | null;
   canais: Record<CanalGanho, GanhoCanal | null>;
 }
 
@@ -81,29 +79,16 @@ export function lucroNoPreco(canal: GanhoCanal, precoCentavos: number): number {
  * taxas, anúncio e imposto — a mesma conta da calculadora (faixas da Shopee,
  * pagamento e frete da venda direta). O anúncio só entra nos marketplaces.
  */
-export function calcularGanho(
-  custoCentavos: number,
-  margemPercentual: number,
-  anuncioPercentual = 0,
-  margemDescontosPercentual: number | null = null
-): Ganho {
-  // Folga só vale acima do "quero ganhar" e abaixo de 100%.
-  const folga =
-    margemDescontosPercentual !== null && margemDescontosPercentual > margemPercentual && margemDescontosPercentual < 100
-      ? margemDescontosPercentual
-      : null;
-
+export function calcularGanho(custoCentavos: number, margemPercentual: number, anuncioPercentual = 0): Ganho {
   function noCanal(nome: CanalGanho): GanhoCanal | null {
     const canal = montarCanal(nome, PADRAO);
     if (!canal) return null;
-    const marketplace = CANAIS_COM_ANUNCIO.includes(nome);
-    const anuncio = marketplace ? anuncioPercentual : 0;
-    const margemPreco = marketplace && folga !== null ? folga : margemPercentual;
+    const anuncio = CANAIS_COM_ANUNCIO.includes(nome) ? anuncioPercentual : 0;
     const custoPedidoCentavos = custoCentavos + canal.custoVendaCentavos;
     const precoCentavos = calcularPrecoPorMargem({
       custoCentavos: custoPedidoCentavos,
       faixas: canal.faixas,
-      margemPrecoPercentual: margemPreco,
+      margemPrecoPercentual: margemPercentual,
       anuncioPercentual: anuncio,
       impostoPercentual: IMPOSTO_PERCENTUAL,
     });
@@ -120,12 +105,7 @@ export function calcularGanho(
     return { ...base, anuncioCentavos: venda.anuncioCentavos, lucroCentavos: venda.lucroCentavos };
   }
 
-  return {
-    custoCentavos,
-    margemPercentual,
-    margemDescontosPercentual: folga,
-    canais: { shopee: noCanal("shopee"), direta: noCanal("direta") },
-  };
+  return { custoCentavos, margemPercentual, canais: { shopee: noCanal("shopee"), direta: noCanal("direta") } };
 }
 
 function margemValida(margem: number): boolean {
@@ -133,14 +113,10 @@ function margemValida(margem: number): boolean {
 }
 
 /** Ganho de uma peça da placa — `null` enquanto faltar tempo, peso ou margem válida. */
-export function ganhoDaPlaca(
-  placa: PlacaGanho,
-  anuncioPercentual = 0,
-  margemDescontosPercentual: number | null = null
-): Ganho | null {
+export function ganhoDaPlaca(placa: PlacaGanho, anuncioPercentual = 0): Ganho | null {
   const custo = custoDaPeca(placa);
   if (custo === null || !margemValida(placa.margemPercentual)) return null;
-  return calcularGanho(custo, placa.margemPercentual, anuncioPercentual, margemDescontosPercentual);
+  return calcularGanho(custo, placa.margemPercentual, anuncioPercentual);
 }
 
 /**
@@ -148,11 +124,7 @@ export function ganhoDaPlaca(
  * e margem média ponderada pelo custo de cada parte. `null` se alguma parte
  * ainda não tem o cálculo.
  */
-export function ganhoDoConjunto(
-  placas: PlacaGanho[],
-  anuncioPercentual = 0,
-  margemDescontosPercentual: number | null = null
-): Ganho | null {
+export function ganhoDoConjunto(placas: PlacaGanho[], anuncioPercentual = 0): Ganho | null {
   if (placas.length === 0) return null;
   let custo = 0;
   let ponderada = 0;
@@ -163,5 +135,5 @@ export function ganhoDoConjunto(
     ponderada += custoPeca * placa.margemPercentual;
   }
   const margem = custo > 0 ? ponderada / custo : 0;
-  return calcularGanho(custo - EMBALAGEM_CENTAVOS * (placas.length - 1), margem, anuncioPercentual, margemDescontosPercentual);
+  return calcularGanho(custo - EMBALAGEM_CENTAVOS * (placas.length - 1), margem, anuncioPercentual);
 }

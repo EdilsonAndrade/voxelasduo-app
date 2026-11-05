@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validarAnuncioDoPlano, validarItens, validarMargemDescontos, validarNomeAvulso } from "@/lib/producao/planosImpressao";
+import { validarAnuncioDoPlano, validarItens, validarNomeAvulso } from "@/lib/producao/planosImpressao";
 import {
   atualizarPlano,
   buscarPlano,
@@ -20,8 +20,6 @@ export async function PUT(request: Request, { params }: Contexto) {
   if (!itens) return NextResponse.json({ erro }, { status: 400 });
   const { anuncio, erro: erroAnuncio } = validarAnuncioDoPlano(corpo?.anuncio);
   if (erroAnuncio) return NextResponse.json({ erro: erroAnuncio }, { status: 400 });
-  const { margem: folga, erro: erroFolga } = validarMargemDescontos(corpo?.margemDescontosPercentual);
-  if (erroFolga) return NextResponse.json({ erro: erroFolga }, { status: 400 });
 
   const atual = await buscarPlano(id);
   if (!atual) return NextResponse.json({ erro: NAO_ENCONTRADO }, { status: 404 });
@@ -33,12 +31,7 @@ export async function PUT(request: Request, { params }: Contexto) {
     nome = validado.nome;
   }
 
-  const plano = await atualizarPlano(id, {
-    itens,
-    ...(nome ? { nome } : {}),
-    ...(anuncio !== undefined ? { anuncio } : {}),
-    ...(folga !== undefined ? { margemDescontosPercentual: folga } : {}),
-  });
+  const plano = await atualizarPlano(id, { itens, ...(nome ? { nome } : {}), ...(anuncio !== undefined ? { anuncio } : {}) });
   if (!plano) return NextResponse.json({ erro: NAO_ENCONTRADO }, { status: 404 });
   return NextResponse.json({ plano });
 }

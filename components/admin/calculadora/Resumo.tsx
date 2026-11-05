@@ -223,11 +223,9 @@ export default function Resumo({
         anuncioPercentual: r.anuncioPercentual,
         impostoPercentual: res.impostoPercentual,
       }).lucroCentavos;
-    // Com margem de folga, o piso dos descontos é o "quero ganhar"; sem folga, o piso global.
-    const comFolga = aba !== "direta" && res.margemDescontosPercentual !== null && res.margemPercentual !== null;
     const verba = calcularVerbaDesconto({
       precoCentavos: r.precoCentavos,
-      pisoPercentual: comFolga ? res.margemPercentual! : pisoPercentual,
+      pisoPercentual,
       cupomLoja: aba === "shopee" ? cupomLoja : null,
       lucroEm,
     });
@@ -319,19 +317,7 @@ export default function Resumo({
         </div>
 
         <div className={calc.cardVerba}>
-          <VerbaDesconto
-            key={aba}
-            verba={verba}
-            lucroEm={lucroEm}
-            idCampo={`simularDesconto-calc-${aba}`}
-            nota={
-              aba === "direta"
-                ? undefined
-                : comFolga
-                  ? `O desconto para no seu "quero ganhar" de ${porcentagem(res.margemPercentual!)}.`
-                  : `Sem margem do anúncio com folga, o desconto vai até o piso mínimo da loja (${porcentagem(pisoPercentual)}). Por isso o valor final é o mesmo com qualquer "quero ganhar". Para o cliente pagar mais no desconto máximo, preencha a margem do anúncio acima do "quero ganhar".`
-            }
-          />
+          <VerbaDesconto key={aba} verba={verba} lucroEm={lucroEm} idCampo={`simularDesconto-calc-${aba}`} />
         </div>
 
         <Composicao custo={res.custo} />

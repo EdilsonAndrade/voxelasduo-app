@@ -40,8 +40,6 @@ export interface PlanoProduto {
   itens: ItemPlano[];
   /** Anúncio pago na Shopee — ausente = desligado. */
   anuncio?: { ativo: boolean; roasMeta: number };
-  /** Margem do anúncio na Shopee com folga para descontos (% do preço) — ausente = sem folga. */
-  margemDescontosPercentual?: number;
   /** Ainda não gravado: o primeiro "Salvar" cria o plano (POST). */
   novo?: boolean;
 }
@@ -140,8 +138,7 @@ function ResumoGanho({
     shopee && shopee.precoCentavos !== null && lucroShopee
       ? calcularVerbaDesconto({
           precoCentavos: shopee.precoCentavos,
-          // Com folga, os descontos param no "quero ganhar" da peça; sem folga, no piso da loja.
-          pisoPercentual: ganho.margemDescontosPercentual !== null ? ganho.margemPercentual : regua.pisoPercentual,
+          pisoPercentual: regua.pisoPercentual,
           cupomLoja: regua.cupomLoja,
           lucroEm: lucroShopee,
         })
@@ -280,20 +277,12 @@ export default function PlanoProdutoCard({
     anuncioAtivo !== (plano.anuncio?.ativo ?? false) ||
     (anuncioAtivo && roasNumero !== (plano.anuncio?.roasMeta ?? ROAS_PADRAO));
   const margemPadrao = regua.pisoPercentual;
-  const [folgaTexto, setFolgaTexto] = useState(
-    plano.margemDescontosPercentual !== undefined ? String(plano.margemDescontosPercentual) : ""
-  );
-  const folgaNumero = Number(folgaTexto.trim().replace(",", "."));
-  const folgaValida = folgaTexto.trim() !== "" && Number.isFinite(folgaNumero) && folgaNumero >= 0 && folgaNumero < 100;
-  const folga = folgaValida ? folgaNumero : null;
-  const folgaAlterada = folgaTexto.trim() !== (plano.margemDescontosPercentual !== undefined ? String(plano.margemDescontosPercentual) : "");
 
   const alterado =
     plano.novo ||
     JSON.stringify(linhas) !== JSON.stringify(inicial) ||
     (avulso && nome !== plano.produtoNome) ||
-    anuncioAlterado ||
-    folgaAlterada;
+    anuncioAlterado;
   const pecas = linhas.reduce((soma, linha) => soma + (Number(linha.quantidade) > 0 ? Number(linha.quantidade) : 0), 0);
   const total = linhas.reduce((soma, linha) => soma + (minutosDaLinha(linha) > 0 ? minutosDaLinha(linha) : 0), 0);
   const peso = linhas.reduce((soma, linha) => {
@@ -302,7 +291,7 @@ export default function PlanoProdutoCard({
   }, 0);
   const conjunto =
     linhas.length > 1
-      ? ganhoDoConjunto(linhas.map((linha) => placaDaLinha(linha, margemPadrao)), anuncioPercentual, folga)
+      ? ganhoDoConjunto(linhas.map((linha) => placaDaLinha(linha, margemPadrao)), anuncioPercentual)
       : null;
 
   function atualizar(id: string, campo: keyof Linha, valor: string) {
@@ -355,13 +344,7 @@ export default function PlanoProdutoCard({
         {
           method: plano.novo ? "POST" : "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...origem,
-            itens,
-            anuncio: corpoAnuncio(),
-            // Texto inválido vai como está para o servidor recusar com a mensagem.
-            margemDescontosPercentual: folgaTexto.trim() === "" ? null : folgaValida ? folgaNumero : folgaTexto,
-          }),
+          body: JSON.stringify({ ...origem, itens, anuncio: corpoAnuncio() }),
         }
       );
       const dados = await resposta.json().catch(() => ({}));
@@ -377,9 +360,6 @@ export default function PlanoProdutoCard({
         linkModelo3d: plano.linkModelo3d,
         itens: dados.plano.itens,
         ...(dados.plano.anuncio ? { anuncio: dados.plano.anuncio } : {}),
-        ...(typeof dados.plano.margemDescontosPercentual === "number"
-          ? { margemDescontosPercentual: dados.plano.margemDescontosPercentual }
-          : {}),
       };
       setLinhas(salvo.itens.map(paraLinha));
       setNome(salvo.produtoNome);
@@ -547,32 +527,6 @@ export default function PlanoProdutoCard({
         )}
       </div>
 
-      <div className={styles.anuncio}>
-        <label className={styles.anuncioRoas}>
-          Margem do anúncio na Shopee (com folga)
-          <input
-            className={`${styles.entrada} ${styles.entradaNumero}`}
-            value={folgaTexto}
-            onChange={(e) => {
-              setFolgaTexto(e.target.value);
-              setAviso(null);
-            }}
-            inputMode="decimal"
-            placeholder={String(Math.min(99, margemPadrao + 15))}
-            aria-invalid={folgaTexto.trim() !== "" && !folgaValida}
-            title="% do preço. O preço sobe para pagar cupom de loja + desconto ou oferta relâmpago e ainda sobrar a margem de cada parte."
-          />
-          %
-        </label>
-        <span className={folgaTexto.trim() !== "" && !folgaValida ? styles.anuncioErro : styles.anuncioApoio}>
-          {folgaTexto.trim() === ""
-            ? "Vazio = sem folga: o preço da Shopee usa a margem de cada parte."
-            : !folgaValida
-              ? "Use um valor de 0 a 99,9% do preço."
-              : "Os descontos param na margem de cada parte. Desconto do produto e oferta relâmpago podem usar o mesmo %: não se somam entre si."}
-        </span>
-      </div>
-
       {conjunto && (
         <ResumoGanho
           ganho={conjunto}
@@ -596,7 +550,7 @@ export default function PlanoProdutoCard({
           <span>Término</span>
         </div>
         {linhas.map((linha, indice) => {
-          const ganho = ganhoDaPlaca(placaDaLinha(linha, margemPadrao), anuncioPercentual, folga);
+          const ganho = ganhoDaPlaca(placaDaLinha(linha, margemPadrao), anuncioPercentual);
           return (
           <Fragment key={linha.id}>
           <div className={styles.linha}>
