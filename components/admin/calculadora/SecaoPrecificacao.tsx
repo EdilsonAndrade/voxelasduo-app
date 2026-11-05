@@ -27,11 +27,12 @@ export default function SecaoPrecificacao({
   const margemValida = margem.trim() !== "" && Number.isFinite(margemNumero) && margemNumero >= 0 && margemNumero < 100;
   const folgaTexto = (precificacao.margemDescontosPercentual ?? "").trim();
   const folga = numero(folgaTexto);
+  const folgaInvalida = folgaTexto !== "" && (!Number.isFinite(folga) || folga <= margemNumero || folga >= 100);
   const dicaFolga =
     folgaTexto === ""
       ? "Shopee e Mercado Livre: o preço sobe para pagar cupom de loja + desconto ou oferta relâmpago e ainda sobrar o que você quer ganhar. Vazio = sem folga."
       : !Number.isFinite(folga) || folga <= margemNumero || folga >= 100
-        ? `Use um valor maior que ${margemNumero}% e menor que 100%. Enquanto isso, o preço usa o "quero ganhar".`
+        ? `⚠ Precisa ser maior que o "quero ganhar" (${margemNumero}%) e menor que 100%, ex.: quero ganhar 25 e margem do anúncio 45. Enquanto isso, a folga fica desligada.`
         : `${(folga - margemNumero).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} pontos de folga para cupom de loja + desconto ou oferta relâmpago (os dois não somam entre si).`;
 
   return (
@@ -95,6 +96,7 @@ export default function SecaoPrecificacao({
             onChange={(v) => alterar({ margemDescontosPercentual: v })}
             placeholder={`Ex: ${Math.min(99, Math.round(margemNumero) + 15)}`}
             dica={dicaFolga}
+            erro={folgaInvalida}
           />
         )}
       </div>

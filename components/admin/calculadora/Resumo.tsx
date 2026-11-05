@@ -319,7 +319,19 @@ export default function Resumo({
         </div>
 
         <div className={calc.cardVerba}>
-          <VerbaDesconto key={aba} verba={verba} lucroEm={lucroEm} idCampo={`simularDesconto-calc-${aba}`} />
+          <VerbaDesconto
+            key={aba}
+            verba={verba}
+            lucroEm={lucroEm}
+            idCampo={`simularDesconto-calc-${aba}`}
+            nota={
+              aba === "direta"
+                ? undefined
+                : comFolga
+                  ? `O desconto para no seu "quero ganhar" de ${porcentagem(res.margemPercentual!)}.`
+                  : `Sem margem do anúncio com folga, o desconto vai até o piso mínimo da loja (${porcentagem(pisoPercentual)}). Por isso o valor final é o mesmo com qualquer "quero ganhar". Para o cliente pagar mais no desconto máximo, preencha a margem do anúncio acima do "quero ganhar".`
+            }
+          />
         </div>
 
         <Composicao custo={res.custo} />
