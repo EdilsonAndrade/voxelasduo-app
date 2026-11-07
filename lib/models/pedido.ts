@@ -25,6 +25,8 @@ export interface ItemPedido {
   variacaoId?: string;
   /** Nome da variação no momento da compra. */
   variacaoNome?: string;
+  /** Preço do site antes do desconto do link de pagamento — ausente = sem desconto. */
+  precoOriginal?: number;
 }
 
 export interface ClientePedido {
@@ -129,6 +131,8 @@ export interface Pedido {
    * leitura (ver `lib/clientes/pedidosAssociados.ts`).
    */
   clienteId?: ObjectId;
+  /** Link de pagamento que gerou o pedido — ausente = checkout do carrinho. */
+  linkPagamentoId?: ObjectId;
   /** Dados de rastreio, quando disponíveis (Tarefa 10/EDI-84). */
   rastreio?: RastreioPedido;
   /**

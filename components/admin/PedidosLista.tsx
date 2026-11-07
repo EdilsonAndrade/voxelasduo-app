@@ -354,13 +354,18 @@ export default function PedidosLista({
                     <div>
                       <div className={styles.detalhePedido}>
                         <section>
-                          <h3 className={styles.detalheTitulo}>Itens</h3>
+                          <h3 className={styles.detalheTitulo}>
+                            Itens{detalhe.viaLinkPagamento ? " · via link de pagamento" : ""}
+                          </h3>
                           {detalhe.itens.map((item, indice) => (
                             <div key={indice} className={styles.detalheItem}>
                               <FotoAmpliavel url={item.foto} nome={item.nome} />
                               <div>
                                 {item.quantidade}x <strong>{item.nome}</strong> —{" "}
                                 {formatarPreco(item.precoUnitario)}
+                                {item.precoOriginal !== undefined && (
+                                  <> (site {formatarPreco(item.precoOriginal)} · desconto do link)</>
+                                )}
                                 {item.semCorrespondencia && " (sem correspondência no catálogo)"}
                                 {item.produtoId && (
                                   <div className={styles.detalheItemLinks}>

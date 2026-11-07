@@ -28,6 +28,8 @@ export interface ItemPedidoDetalhe {
   nome: string;
   quantidade: number;
   precoUnitario: number;
+  /** Preço do site antes do desconto do link de pagamento. */
+  precoOriginal?: number;
   semCorrespondencia: boolean;
   /** Primeira foto do produto — ausente quando o produto saiu do catálogo ou não tem foto. */
   foto?: string;
@@ -51,6 +53,8 @@ export interface PedidoDetalhado {
   atualizadoEm: Date;
   rastreio?: Pedido["rastreio"];
   envioAguardandoLiberacaoAte?: Pedido["envioAguardandoLiberacaoAte"];
+  /** Pedido gerado por um link de pagamento. */
+  viaLinkPagamento?: boolean;
 }
 
 function resolverItem(
@@ -65,6 +69,7 @@ function resolverItem(
     nome: nomeComVariacao(produto?.nome ?? "Produto removido do catálogo", item.variacaoNome),
     quantidade: item.quantidade,
     precoUnitario: item.precoUnitario,
+    ...(item.precoOriginal !== undefined ? { precoOriginal: item.precoOriginal } : {}),
     semCorrespondencia: !produto,
     foto: produto ? fotoDaVariacao(variacao, produto.fotos) : undefined,
     urlLoja: produto
@@ -114,5 +119,6 @@ export function paraPedidoDetalhado(
     atualizadoEm: pedido.atualizadoEm,
     rastreio: pedido.rastreio,
     envioAguardandoLiberacaoAte: pedido.envioAguardandoLiberacaoAte,
+    ...(pedido.linkPagamentoId ? { viaLinkPagamento: true } : {}),
   };
 }

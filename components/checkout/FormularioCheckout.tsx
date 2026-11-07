@@ -31,6 +31,11 @@ interface FormularioCheckoutProps {
   aoEscolherFrete: (servico: ServicoFrete) => void;
   aoAtualizarOpcoesFrete: (opcoes: OpcaoFrete[]) => void;
   aoRecarregarOpcoesFrete: () => void;
+  /**
+   * Link de pagamento: o pedido é criado em `/api/pagar/{codigo}` com os itens
+   * e preços gravados no link — o carrinho não é usado.
+   */
+  linkPagamento?: { codigo: string; itens: { produtoId: string; variacaoId?: string; nome: string }[] };
 }
 
 export default function FormularioCheckout({
@@ -41,8 +46,10 @@ export default function FormularioCheckout({
   aoEscolherFrete,
   aoAtualizarOpcoesFrete,
   aoRecarregarOpcoesFrete,
+  linkPagamento,
 }: FormularioCheckoutProps) {
-  const { itens } = useCarrinho();
+  const { itens: itensCarrinho } = useCarrinho();
+  const itens = linkPagamento ? linkPagamento.itens : itensCarrinho;
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroEstoque, setErroEstoque] = useState<ItemSemEstoque[] | null>(null);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -100,7 +107,7 @@ export default function FormularioCheckout({
     setErroEstoque(null);
     setErros({});
 
-    const resposta = await fetch("/api/pedidos", {
+    const resposta = await fetch(linkPagamento ? `/api/pagar/${linkPagamento.codigo}` : "/api/pedidos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -119,11 +126,15 @@ export default function FormularioCheckout({
             cep: formulario.cep,
           },
         },
-        itens: itens.map((item) => ({
-          produtoId: item.produtoId,
-          quantidade: item.quantidade,
-          ...(item.variacaoId ? { variacaoId: item.variacaoId } : {}),
-        })),
+        ...(linkPagamento
+          ? {}
+          : {
+              itens: itensCarrinho.map((item) => ({
+                produtoId: item.produtoId,
+                quantidade: item.quantidade,
+                ...(item.variacaoId ? { variacaoId: item.variacaoId } : {}),
+              })),
+            }),
         frete: freteSelecionado
           ? { servico: freteSelecionado.servico, valorCentavos: freteSelecionado.valorCentavos }
           : undefined,
@@ -155,7 +166,7 @@ export default function FormularioCheckout({
 
     if (!resposta.ok || !dados.pedido) {
       setErroGeral(
-        `${dados.erro ?? "Não conseguimos criar seu pedido agora. Verifique sua conexão e tente novamente — seu carrinho foi preservado."} (status ${resposta.status})`
+        `${dados.erro ?? (linkPagamento ? "Não conseguimos criar seu pedido agora. Verifique sua conexão e tente novamente." : "Não conseguimos criar seu pedido agora. Verifique sua conexão e tente novamente — seu carrinho foi preservado.")} (status ${resposta.status})`
       );
       setEnviando(false);
       return;
@@ -193,7 +204,7 @@ export default function FormularioCheckout({
               );
             })}
           </ul>
-          Ajuste seu carrinho para continuar.
+          {linkPagamento ? "Fale com a loja para receber um link atualizado." : "Ajuste seu carrinho para continuar."}
         </div>
       )}
 

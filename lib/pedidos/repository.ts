@@ -123,6 +123,12 @@ export interface CriarPedidoInput {
   clienteId?: ObjectId;
   /** Frete já resolvido no servidor (spec 039) — somado ao `valorTotal`. */
   frete?: FretePedido;
+  /**
+   * Preço unitário combinado por linha (chave `chaveLinhaPedido`) — vem do link
+   * de pagamento, nunca do navegador. Ausente = preço do produto/variação.
+   */
+  precosCombinados?: Map<string, number>;
+  linkPagamentoId?: ObjectId;
 }
 
 export interface ItemPedidoDetalhado {
@@ -133,6 +139,7 @@ export interface ItemPedidoDetalhado {
   variacaoNome?: string;
   quantidade: number;
   precoUnitario: number;
+  precoOriginal?: number;
 }
 
 export interface PedidoCriado {
@@ -178,11 +185,14 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
     }
     // Com variação (specs/041), o preço é o dela — validarEstoque já garantiu que ela existe.
     const variacao = buscarVariacao(produto, variacaoId);
+    const precoLoja = variacao?.preco ?? produto.preco;
+    const combinado = input.precosCombinados?.get(chave);
     itensDetalhados.push({
       produtoId,
       nome: nomeComVariacao(produto.nome, variacao?.nome),
       quantidade,
-      precoUnitario: variacao?.preco ?? produto.preco,
+      precoUnitario: combinado ?? precoLoja,
+      ...(combinado !== undefined && combinado !== precoLoja ? { precoOriginal: precoLoja } : {}),
       ...(variacao ? { variacaoId: variacao.id, variacaoNome: variacao.nome } : {}),
     });
   }
@@ -201,6 +211,7 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
       quantidade: item.quantidade,
       precoUnitario: item.precoUnitario,
       ...(item.variacaoId ? { variacaoId: item.variacaoId, variacaoNome: item.variacaoNome } : {}),
+      ...(item.precoOriginal !== undefined ? { precoOriginal: item.precoOriginal } : {}),
     })),
     cliente: input.cliente,
     status: "pendente",
@@ -210,6 +221,7 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
     pagamento: { tentativas: [] },
     idempotencia: input.idempotencia,
     ...(input.clienteId ? { clienteId: input.clienteId } : {}),
+    ...(input.linkPagamentoId ? { linkPagamentoId: input.linkPagamentoId } : {}),
     criadoEm: agora,
     atualizadoEm: agora,
   };

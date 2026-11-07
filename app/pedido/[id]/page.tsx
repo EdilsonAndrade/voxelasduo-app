@@ -6,6 +6,7 @@ import LimparCarrinhoPago from "@/components/carrinho/LimparCarrinhoPago";
 import PagamentoBrick from "@/components/pagamento/PagamentoBrick";
 import { codigoPedido } from "@/lib/pedidos/numero";
 import { ROTULO_SERVICO_FRETE } from "@/lib/models/frete";
+import { nomeComVariacao } from "@/lib/produtos/variacoes";
 import styles from "@/components/checkout/checkout.module.css";
 
 export default async function PedidoConfirmacaoPage({
@@ -25,7 +26,7 @@ export default async function PedidoConfirmacaoPage({
   );
 
   const itens = pedido.itens.map((item) => ({
-    nome: produtos.get(item.produtoId.toString())?.nome ?? "Produto",
+    nome: nomeComVariacao(produtos.get(item.produtoId.toString())?.nome ?? "Produto", item.variacaoNome),
     quantidade: item.quantidade,
     precoUnitario: item.precoUnitario,
   }));
@@ -36,7 +37,8 @@ export default async function PedidoConfirmacaoPage({
     <div className="container">
       <div className={styles.pagina}>
         <div className={styles.confirmacao}>
-          {pago && <LimparCarrinhoPago />}
+          {/* Pedido de link de pagamento não usou o carrinho: não esvazia. */}
+          {pago && !pedido.linkPagamentoId && <LimparCarrinhoPago />}
           <span className={styles.confirmacaoBadge}>
             {pago ? "pagamento confirmado" : "pedido pendente de pagamento"}
           </span>
