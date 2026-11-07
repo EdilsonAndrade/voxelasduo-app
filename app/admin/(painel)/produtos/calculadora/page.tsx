@@ -128,11 +128,13 @@ export default async function CalculadoraPrecoPage({
               }
             : produto && variacao
               ? {
-                  // Variação de kit (specs/041): custo agregado das peças e o preço dela como alvo.
+                  // Variação de kit (specs/041): custo agregado das peças. Só usa preço alvo quando a
+                  // variação já tem preço da Shopee — sem ele, o alvo copiaria o preço do site para
+                  // Shopee e Mercado Livre; pela margem, cada canal recebe o próprio preço.
                   nome: nomeComVariacao(produto.nome, variacao.nome),
                   linkModelo3d: produto.linkModelo3d,
                   valores: custoVariacao
-                    ? valoresDoKit(custoVariacao, variacao.precosCanais?.shopee ?? variacao.preco)
+                    ? valoresDoKit(custoVariacao, variacao.precosCanais?.shopee ?? 0)
                     : valoresDoProduto({ ...produto, custoProducao: undefined, preco: variacao.preco, precosCanais: variacao.precosCanais }),
                   produtoId: produtoVinculado!.id,
                   variacaoId: variacao.id,

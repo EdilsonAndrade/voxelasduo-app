@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import ProdutoForm from "@/components/admin/ProdutoForm";
 import ProducaoDoProduto from "@/components/admin/producao/ProducaoDoProduto";
 import VariacoesKit from "@/components/admin/VariacoesKit";
+import { configSugestaoVariacao } from "@/lib/produtos/sugestaoVariacaoConfig";
 import { buscarProdutoPorId, listarProdutos } from "@/lib/produtos/repository";
 import { motivoPecaInvalida, temVariacoes } from "@/lib/produtos/variacoes";
 import { custoDaPeca } from "@/lib/produtos/variacoesRepository";
@@ -76,6 +77,7 @@ export default async function EditarProdutoPage({
             percentual: produto.taxasCanais?.siteTaxaPercentual ?? taxasGlobais.siteTaxaPercentual,
             fixaCentavos: produto.taxasCanais?.siteTaxaFixaCentavos ?? taxasGlobais.siteTaxaFixaCentavos,
           }}
+          sugestao={configSugestaoVariacao(taxasGlobais, produto.taxasCanais)}
         />
       )}
       <ProducaoDoProduto produtoId={id} />

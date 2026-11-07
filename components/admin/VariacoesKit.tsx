@@ -10,6 +10,10 @@ import ImagemOtimizada from "@/components/ImagemOtimizada";
 import { MAXIMO_VARIACOES, type VariacaoKit } from "@/lib/models/produto";
 import { formatarPreco } from "@/lib/produtos/formato";
 import { custoDaVariacao } from "@/lib/produtos/variacoes";
+import { sugerirPrecosVariacao, type ConfigSugestaoVariacao } from "@/lib/produtos/sugestaoVariacao";
+
+/** Desconto padrão da Shopee (promoção/oferta relâmpago) usado no preço sugerido. */
+const DESCONTO_SHOPEE_PADRAO = "30";
 
 /** Produto do catálogo que pode (ou não) ser peça de uma variação. */
 export interface PecaCatalogo {
@@ -85,12 +89,15 @@ export default function VariacoesKit({
   variacoesIniciais,
   catalogo,
   taxaSite,
+  sugestao,
 }: {
   produtoId: string;
   fotos: string[];
   variacoesIniciais: VariacaoKit[];
   catalogo: PecaCatalogo[];
   taxaSite: { percentual: number; fixaCentavos: number };
+  /** Taxas e margens da loja para o preço sugerido de cada canal. */
+  sugestao: ConfigSugestaoVariacao;
 }) {
   const router = useRouter();
   const mapaCatalogo = useMemo(() => new Map(catalogo.map((p) => [p.id, p])), [catalogo]);
@@ -107,6 +114,9 @@ export default function VariacoesKit({
   const [erro, setErro] = useState<string | null>(null);
   const [campos, setCampos] = useState<Record<string, string>>({});
   const [aviso, setAviso] = useState<string | null>(null);
+  const [descontoShopee, setDescontoShopee] = useState(DESCONTO_SHOPEE_PADRAO);
+  const descontoShopeeNumero = Number(descontoShopee.replace(",", "."));
+  const pontos = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
   const salvas = new Set(variacoesIniciais.map((x) => x.id));
 
   function alterar(chave: string, mudanca: Partial<VariacaoForm>) {
@@ -219,6 +229,22 @@ export default function VariacoesKit({
           : `As fotos e as peças disponíveis são as já salvas (${fotos.length} ${fotos.length === 1 ? "foto" : "fotos"}). Enviou fotos ou criou peças agora? Salve as variações, salve o produto e recarregue a página.`}
       </p>
 
+      <div className={v.descontoShopee}>
+        <label htmlFor="var-desconto-shopee">Desconto que vou dar na Shopee (%)</label>
+        <input
+          id="var-desconto-shopee"
+          inputMode="decimal"
+          value={descontoShopee}
+          onChange={(e) => setDescontoShopee(e.target.value)}
+        />
+        <span>
+          Promoção ou oferta relâmpago, em cima do preço cheio.
+          {sugestao.cupomLoja ? ` O cupom de loja de ${pontos(sugestao.cupomLoja.percentual)}% já entra na conta.` : " Sem cupom de loja configurado."}{" "}
+          O preço sugerido garante {pontos(sugestao.margemMinimaPercentual)}% de lucro sobre o que o cliente paga na Shopee e{" "}
+          {pontos(sugestao.margemDesejadaPercentual)}% no site e no Mercado Livre.
+        </span>
+      </div>
+
       {variacoes.length === 0 && <p className={v.vazio}>Nenhuma variação. Produto vendido como peça única.</p>}
 
       <ol className={v.lista}>
@@ -231,6 +257,10 @@ export default function VariacoesKit({
           const preco = centavos(variacao.precoReais);
           const taxa = Number.isFinite(preco) ? Math.round((preco * taxaSite.percentual) / 100) + taxaSite.fixaCentavos : 0;
           const lucro = Number.isFinite(preco) && preco > 0 ? preco - taxa - custo.custoCentavos : null;
+          const sugerido =
+            variacao.pecas.length > 0 && Number.isFinite(descontoShopeeNumero)
+              ? sugerirPrecosVariacao(custo.custoCentavos, descontoShopeeNumero, sugestao)
+              : null;
 
           return (
             <li key={variacao.chave} className={v.cartao}>
@@ -416,6 +446,50 @@ export default function VariacoesKit({
                   <span className={styles.mlLinkAviso}>Salve para abrir na calculadora.</span>
                 )}
               </div>
+
+              {sugerido && (sugerido.siteCentavos !== null || sugerido.shopee) && (
+                <div className={v.sugestao}>
+                  <p className={v.sugestaoTitulo}>
+                    Preço sugerido{custo.incompleto ? " (há peça sem custo: o preço real é maior)" : ""}
+                  </p>
+                  <ul className={v.sugestaoCanais}>
+                    <li>
+                      Site <strong>{sugerido.siteCentavos === null ? "—" : formatarPreco(sugerido.siteCentavos)}</strong>
+                    </li>
+                    <li>
+                      Shopee cheio <strong>{sugerido.shopee ? formatarPreco(sugerido.shopee.cheioCentavos) : "—"}</strong>
+                    </li>
+                    <li>
+                      Mercado Livre{" "}
+                      <strong>{sugerido.mercadoLivreCentavos === null ? "—" : formatarPreco(sugerido.mercadoLivreCentavos)}</strong>
+                    </li>
+                  </ul>
+                  {sugerido.shopee && (
+                    <p className={v.sugestaoShopee}>
+                      Na Shopee: cadastre <strong>{formatarPreco(sugerido.shopee.cheioCentavos)}</strong>, dê{" "}
+                      {pontos(sugerido.shopee.descontoPercentual)}% de desconto (− {formatarPreco(sugerido.shopee.descontoCentavos)})
+                      {sugerido.shopee.cupomLojaCentavos > 0 && <> + cupom de loja (− {formatarPreco(sugerido.shopee.cupomLojaCentavos)})</>}. O
+                      cliente paga <strong>{formatarPreco(sugerido.shopee.pagoCentavos)}</strong> e sobram{" "}
+                      <strong>{formatarPreco(sugerido.shopee.lucroCentavos)}</strong> ({pontos(sugerido.shopee.margemPercentual)}%) depois
+                      da taxa.
+                      {sugerido.shopee.acimaDe80 && " Acima de R$ 79,99 pagos, a Shopee cobra taxa fixa maior (já considerada)."}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.btnGhost}
+                    onClick={() =>
+                      alterar(variacao.chave, {
+                        ...(sugerido.siteCentavos !== null ? { precoReais: reais(sugerido.siteCentavos) } : {}),
+                        ...(sugerido.shopee ? { shopeeReais: reais(sugerido.shopee.cheioCentavos) } : {}),
+                        ...(sugerido.mercadoLivreCentavos !== null ? { mercadoLivreReais: reais(sugerido.mercadoLivreCentavos) } : {}),
+                      })
+                    }
+                  >
+                    Usar sugestão
+                  </button>
+                </div>
+              )}
             </li>
           );
         })}
