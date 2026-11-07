@@ -213,9 +213,11 @@ export default function VariacoesKit({
         </div>
       </header>
 
-      {fotos.length === 0 && (
-        <p className={styles.mlLinkAviso}>Salve as fotos do produto primeiro para escolher a foto de cada variação.</p>
-      )}
+      <p className={styles.mlLinkAviso}>
+        {fotos.length === 0
+          ? "Salve as fotos do produto primeiro para escolher a foto de cada variação."
+          : `As fotos e as peças disponíveis são as já salvas (${fotos.length} ${fotos.length === 1 ? "foto" : "fotos"}). Enviou fotos ou criou peças agora? Salve as variações, salve o produto e recarregue a página.`}
+      </p>
 
       {variacoes.length === 0 && <p className={v.vazio}>Nenhuma variação. Produto vendido como peça única.</p>}
 
