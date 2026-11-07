@@ -21,6 +21,8 @@ export interface PecaCatalogo {
   nome: string;
   /** Custo sem a embalagem da peça — `null` = sem custo cadastrado. */
   custoCentavos: number | null;
+  /** Peso da peça em gramas (custo de produção ou ficha técnica) — `null` = não cadastrado. */
+  pesoGramas: number | null;
   /** Motivo para não poder ser peça — `null` = pode. */
   bloqueio: string | null;
 }
@@ -30,6 +32,8 @@ interface PecaForm {
   /** Nome guardado na variação — usado se o produto saiu do catálogo. */
   nome: string;
   custoCentavos: number | null;
+  /** `null` = peça sem peso cadastrado (ou removida do catálogo). */
+  pesoGramas: number | null;
   quantidade: string;
 }
 
@@ -52,6 +56,10 @@ const centavos = (texto: string) => {
   return Number.isFinite(n) ? n : NaN;
 };
 
+/** 850 → "850 g"; 1234 → "1,234 kg". */
+const formatarPeso = (gramas: number) =>
+  gramas >= 1000 ? `${(gramas / 1000).toFixed(3).replace(".", ",")} kg` : `${Math.round(gramas)} g`;
+
 let contador = 0;
 const novaChave = () => `v${Date.now()}-${contador++}`;
 
@@ -66,6 +74,7 @@ function paraFormulario(variacao: VariacaoKit, catalogo: Map<string, PecaCatalog
         produtoId: p.produtoId,
         nome: atual?.nome ?? `${p.ultimo.nome} (removido)`,
         custoCentavos: atual ? atual.custoCentavos : p.ultimo.custoCentavos,
+        pesoGramas: atual ? atual.pesoGramas : null,
         quantidade: String(p.quantidade),
       };
     }),
@@ -160,7 +169,7 @@ export default function VariacoesKit({
     alterar(variacao.chave, {
       pecas: existente
         ? variacao.pecas.map((p) => (p.produtoId === id ? { ...p, quantidade: String((parseInt(p.quantidade, 10) || 0) + 1) } : p))
-        : [...variacao.pecas, { produtoId: id, nome: peca.nome, custoCentavos: peca.custoCentavos, quantidade: "1" }],
+        : [...variacao.pecas, { produtoId: id, nome: peca.nome, custoCentavos: peca.custoCentavos, pesoGramas: peca.pesoGramas, quantidade: "1" }],
     });
   }
 
@@ -257,6 +266,14 @@ export default function VariacoesKit({
           const preco = centavos(variacao.precoReais);
           const taxa = Number.isFinite(preco) ? Math.round((preco * taxaSite.percentual) / 100) + taxaSite.fixaCentavos : 0;
           const lucro = Number.isFinite(preco) && preco > 0 ? preco - taxa - custo.custoCentavos : null;
+          const peso = variacao.pecas.reduce(
+            (acc, p) => {
+              const quantidade = Number(p.quantidade) || 0;
+              if (p.pesoGramas === null) return { ...acc, incompleto: true };
+              return { ...acc, gramas: acc.gramas + p.pesoGramas * quantidade };
+            },
+            { gramas: 0, incompleto: false }
+          );
           const sugerido =
             variacao.pecas.length > 0 && Number.isFinite(descontoShopeeNumero)
               ? sugerirPrecosVariacao(custo.custoCentavos, descontoShopeeNumero, sugestao)
@@ -432,6 +449,12 @@ export default function VariacoesKit({
                   Custo <strong>{formatarPreco(custo.custoCentavos)}</strong>
                   {custo.incompleto && " (incompleto: há peça sem custo)"}
                 </span>
+                {variacao.pecas.length > 0 && (
+                  <span title="Soma do peso das peças × quantidade. Para o frete, some a caixa e a proteção.">
+                    Peso das peças <strong>{formatarPeso(peso.gramas)}</strong>
+                    {peso.incompleto && " (incompleto: há peça sem peso)"}
+                  </span>
+                )}
                 {lucro !== null && (
                   <span className={lucro < 0 ? v.negativo : undefined}>
                     No site sobra <strong>{formatarPreco(lucro)}</strong> ({Math.round((lucro / preco) * 1000) / 10}%) após a taxa de{" "}

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import ProdutoForm from "@/components/admin/ProdutoForm";
 import ProducaoDoProduto from "@/components/admin/producao/ProducaoDoProduto";
 import VariacoesKit from "@/components/admin/VariacoesKit";
+import { valoresDoComponente } from "@/lib/kits/componentes";
 import { configSugestaoVariacao } from "@/lib/produtos/sugestaoVariacaoConfig";
 import { buscarProdutoPorId, listarProdutos } from "@/lib/produtos/repository";
 import { motivoPecaInvalida, temVariacoes } from "@/lib/produtos/variacoes";
@@ -71,6 +72,7 @@ export default async function EditarProdutoPage({
             id: p._id!.toString(),
             nome: p.nome,
             custoCentavos: custoDaPeca(p),
+            pesoGramas: valoresDoComponente(p).pesoGramas,
             bloqueio: motivoPecaInvalida(p),
           }))}
           taxaSite={{
