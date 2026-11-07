@@ -54,6 +54,10 @@ export default async function NovoProdutoPage({
             : undefined
         }
       />
+      <p className={styles.mlLinkAviso}>
+        Vai vender em kits (Kit 3, Kit 4, Kit Completo)? Salve o produto com as fotos e abra a edição dele: a seção
+        “Variações de kit” aparece lá, abaixo do formulário.
+      </p>
     </div>
   );
 }
