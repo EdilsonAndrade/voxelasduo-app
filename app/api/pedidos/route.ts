@@ -12,6 +12,7 @@ import {
 import { enviarPedidoCriadoCliente, notificarAdminPedidoCriado } from "@/lib/email/resend";
 import { paraPedidoResumo } from "@/lib/pedidos/apresentacao";
 import { ErroEstoque } from "@/lib/pedidos/estoque";
+import { nomeComVariacao } from "@/lib/produtos/variacoes";
 import { validarCheckout, type CheckoutPayload } from "@/lib/pedidos/validation";
 import { resolverFretePedido } from "@/lib/frete/calculo";
 import { opcoesFreteVigentes } from "@/lib/frete/repository";
@@ -49,10 +50,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ erro: "Dados inválidos.", campos: erros }, { status: 400 });
   }
 
-  const itens = (payload.itens as { produtoId: string; quantidade: number }[]).map(
+  const itens = (payload.itens as { produtoId: string; quantidade: number; variacaoId?: string }[]).map(
     (item) => ({
       produtoId: item.produtoId,
       quantidade: item.quantidade,
+      ...(item.variacaoId ? { variacaoId: item.variacaoId } : {}),
     })
   );
 
@@ -116,7 +118,7 @@ export async function POST(request: Request) {
     );
     detalhes = pedido.itens.map((item) => ({
       produtoId: item.produtoId.toString(),
-      nome: produtos.get(item.produtoId.toString())?.nome ?? "Produto",
+      nome: nomeComVariacao(produtos.get(item.produtoId.toString())?.nome ?? "Produto", item.variacaoNome),
       quantidade: item.quantidade,
       precoUnitario: item.precoUnitario,
     }));

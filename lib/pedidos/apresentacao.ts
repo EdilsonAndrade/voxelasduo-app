@@ -1,6 +1,7 @@
 import type { CanalOrigem, Pedido, StatusPedido } from "@/lib/models/pedido";
 import type { Produto } from "@/lib/models/produto";
 import { codigoPedido } from "./numero";
+import { buscarVariacao, fotoDaVariacao, nomeComVariacao } from "@/lib/produtos/variacoes";
 
 export interface PedidoResumo {
   id: string;
@@ -57,13 +58,15 @@ function resolverItem(
   produtos: Map<string, Produto>
 ): ItemPedidoDetalhe {
   const produto = produtos.get(item.produtoId.toString());
+  // Variação de kit (specs/041): nome gravado na compra; foto da variação se ela ainda existir.
+  const variacao = produto ? buscarVariacao(produto, item.variacaoId) : undefined;
   return {
     produtoId: produto ? item.produtoId.toString() : null,
-    nome: produto?.nome ?? "Produto removido do catálogo",
+    nome: nomeComVariacao(produto?.nome ?? "Produto removido do catálogo", item.variacaoNome),
     quantidade: item.quantidade,
     precoUnitario: item.precoUnitario,
     semCorrespondencia: !produto,
-    foto: produto?.fotos[0],
+    foto: produto ? fotoDaVariacao(variacao, produto.fotos) : undefined,
     urlLoja: produto
       ? `/produtos/${encodeURIComponent(produto.categoria)}/${encodeURIComponent(produto.slug)}`
       : undefined,

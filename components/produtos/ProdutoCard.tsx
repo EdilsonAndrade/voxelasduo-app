@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Produto } from "@/lib/models/produto";
 import { formatarPreco } from "@/lib/produtos/formato";
+import { temVariacoes } from "@/lib/produtos/variacoes";
 import styles from "./produtos.module.css";
 import ImagemOtimizada from "@/components/ImagemOtimizada";
 
@@ -30,7 +31,10 @@ export default function ProdutoCard({
           {semEstoque ? "esgotado" : ultimaUnidade ? "Última unidade" : "em estoque"}
         </div>
         <h3 className={styles.cardTitle}>{produto.nome}</h3>
-        <div className={styles.cardPrice}>{formatarPreco(produto.preco)}</div>
+        <div className={styles.cardPrice}>
+          {temVariacoes(produto) && <span className={styles.aPartirDe}>a partir de </span>}
+          {formatarPreco(produto.preco)}
+        </div>
         <div className={styles.specLabel}>
           <span>categoria</span>
           <span className={styles.v}>{categoriaNome}</span>

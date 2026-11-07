@@ -21,6 +21,10 @@ export interface ItemPedido {
   quantidade: number;
   /** Preço unitário capturado no momento da compra, em centavos. */
   precoUnitario: number;
+  /** Variação de kit escolhida (specs/041) — ausente = produto simples. */
+  variacaoId?: string;
+  /** Nome da variação no momento da compra. */
+  variacaoNome?: string;
 }
 
 export interface ClientePedido {

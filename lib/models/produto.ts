@@ -192,6 +192,43 @@ export interface AjusteEvento {
   aplicadoEm: Date;
 }
 
+/** Máximo de variações de kit num produto (specs/041). */
+export const MAXIMO_VARIACOES = 10;
+/** Máximo de peças distintas numa variação de kit. */
+export const MAXIMO_PECAS_VARIACAO = 30;
+/** Tamanho máximo do nome de uma variação. */
+export const LIMITE_NOME_VARIACAO = 60;
+
+/** Peça (produto do catálogo) que compõe uma variação de kit. */
+export interface PecaVariacao {
+  produtoId: string;
+  /** Inteiro de 1 a 999. */
+  quantidade: number;
+  /** Valores no momento em que a variação foi salva — exibidos se o produto for apagado. */
+  ultimo: { nome: string; custoCentavos: number | null };
+}
+
+/**
+ * Variação de kit de um produto (specs/041, EDI-138): ex. "Kit 3 peças",
+ * "Kit Completo". Cada uma tem peças, preço, estoque e foto próprios — com
+ * variações, `Produto.preco` é o menor preço e `Produto.estoque` a soma.
+ */
+export interface VariacaoKit {
+  /** Identificador estável — não muda ao editar a variação. */
+  id: string;
+  nome: string;
+  pecas: PecaVariacao[];
+  /** Embalagem do kit inteiro, em centavos (as peças entram sem a embalagem delas). */
+  embalagemCentavos: number;
+  /** Preço do site em centavos — já é o preço final (com desconto). */
+  preco: number;
+  /** Preços de referência nos marketplaces (cadastrados manualmente lá). */
+  precosCanais?: PrecosCanaisProduto;
+  estoque: number;
+  /** Uma das URLs de `Produto.fotos` — ausente ou removida = primeira foto. */
+  foto?: string;
+}
+
 export interface Produto {
   _id?: ObjectId;
   nome: string;
@@ -234,6 +271,8 @@ export interface Produto {
   caminhoArquivo3mf?: string;
   /** Kit que gerou este produto (specs/037) — produto de kit não pode ser componente de outro kit. */
   kitId?: string;
+  /** Variações de kit (specs/041) — ausente/vazio = produto simples. */
+  variacoes?: VariacaoKit[];
   /**
    * `false` = rascunho: o produto existe no admin mas não aparece na loja, na
    * home nem no feed da Meta. **Ausente = publicado**, para que os produtos

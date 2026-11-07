@@ -61,3 +61,33 @@ describe("validarEstoque", () => {
     expect(problemas).toHaveLength(2);
   });
 });
+
+describe("validarEstoque com variações de kit (specs/041)", () => {
+  const comVariacoes = {
+    ...produto("Centro de Mesa", 5),
+    variacoes: [
+      { id: "k3", nome: "Kit 3", pecas: [], embalagemCentavos: 0, preco: 5593, estoque: 2 },
+      { id: "k4", nome: "Kit 4", pecas: [], embalagemCentavos: 0, preco: 6993, estoque: 0 },
+    ],
+  } as Produto;
+  const produtos = new Map([["p1", comVariacoes]]);
+
+  it("aceita a variação com estoque", () => {
+    expect(validarEstoque(new Map([["p1:k3", 2]]), produtos)).toEqual([]);
+  });
+
+  it("confere o estoque da variação, não o do produto", () => {
+    expect(validarEstoque(new Map([["p1:k4", 1]]), produtos)).toEqual([
+      { produtoId: "p1", variacaoId: "k4", nome: "Centro de Mesa — Kit 4", quantidadeDisponivel: 0 },
+    ]);
+  });
+
+  it("recusa produto com variações sem a variação escolhida", () => {
+    const [problema] = validarEstoque(new Map([["p1", 1]]), produtos);
+    expect(problema.quantidadeDisponivel).toBe(0);
+  });
+
+  it("recusa variação inexistente", () => {
+    expect(validarEstoque(new Map([["p1:xx", 1]]), produtos)[0].variacaoId).toBe("xx");
+  });
+});

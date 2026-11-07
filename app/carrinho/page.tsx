@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCarrinho } from "@/components/carrinho/carrinho-context";
-import { calcularTotais } from "@/lib/carrinho/carrinho";
+import { calcularTotais, chaveItem } from "@/lib/carrinho/carrinho";
 import { formatarPreco } from "@/lib/produtos/formato";
 import styles from "@/components/carrinho/carrinho.module.css";
 import ImagemOtimizada from "@/components/ImagemOtimizada";
@@ -28,7 +28,7 @@ export default function CarrinhoPage() {
           <div className={styles.layout}>
             <div className={styles.lista}>
               {itens.map((item) => (
-                <div className={styles.item} key={item.produtoId}>
+                <div className={styles.item} key={chaveItem(item)}>
                   <ImagemOtimizada sizes="96px" className={styles.itemFoto} src={item.foto} alt={item.nome} />
                   <div className={styles.itemInfo}>
                     <Link
@@ -44,7 +44,7 @@ export default function CarrinhoPage() {
                       <div className={styles.quantidade}>
                         <button
                           type="button"
-                          onClick={() => alterar(item.produtoId, item.quantidade - 1)}
+                          onClick={() => alterar(chaveItem(item), item.quantidade - 1)}
                           disabled={item.quantidade <= 1}
                           aria-label="diminuir quantidade"
                         >
@@ -53,7 +53,7 @@ export default function CarrinhoPage() {
                         <output aria-live="polite">{item.quantidade}</output>
                         <button
                           type="button"
-                          onClick={() => alterar(item.produtoId, item.quantidade + 1)}
+                          onClick={() => alterar(chaveItem(item), item.quantidade + 1)}
                           disabled={item.quantidade >= item.estoque}
                           aria-label="aumentar quantidade"
                         >
@@ -63,7 +63,7 @@ export default function CarrinhoPage() {
                       <button
                         type="button"
                         className={styles.remover}
-                        onClick={() => remover(item.produtoId)}
+                        onClick={() => remover(chaveItem(item))}
                       >
                         remover
                       </button>
@@ -80,7 +80,7 @@ export default function CarrinhoPage() {
               <p className={styles.resumoTitulo}>resumo da compra</p>
               <div className={styles.resumoLinhas}>
                 {itens.map((item) => (
-                  <div className={styles.resumoLinha} key={item.produtoId}>
+                  <div className={styles.resumoLinha} key={chaveItem(item)}>
                     <span>
                       {item.nome} × {item.quantidade}
                     </span>

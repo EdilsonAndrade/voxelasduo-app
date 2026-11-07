@@ -41,6 +41,8 @@ export interface CalculoInicial {
   linkMercadoLivre?: string;
   valores: CalculadoraValores;
   produtoId?: string;
+  /** Variação de kit do produto (specs/041) — o cálculo aplica os preços nela. */
+  variacaoId?: string;
 }
 
 export interface ProdutoVinculado {
@@ -79,6 +81,8 @@ export default function CalculadoraRapida({
   const [linkMercadoLivre, setLinkMercadoLivre] = useState(calculoInicial?.linkMercadoLivre ?? "");
   const [calculoId, setCalculoId] = useState(calculoInicial?.id ?? null);
   const [produtoId, setProdutoId] = useState(calculoInicial?.produtoId ?? null);
+  const variacaoId = calculoInicial?.produtoId ? calculoInicial.variacaoId : undefined;
+  const [aplicando, setAplicando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -135,6 +139,7 @@ export default function CalculadoraRapida({
         nome: nome.trim(),
         ...corpoLinks(),
         produtoId: produtoCriadoId ?? produtoId ?? undefined,
+        ...(variacaoId && !produtoCriadoId ? { variacaoId } : {}),
         valores: valoresAtuais(),
       }),
     });
@@ -189,6 +194,36 @@ export default function CalculadoraRapida({
       setErroSalvar(`Não foi possível salvar: ${erro instanceof Error ? erro.message : String(erro)}`);
     } finally {
       setSalvando(false);
+    }
+  }
+
+  /** Grava na variação de kit o preço do site e os da Shopee e do Mercado Livre calculados (specs/041, FR-012). */
+  async function aplicarNaVariacao() {
+    if (!produtoId || !variacaoId || res.precoSiteCentavos === null) return;
+    setAplicando(true);
+    setErroSalvar(null);
+    setAviso(null);
+    try {
+      const precosCanais: { shopee?: number; mercadoLivre?: number } = {};
+      const shopee = res.canais.shopee?.precoCentavos;
+      const mercadoLivre = res.canais.mercadoLivre?.precoCentavos;
+      if (shopee != null) precosCanais.shopee = shopee;
+      if (mercadoLivre != null) precosCanais.mercadoLivre = mercadoLivre;
+      const resposta = await fetch(`/api/produtos/${produtoId}/variacoes/${variacaoId}/precos`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preco: res.precoSiteCentavos, precosCanais }),
+      });
+      if (!resposta.ok) {
+        setErroSalvar(await mensagemDeErro(resposta));
+        return;
+      }
+      // O cálculo fica guardado junto, para reabrir a partir da variação.
+      if (await gravarCalculo()) setAviso("Preços aplicados na variação e cálculo salvo.");
+    } catch (erro) {
+      setErroSalvar(`Não foi possível aplicar na variação: ${erro instanceof Error ? erro.message : String(erro)}`);
+    } finally {
+      setAplicando(false);
     }
   }
 
@@ -317,7 +352,26 @@ export default function CalculadoraRapida({
           </div>
         ))}
 
-      {produtoId ? (
+      {produtoId && variacaoId ? (
+        <>
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            disabled={aplicando || salvando || nome.trim() === "" || res.precoSiteCentavos === null}
+            onClick={aplicarNaVariacao}
+          >
+            {aplicando ? "Aplicando…" : "Aplicar na variação"}
+          </button>
+          {res.precoSiteCentavos !== null && (
+            <span className={styles.mlLinkAviso}>
+              Grava na variação: site {reais(res.precoSiteCentavos)}
+              {res.canais.shopee?.precoCentavos != null && ` · Shopee ${reais(res.canais.shopee.precoCentavos)}`}
+              {res.canais.mercadoLivre?.precoCentavos != null && ` · Mercado Livre ${reais(res.canais.mercadoLivre.precoCentavos)}`}.{" "}
+              <Link href={`/admin/produtos/${produtoId}/editar`}>Abrir o produto</Link>
+            </span>
+          )}
+        </>
+      ) : produtoId ? (
         <span className={styles.formSuccess}>
           Ligado a um produto: <Link href={`/admin/produtos/${produtoId}/editar`}>abrir o cadastro do produto</Link>
         </span>

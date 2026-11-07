@@ -18,6 +18,8 @@ export interface DadosCalculoPreco {
   linkMercadoLivre?: string;
   valores: CalculadoraValores;
   produtoId?: string;
+  /** Variação de kit do produto (specs/041) — só vale junto com `produtoId`. */
+  variacaoId?: string;
 }
 
 const CAMPOS_LINK = ["linkModelo3d", "linkShopee", "linkMercadoLivre"] as const;
@@ -67,6 +69,7 @@ export function validarCalculoPreco(payload: unknown): { dados?: DadosCalculoPre
       linkMercadoLivre: links.linkMercadoLivre || undefined,
       valores: valores as unknown as CalculadoraValores,
       produtoId: textoValido(corpo.produtoId) ? corpo.produtoId : undefined,
+      variacaoId: textoValido(corpo.produtoId) && textoValido(corpo.variacaoId) ? corpo.variacaoId : undefined,
     },
   };
 }
@@ -83,9 +86,13 @@ export async function buscarCalculoPreco(id: string): Promise<CalculoPreco | nul
 }
 
 /** Cálculo mais recente ligado ao produto — `null` = o produto ainda não passou pela calculadora. */
-export async function buscarCalculoDoProduto(produtoId: string): Promise<CalculoPreco | null> {
+/** Último cálculo do produto — ou da variação de kit dele (specs/041), quando `variacaoId` vem. */
+export async function buscarCalculoDoProduto(produtoId: string, variacaoId?: string): Promise<CalculoPreco | null> {
   const colecao = await colecaoCalculos();
-  return colecao.findOne({ produtoId }, { sort: { atualizadoEm: -1 } });
+  return colecao.findOne(
+    variacaoId ? { produtoId, variacaoId } : { produtoId, variacaoId: { $exists: false } },
+    { sort: { atualizadoEm: -1 } }
+  );
 }
 
 /** Vários cálculos pelos ids, na ordem pedida — ids inválidos ou que não existem ficam de fora. */
@@ -111,7 +118,7 @@ export async function criarCalculoPreco(dados: DadosCalculoPreco): Promise<Calcu
 export async function atualizarCalculoPreco(id: string, dados: DadosCalculoPreco): Promise<CalculoPreco | null> {
   if (!ObjectId.isValid(id)) return null;
   const colecao = await colecaoCalculos();
-  const { linkModelo3d, linkShopee, linkMercadoLivre, produtoId, ...resto } = dados;
+  const { linkModelo3d, linkShopee, linkMercadoLivre, produtoId, variacaoId, ...resto } = dados;
   const links = { linkModelo3d, linkShopee, linkMercadoLivre };
   // Link apagado na tela some do documento; preenchido entra no $set.
   const preenchidos: Partial<Record<CampoLink, string>> = {};
@@ -127,6 +134,7 @@ export async function atualizarCalculoPreco(id: string, dados: DadosCalculoPreco
         ...resto,
         ...preenchidos,
         ...(produtoId ? { produtoId } : {}),
+        ...(produtoId && variacaoId ? { variacaoId } : {}),
         atualizadoEm: new Date(),
       },
       ...(Object.keys(desdefinir).length > 0 ? { $unset: desdefinir } : {}),

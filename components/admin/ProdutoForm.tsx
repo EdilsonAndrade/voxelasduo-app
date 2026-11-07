@@ -220,6 +220,7 @@ export default function ProdutoForm({
   categorias = [],
   margensAntigas,
   doTempoImpressao,
+  comVariacoes = false,
 }: {
   valoresIniciais?: ProdutoFormValores;
   /** Padrão global das taxas de Shopee/site próprio, definido em /admin/configuracoes. */
@@ -234,6 +235,8 @@ export default function ProdutoForm({
    * ser o plano do produto criado.
    */
   doTempoImpressao?: { planoId: string; nome: string; tempoImpressaoHoras: string };
+  /** Produto com variações de kit (specs/041): preço e estoque vêm delas e ficam só leitura. */
+  comVariacoes?: boolean;
 }) {
   const valoresIniciais: ProdutoFormValores =
     valoresRecebidos ??
@@ -900,8 +903,10 @@ export default function ProdutoForm({
             placeholder="49.90"
             value={valores.precoReais}
             onChange={(e) => atualizarCampo("precoReais", e.target.value)}
+            readOnly={comVariacoes}
             required
           />
+          {comVariacoes && <span className={styles.mlLinkAviso}>Menor preço das variações de kit — altere nas variações.</span>}
           {camposErro.preco && <span className={styles.fieldError}>{camposErro.preco}</span>}
         </div>
         <div className={styles.field}>
@@ -911,8 +916,10 @@ export default function ProdutoForm({
             inputMode="numeric"
             value={valores.estoque}
             onChange={(e) => atualizarCampo("estoque", e.target.value)}
+            readOnly={comVariacoes}
             required
           />
+          {comVariacoes && <span className={styles.mlLinkAviso}>Soma do estoque das variações.</span>}
           {camposErro.estoque && <span className={styles.fieldError}>{camposErro.estoque}</span>}
         </div>
       </div>

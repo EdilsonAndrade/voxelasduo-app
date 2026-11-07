@@ -2,7 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ProdutoForm from "@/components/admin/ProdutoForm";
 import ProducaoDoProduto from "@/components/admin/producao/ProducaoDoProduto";
-import { buscarProdutoPorId } from "@/lib/produtos/repository";
+import VariacoesKit from "@/components/admin/VariacoesKit";
+import { buscarProdutoPorId, listarProdutos } from "@/lib/produtos/repository";
+import { motivoPecaInvalida, temVariacoes } from "@/lib/produtos/variacoes";
+import { custoDaPeca } from "@/lib/produtos/variacoesRepository";
 import { produtoParaFormulario } from "@/lib/produtos/produtoFormulario";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
 import { listarCategoriasResumo } from "@/lib/categorias/repository";
@@ -19,10 +22,11 @@ export default async function EditarProdutoPage({
   const { id } = await params;
   // As taxas antes do produto: a primeira leitura delas migra as margens antigas do produto (spec 034).
   const taxasGlobais = await buscarTaxasCanais();
-  const [produto, categorias, calculo] = await Promise.all([
+  const [produto, categorias, calculo, catalogo] = await Promise.all([
     buscarProdutoPorId(id),
     listarCategoriasResumo(),
     buscarCalculoDoProduto(id),
+    listarProdutos(),
   ]);
 
   if (!produto) {
@@ -55,7 +59,25 @@ export default async function EditarProdutoPage({
         categorias={categorias}
         valoresIniciais={produtoParaFormulario(produto, id)}
         margensAntigas={produto.margensParaRevisar}
+        comVariacoes={temVariacoes(produto)}
       />
+      {!produto.kitId && (
+        <VariacoesKit
+          produtoId={id}
+          fotos={produto.fotos}
+          variacoesIniciais={produto.variacoes ?? []}
+          catalogo={catalogo.map((p) => ({
+            id: p._id!.toString(),
+            nome: p.nome,
+            custoCentavos: custoDaPeca(p),
+            bloqueio: motivoPecaInvalida(p),
+          }))}
+          taxaSite={{
+            percentual: produto.taxasCanais?.siteTaxaPercentual ?? taxasGlobais.siteTaxaPercentual,
+            fixaCentavos: produto.taxasCanais?.siteTaxaFixaCentavos ?? taxasGlobais.siteTaxaFixaCentavos,
+          }}
+        />
+      )}
       <ProducaoDoProduto produtoId={id} />
     </div>
   );

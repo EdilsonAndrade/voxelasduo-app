@@ -6,6 +6,7 @@ import { codigoPedido } from "@/lib/pedidos/numero";
 import { renderEmailLayout } from "@/lib/email/templates";
 import { urlBaseSite } from "@/lib/site/url";
 import { descreverFrete } from "@/lib/frete/apresentacao";
+import { nomeComVariacao } from "@/lib/produtos/variacoes";
 
 let clienteResend: Resend | undefined;
 
@@ -184,13 +185,13 @@ export async function enviarConfirmacaoPedido(pedido: Pedido): Promise<void> {
   const produtos = await buscarProdutosPorIds(pedido.itens.map((item) => item.produtoId.toString()));
   const itensTexto = pedido.itens
     .map((item) => {
-      const nome = produtos.get(item.produtoId.toString())?.nome ?? "Produto";
+      const nome = nomeComVariacao(produtos.get(item.produtoId.toString())?.nome ?? "Produto", item.variacaoNome);
       return `${item.quantidade}x ${nome} — ${formatarValorEmReais(item.precoUnitario * item.quantidade)}`;
     })
     .join("\n");
   const itensHtml = pedido.itens
     .map((item) => {
-      const nome = produtos.get(item.produtoId.toString())?.nome ?? "Produto";
+      const nome = nomeComVariacao(produtos.get(item.produtoId.toString())?.nome ?? "Produto", item.variacaoNome);
       return `<li>${item.quantidade}x ${nome} — ${formatarValorEmReais(item.precoUnitario * item.quantidade)}</li>`;
     })
     .join("");
@@ -239,7 +240,7 @@ export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
 
   const produtos = await buscarProdutosPorIds(pedido.itens.map((item) => item.produtoId.toString()));
   const itens = pedido.itens.map((item) => ({
-    nome: produtos.get(item.produtoId.toString())?.nome ?? "Produto",
+    nome: nomeComVariacao(produtos.get(item.produtoId.toString())?.nome ?? "Produto", item.variacaoNome),
     quantidade: item.quantidade,
     subtotal: formatarValorEmReais(item.precoUnitario * item.quantidade),
   }));
@@ -328,7 +329,7 @@ export async function enviarPedidoCriadoCliente(pedido: Pedido): Promise<void> {
   const numeroPedido = codigoPedido(pedido);
   const produtos = await buscarProdutosPorIds(pedido.itens.map((item) => item.produtoId.toString()));
   const itens = pedido.itens.map((item) => ({
-    nome: produtos.get(item.produtoId.toString())?.nome ?? "Produto",
+    nome: nomeComVariacao(produtos.get(item.produtoId.toString())?.nome ?? "Produto", item.variacaoNome),
     quantidade: item.quantidade,
     subtotal: formatarValorEmReais(item.precoUnitario * item.quantidade),
   }));
@@ -384,7 +385,7 @@ export async function notificarAdminPedidoCriado(pedido: Pedido): Promise<void> 
   const { cliente } = pedido;
   const produtos = await buscarProdutosPorIds(pedido.itens.map((item) => item.produtoId.toString()));
   const itens = pedido.itens.map((item) => ({
-    nome: produtos.get(item.produtoId.toString())?.nome ?? "Produto",
+    nome: nomeComVariacao(produtos.get(item.produtoId.toString())?.nome ?? "Produto", item.variacaoNome),
     quantidade: item.quantidade,
     subtotal: formatarValorEmReais(item.precoUnitario * item.quantidade),
   }));

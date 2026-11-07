@@ -12,6 +12,7 @@ import { gerarSlug } from "@/lib/produtos/slug";
 import { removerFotoProduto } from "@/lib/storage/blob";
 import { validarProduto, type ProdutoPayload } from "@/lib/produtos/validation";
 import { faltaFotoParaPublicar } from "@/lib/produtos/publicacao";
+import { temVariacoes } from "@/lib/produtos/variacoes";
 import { sincronizarAnuncioProduto } from "@/lib/estoque/sincronizacao";
 import { despublicarAnuncio } from "@/lib/estoque/canais/mercadoLivre/anuncios";
 
@@ -44,6 +45,12 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const { categoria: categoriaPayload, ...dados } = payload as Record<string, unknown>;
+  // Com variações de kit (specs/041), preço e estoque são derivados delas — o formulário não os sobrescreve.
+  if (temVariacoes(produtoAtual)) {
+    delete dados.preco;
+    delete dados.estoque;
+  }
+  delete dados.variacoes;
 
   // Publicar é o momento em que a foto passa a ser obrigatória: o card da
   // vitrine renderiza `fotos[0]` e ficaria quebrado sem ela. Só vale quando a

@@ -2,7 +2,7 @@
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/040-anuncio-margem-liquida/plan.md
+at specs/041-kit-variacoes/plan.md
 
 ## RULES
 

@@ -3,6 +3,7 @@ import {
   adicionarItem,
   alterarQuantidade,
   calcularTotais,
+  chaveItem,
   limparCarrinho,
   removerItem,
   type ItemCarrinho,
@@ -91,5 +92,27 @@ describe("calcularTotais", () => {
 
   it("retorna zeros para carrinho vazio", () => {
     expect(calcularTotais([])).toEqual({ totalItens: 0, totalCentavos: 0 });
+  });
+});
+
+describe("carrinho com variações de kit (specs/041)", () => {
+  const base = { produtoId: "p1", nome: "Centro — Kit 3", foto: "f", categoria: "c", slug: "s", preco: 5593, estoque: 5, quantidade: 1 };
+
+  it("variações diferentes do mesmo produto viram linhas diferentes", () => {
+    let itens = adicionarItem([], { ...base, variacaoId: "k3", variacaoNome: "Kit 3" });
+    itens = adicionarItem(itens, { ...base, nome: "Centro — Kit 4", variacaoId: "k4", variacaoNome: "Kit 4" });
+    itens = adicionarItem(itens, { ...base, variacaoId: "k3", variacaoNome: "Kit 3" });
+    expect(itens.map((i) => [chaveItem(i), i.quantidade])).toEqual([
+      ["p1:k3", 2],
+      ["p1:k4", 1],
+    ]);
+  });
+
+  it("altera e remove pela chave da linha", () => {
+    let itens = adicionarItem([], { ...base, variacaoId: "k3" });
+    itens = adicionarItem(itens, { ...base, variacaoId: "k4" });
+    itens = alterarQuantidade(itens, "p1:k4", 3);
+    expect(itens.find((i) => i.variacaoId === "k4")?.quantidade).toBe(3);
+    expect(removerItem(itens, "p1:k3").map(chaveItem)).toEqual(["p1:k4"]);
   });
 });

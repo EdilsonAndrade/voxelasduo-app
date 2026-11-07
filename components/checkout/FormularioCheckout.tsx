@@ -9,6 +9,7 @@ import styles from "./checkout.module.css";
 
 interface ItemSemEstoque {
   produtoId: string;
+  variacaoId?: string;
   nome: string;
   quantidadeDisponivel: number;
 }
@@ -121,6 +122,7 @@ export default function FormularioCheckout({
         itens: itens.map((item) => ({
           produtoId: item.produtoId,
           quantidade: item.quantidade,
+          ...(item.variacaoId ? { variacaoId: item.variacaoId } : {}),
         })),
         frete: freteSelecionado
           ? { servico: freteSelecionado.servico, valorCentavos: freteSelecionado.valorCentavos }
@@ -180,10 +182,11 @@ export default function FormularioCheckout({
           <ul>
             {erroEstoque.map((item) => {
               const nome =
-                itens.find((carrinho) => carrinho.produtoId === item.produtoId)?.nome ??
-                item.nome;
+                itens.find(
+                  (carrinho) => carrinho.produtoId === item.produtoId && carrinho.variacaoId === item.variacaoId
+                )?.nome ?? item.nome;
               return (
-                <li key={item.produtoId}>
+                <li key={`${item.produtoId}:${item.variacaoId ?? ""}`}>
                   {nome} — apenas {item.quantidadeDisponivel} un. disponível
                   {item.quantidadeDisponivel === 0 ? " (esgotado)" : ""}
                 </li>

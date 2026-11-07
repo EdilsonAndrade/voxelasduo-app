@@ -7,10 +7,12 @@ import ImagemOtimizada from "@/components/ImagemOtimizada";
 interface GaleriaFotosProdutoProps {
   fotos: string[];
   nome: string;
+  /** Foto aberta primeiro (ex.: a da variação escolhida — specs/041). Para trocar, remonte com outra `key`. */
+  indiceInicial?: number;
 }
 
-export default function GaleriaFotosProduto({ fotos, nome }: GaleriaFotosProdutoProps) {
-  const [fotoAtiva, setFotoAtiva] = useState(0);
+export default function GaleriaFotosProduto({ fotos, nome, indiceInicial = 0 }: GaleriaFotosProdutoProps) {
+  const [fotoAtiva, setFotoAtiva] = useState(indiceInicial >= 0 && indiceInicial < fotos.length ? indiceInicial : 0);
 
   return (
     <div>

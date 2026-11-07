@@ -9,16 +9,17 @@ export interface CarrinhoEstado {
 
 export type CarrinhoAcao =
   | { tipo: "adicionar"; item: Omit<ItemCarrinho, "quantidade"> & { quantidade: number } }
-  | { tipo: "alterar"; produtoId: string; quantidade: number }
-  | { tipo: "remover"; produtoId: string }
+  | { tipo: "alterar"; chave: string; quantidade: number }
+  | { tipo: "remover"; chave: string }
   | { tipo: "limpar" };
 
 export interface CarrinhoContexto extends CarrinhoEstado {
   /** Verdadeiro após a hidratação do localStorage no cliente. */
   pronto: boolean;
   adicionar: (item: Omit<ItemCarrinho, "quantidade"> & { quantidade: number }) => void;
-  alterar: (produtoId: string, quantidade: number) => void;
-  remover: (produtoId: string) => void;
+  /** `chave` = `chaveItem(item)` — produto + variação. */
+  alterar: (chave: string, quantidade: number) => void;
+  remover: (chave: string) => void;
   limpar: () => void;
 }
 

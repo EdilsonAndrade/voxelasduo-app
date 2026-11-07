@@ -11,7 +11,8 @@ import {
 import { PRODUTOS_COLLECTION, type Produto } from "@/lib/models/produto";
 import type { FretePedido } from "@/lib/models/frete";
 import { proximoNumeroPedido } from "./numero";
-import { ErroEstoque, validarEstoque } from "./estoque";
+import { chaveLinhaPedido, ErroEstoque, separarChaveLinhaPedido, validarEstoque } from "./estoque";
+import { buscarVariacao, nomeComVariacao } from "@/lib/produtos/variacoes";
 
 export const PEDIDOS_POR_PAGINA = 20;
 
@@ -117,7 +118,7 @@ export async function buscarProdutosPorIds(ids: string[]): Promise<Map<string, P
 export interface CriarPedidoInput {
   idempotencia: string;
   cliente: ClientePedido;
-  itens: { produtoId: string; quantidade: number }[];
+  itens: { produtoId: string; quantidade: number; variacaoId?: string }[];
   /** Presente quando o checkout foi feito por um cliente autenticado (Tarefa 10/EDI-84). */
   clienteId?: ObjectId;
   /** Frete já resolvido no servidor (spec 039) — somado ao `valorTotal`. */
@@ -126,7 +127,10 @@ export interface CriarPedidoInput {
 
 export interface ItemPedidoDetalhado {
   produtoId: string;
+  /** Nome do produto já com a variação ("Produto — Kit 4"). */
   nome: string;
+  variacaoId?: string;
+  variacaoNome?: string;
   quantidade: number;
   precoUnitario: number;
 }
@@ -149,16 +153,16 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
     return { pedido: existente, duplicado: true, itensDetalhados: [] };
   }
 
-  // Agrupa quantidades por produto (itens duplicados somam).
+  // Agrupa quantidades por produto + variação (itens duplicados somam).
   const quantidadePorProduto = new Map<string, number>();
   for (const item of input.itens) {
-    quantidadePorProduto.set(
-      item.produtoId,
-      (quantidadePorProduto.get(item.produtoId) ?? 0) + item.quantidade
-    );
+    const chave = chaveLinhaPedido(item.produtoId, item.variacaoId);
+    quantidadePorProduto.set(chave, (quantidadePorProduto.get(chave) ?? 0) + item.quantidade);
   }
 
-  const produtos = await buscarProdutosPorIds([...quantidadePorProduto.keys()]);
+  const produtos = await buscarProdutosPorIds(
+    [...quantidadePorProduto.keys()].map((chave) => separarChaveLinhaPedido(chave).produtoId)
+  );
 
   const problemas = validarEstoque(quantidadePorProduto, produtos);
   if (problemas.length > 0) {
@@ -166,16 +170,20 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
   }
 
   const itensDetalhados: ItemPedidoDetalhado[] = [];
-  for (const [produtoId, quantidade] of quantidadePorProduto) {
+  for (const [chave, quantidade] of quantidadePorProduto) {
+    const { produtoId, variacaoId } = separarChaveLinhaPedido(chave);
     const produto = produtos.get(produtoId);
     if (!produto) {
       throw new Error(`Produto não encontrado: ${produtoId}`);
     }
+    // Com variação (specs/041), o preço é o dela — validarEstoque já garantiu que ela existe.
+    const variacao = buscarVariacao(produto, variacaoId);
     itensDetalhados.push({
       produtoId,
-      nome: produto.nome,
+      nome: nomeComVariacao(produto.nome, variacao?.nome),
       quantidade,
-      precoUnitario: produto.preco,
+      precoUnitario: variacao?.preco ?? produto.preco,
+      ...(variacao ? { variacaoId: variacao.id, variacaoNome: variacao.nome } : {}),
     });
   }
 
@@ -192,6 +200,7 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
       produtoId: new ObjectId(item.produtoId),
       quantidade: item.quantidade,
       precoUnitario: item.precoUnitario,
+      ...(item.variacaoId ? { variacaoId: item.variacaoId, variacaoNome: item.variacaoNome } : {}),
     })),
     cliente: input.cliente,
     status: "pendente",

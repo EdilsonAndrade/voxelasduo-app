@@ -158,6 +158,8 @@ export interface CalculoPreco {
   valores: CalculadoraValores;
   /** Produto rascunho criado a partir deste cálculo — ausente = ainda não virou produto. */
   produtoId?: string;
+  /** Variação de kit do produto a que o cálculo se refere (specs/041) — ausente = o produto todo. */
+  variacaoId?: string;
   criadoEm: Date;
   atualizadoEm: Date;
 }

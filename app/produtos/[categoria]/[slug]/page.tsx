@@ -14,6 +14,8 @@ import { buscarAvaliacoesProduto } from "@/lib/avaliacoes/repository";
 import BotaoAdicionarCarrinho from "@/components/carrinho/BotaoAdicionarCarrinho";
 import AvaliacoesProduto from "@/components/produtos/AvaliacoesProduto";
 import GaleriaFotosProduto from "@/components/produtos/GaleriaFotosProduto";
+import CompraComVariacoes from "@/components/produtos/CompraComVariacoes";
+import { fotoDaVariacao, temVariacoes } from "@/lib/produtos/variacoes";
 import styles from "@/components/produtos/produtos.module.css";
 
 // Sem `searchParams`/cookies/headers, essa página não tem nenhuma API que
@@ -28,10 +30,13 @@ export const dynamic = "force-dynamic";
 
 export default async function ProdutoDetalhePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ categoria: string; slug: string }>;
+  searchParams: Promise<{ variacao?: string }>;
 }) {
   const { categoria: categoriaParam, slug: slugParam } = await params;
+  const { variacao: variacaoParam } = await searchParams;
   const categoria = decodificarSegmentoRota(categoriaParam);
   const slug = decodificarSegmentoRota(slugParam);
   const encontrado = await buscarProdutoPorCategoriaESlug(categoria, slug);
@@ -65,35 +70,56 @@ export default async function ProdutoDetalhePage({
         <Link href={`/produtos/${produto.categoria}`}>{categoriaNome}</Link> › {produto.nome}
       </p>
 
-      <div className={styles.detail}>
-        <GaleriaFotosProduto fotos={produto.fotos} nome={produto.nome} />
+      {temVariacoes(produto) ? (
+        <CompraComVariacoes
+          produtoId={produto._id!.toString()}
+          nome={produto.nome}
+          descricao={produto.descricao}
+          categoria={produto.categoria}
+          categoriaNome={categoriaNome}
+          slug={produto.slug}
+          fotos={produto.fotos}
+          variacaoInicial={typeof variacaoParam === "string" ? variacaoParam : undefined}
+          variacoes={produto.variacoes!.map((v) => ({
+            id: v.id,
+            nome: v.nome,
+            preco: v.preco,
+            estoque: v.estoque,
+            foto: fotoDaVariacao(v, produto.fotos) ?? "",
+            itens: v.pecas.map((p) => (p.quantidade > 1 ? `${p.quantidade}× ${p.ultimo.nome}` : p.ultimo.nome)),
+          }))}
+        />
+      ) : (
+        <div className={styles.detail}>
+          <GaleriaFotosProduto fotos={produto.fotos} nome={produto.nome} />
 
-        <div className={styles.detailInfo}>
-          <h1>{produto.nome}</h1>
-          <div className={styles.detailPrice}>{formatarPreco(produto.preco)}</div>
-          <p className={styles.detailDesc}>{produto.descricao}</p>
+          <div className={styles.detailInfo}>
+            <h1>{produto.nome}</h1>
+            <div className={styles.detailPrice}>{formatarPreco(produto.preco)}</div>
+            <p className={styles.detailDesc}>{produto.descricao}</p>
 
-          <div className={styles.datasheet}>
-            <div className={styles.datasheetTitle}>ficha técnica</div>
-            <dl>
-              <dt>categoria</dt>
-              <dd>{categoriaNome}</dd>
-              <dt>estoque</dt>
-              <dd>{semEstoque ? "esgotado" : `${produto.estoque} unidades`}</dd>
-            </dl>
+            <div className={styles.datasheet}>
+              <div className={styles.datasheetTitle}>ficha técnica</div>
+              <dl>
+                <dt>categoria</dt>
+                <dd>{categoriaNome}</dd>
+                <dt>estoque</dt>
+                <dd>{semEstoque ? "esgotado" : `${produto.estoque} unidades`}</dd>
+              </dl>
+            </div>
+
+            <BotaoAdicionarCarrinho
+              produtoId={produto._id!.toString()}
+              nome={produto.nome}
+              foto={produto.fotos[0] ?? ""}
+              categoria={produto.categoria}
+              slug={produto.slug}
+              preco={produto.preco}
+              estoque={produto.estoque}
+            />
           </div>
-
-          <BotaoAdicionarCarrinho
-            produtoId={produto._id!.toString()}
-            nome={produto.nome}
-            foto={produto.fotos[0] ?? ""}
-            categoria={produto.categoria}
-            slug={produto.slug}
-            preco={produto.preco}
-            estoque={produto.estoque}
-          />
         </div>
-      </div>
+      )}
 
       <AvaliacoesProduto
         produtoId={produto._id!.toString()}

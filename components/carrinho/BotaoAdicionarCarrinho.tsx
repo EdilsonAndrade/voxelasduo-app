@@ -12,6 +12,9 @@ interface BotaoAdicionarCarrinhoProps {
   slug: string;
   preco: number;
   estoque: number;
+  /** Variação de kit escolhida (specs/041) — `nome` já deve vir com ela. */
+  variacaoId?: string;
+  variacaoNome?: string;
 }
 
 export default function BotaoAdicionarCarrinho({
@@ -22,6 +25,8 @@ export default function BotaoAdicionarCarrinho({
   slug,
   preco,
   estoque,
+  variacaoId,
+  variacaoNome,
 }: BotaoAdicionarCarrinhoProps) {
   const { adicionar } = useCarrinho();
   const [quantidade, setQuantidade] = useState(1);
@@ -39,7 +44,17 @@ export default function BotaoAdicionarCarrinho({
   const semEstoque = estoque === 0;
 
   function confirmarAdicao() {
-    adicionar({ produtoId, nome, foto, categoria, slug, preco, estoque, quantidade });
+    adicionar({
+      produtoId,
+      nome,
+      foto,
+      categoria,
+      slug,
+      preco,
+      estoque,
+      quantidade,
+      ...(variacaoId ? { variacaoId, variacaoNome } : {}),
+    });
     setAdicionado(true);
     if (temporizador.current) {
       clearTimeout(temporizador.current);

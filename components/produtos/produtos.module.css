@@ -481,3 +481,114 @@
   opacity: 0.6;
   cursor: default;
 }
+
+/* Variações de kit na página do produto (specs/041) */
+.aPartirDe {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--texto-soft);
+}
+
+.variacoes {
+  border: none;
+  padding: 0;
+  margin: 0 0 1.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.variacoes legend {
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  color: var(--rosa);
+  margin-bottom: 0.5rem;
+}
+
+.variacoes legend strong {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--preto);
+}
+
+.variacao {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.8rem 0.4rem 0.4rem;
+  border: 2px solid var(--surface-line);
+  border-radius: 14px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.variacao:hover {
+  border-color: var(--roxo);
+}
+
+.variacaoAtiva {
+  composes: variacao;
+  border-color: var(--roxo);
+  box-shadow: 0 0 0 2px var(--roxo) inset;
+}
+
+.variacao[data-esgotada] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+.variacao:focus-within {
+  outline: 2px solid var(--roxo);
+  outline-offset: 2px;
+}
+
+.variacaoFoto {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+}
+
+.variacaoTexto {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.variacaoNome {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--preto);
+}
+
+.variacaoPreco {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--roxo);
+}
+
+.itensKit {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .variacao {
+    transition: none;
+  }
+}

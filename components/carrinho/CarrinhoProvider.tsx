@@ -17,9 +17,9 @@ function reducer(estado: CarrinhoEstado, acao: CarrinhoAcao): CarrinhoEstado {
     case "adicionar":
       return { itens: adicionarItem(estado.itens, acao.item) };
     case "alterar":
-      return { itens: alterarQuantidade(estado.itens, acao.produtoId, acao.quantidade) };
+      return { itens: alterarQuantidade(estado.itens, acao.chave, acao.quantidade) };
     case "remover":
-      return { itens: removerItem(estado.itens, acao.produtoId) };
+      return { itens: removerItem(estado.itens, acao.chave) };
     case "limpar":
       return { itens: limparCarrinho() };
   }
@@ -51,9 +51,8 @@ export default function CarrinhoProvider({ children }: { children: React.ReactNo
         itens: estado.itens,
         pronto,
         adicionar: (item) => dispatch({ tipo: "adicionar", item }),
-        alterar: (produtoId, quantidade) =>
-          dispatch({ tipo: "alterar", produtoId, quantidade }),
-        remover: (produtoId) => dispatch({ tipo: "remover", produtoId }),
+        alterar: (chave, quantidade) => dispatch({ tipo: "alterar", chave, quantidade }),
+        remover: (chave) => dispatch({ tipo: "remover", chave }),
         limpar: () => dispatch({ tipo: "limpar" }),
       }}
     >

@@ -3,6 +3,8 @@ import { SERVICOS_FRETE, type ServicoFrete } from "@/lib/models/frete";
 export interface CheckoutItem {
   produtoId?: unknown;
   quantidade?: unknown;
+  /** Variação de kit escolhida (specs/041) — opcional. */
+  variacaoId?: unknown;
 }
 
 export interface CheckoutPayload {
@@ -110,6 +112,9 @@ export function validarCheckout(payload: CheckoutPayload): ErrosValidacao {
       }
       if (!quantidadeValida(item.quantidade)) {
         erros[`itens[${indice}].quantidade`] = "A quantidade deve ser um número inteiro maior que zero.";
+      }
+      if (item.variacaoId !== undefined && !textoValido(item.variacaoId)) {
+        erros[`itens[${indice}].variacaoId`] = "Variação inválida.";
       }
     });
   }

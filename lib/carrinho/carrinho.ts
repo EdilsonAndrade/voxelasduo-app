@@ -10,6 +10,14 @@ export interface ItemCarrinho {
   /** Estoque visto no momento da adição (limite máximo da quantidade no carrinho). */
   estoque: number;
   quantidade: number;
+  /** Variação de kit escolhida (specs/041) — ausente = produto simples. O `nome` já vem com a variação. */
+  variacaoId?: string;
+  variacaoNome?: string;
+}
+
+/** Identifica a linha do carrinho: o mesmo produto em variações diferentes são linhas diferentes. */
+export function chaveItem(item: Pick<ItemCarrinho, "produtoId" | "variacaoId">): string {
+  return item.variacaoId ? `${item.produtoId}:${item.variacaoId}` : item.produtoId;
 }
 
 export const CARRINHO_STORAGE_KEY = "voxelas-carrinho";
@@ -35,11 +43,12 @@ export function adicionarItem(
 ): ItemCarrinho[] {
   const limite = Math.max(1, novo.estoque);
   const quantidade = Math.max(1, Math.min(novo.quantidade, limite));
-  const existente = itens.find((item) => item.produtoId === novo.produtoId);
+  const chave = chaveItem(novo);
+  const existente = itens.find((item) => chaveItem(item) === chave);
 
   if (existente) {
     return itens.map((item) =>
-      item.produtoId === novo.produtoId
+      chaveItem(item) === chave
         ? { ...item, quantidade: Math.min(item.quantidade + quantidade, limite) }
         : item
     );
@@ -54,6 +63,7 @@ export function adicionarItem(
     preco: novo.preco,
     estoque: novo.estoque,
     quantidade,
+    ...(novo.variacaoId ? { variacaoId: novo.variacaoId, variacaoNome: novo.variacaoNome } : {}),
   };
 
   return [...itens, item];
@@ -61,11 +71,11 @@ export function adicionarItem(
 
 export function alterarQuantidade(
   itens: ItemCarrinho[],
-  produtoId: string,
+  chave: string,
   quantidade: number
 ): ItemCarrinho[] {
   return itens.map((item) => {
-    if (item.produtoId !== produtoId) {
+    if (chaveItem(item) !== chave) {
       return item;
     }
     const limite = Math.max(1, item.estoque);
@@ -73,8 +83,8 @@ export function alterarQuantidade(
   });
 }
 
-export function removerItem(itens: ItemCarrinho[], produtoId: string): ItemCarrinho[] {
-  return itens.filter((item) => item.produtoId !== produtoId);
+export function removerItem(itens: ItemCarrinho[], chave: string): ItemCarrinho[] {
+  return itens.filter((item) => chaveItem(item) !== chave);
 }
 
 export function limparCarrinho(): ItemCarrinho[] {
@@ -125,6 +135,7 @@ function isItemCarrinhoValido(valor: unknown): valor is ItemCarrinho {
     item.estoque >= 0 &&
     typeof item.quantidade === "number" &&
     Number.isInteger(item.quantidade) &&
-    item.quantidade >= 1
+    item.quantidade >= 1 &&
+    (item.variacaoId === undefined || (typeof item.variacaoId === "string" && item.variacaoId.length > 0))
   );
 }

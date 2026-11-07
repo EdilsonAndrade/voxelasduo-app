@@ -8,6 +8,7 @@ import {
 } from "@/lib/models/estoqueSincronizacao";
 import type { Pedido } from "@/lib/models/pedido";
 import { abaterEstoqueAtomico } from "@/lib/produtos/repository";
+import { abaterEstoqueVariacaoAtomico } from "@/lib/produtos/variacoesRepository";
 import { sincronizarAnuncioProduto } from "./sincronizacao";
 
 async function colecaoInconsistencias() {
@@ -67,7 +68,10 @@ export async function abaterEstoquePedido(pedido: Pedido): Promise<void> {
   const pedidoId = pedido._id;
 
   for (const item of pedido.itens) {
-    const resultado = await abaterEstoqueAtomico(item.produtoId.toString(), item.quantidade);
+    // Variação de kit (specs/041): abate a variação e o total do produto juntos.
+    const resultado = item.variacaoId
+      ? await abaterEstoqueVariacaoAtomico(item.produtoId.toString(), item.variacaoId, item.quantidade)
+      : await abaterEstoqueAtomico(item.produtoId.toString(), item.quantidade);
 
     if (resultado.sucesso) {
       // A sincronização com os canais externos nunca deve derrubar o

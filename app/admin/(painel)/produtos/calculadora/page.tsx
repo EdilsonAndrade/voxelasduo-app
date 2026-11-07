@@ -12,6 +12,8 @@ import { normalizarValores } from "@/lib/produtos/calculadoraValores";
 import { buscarCalculoDoProduto, buscarCalculoPreco, listarCalculosPreco } from "@/lib/produtos/calculosPreco";
 import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import { buscarProdutoPorId } from "@/lib/produtos/repository";
+import { buscarVariacao, nomeComVariacao } from "@/lib/produtos/variacoes";
+import { custoProducaoDaVariacao } from "@/lib/produtos/variacoesRepository";
 
 // Precisa do padrão global de taxas atual — não pode ser pré-renderizada no build.
 export const dynamic = "force-dynamic";
@@ -19,9 +21,9 @@ export const dynamic = "force-dynamic";
 export default async function CalculadoraPrecoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string; produto?: string; planoImpressao?: string; kit?: string }>;
+  searchParams: Promise<{ id?: string; produto?: string; planoImpressao?: string; kit?: string; variacao?: string }>;
 }) {
-  const { id, produto: produtoParam, planoImpressao: planoParam, kit: kitParam } = await searchParams;
+  const { id, produto: produtoParam, planoImpressao: planoParam, kit: kitParam, variacao: variacaoParam } = await searchParams;
 
   // Kit do montador (specs/037): já virou produto = caminho do produto; sem preço = volta ao kit.
   const kitAvulso = !id && !produtoParam && !planoParam && kitParam ? await dadosDoKitParaCalculadora(kitParam) : null;
@@ -32,8 +34,9 @@ export default async function CalculadoraPrecoPage({
   }
 
   // Vindo de um produto: reabre o cálculo dele, se já houver; senão começa um com os dados do cadastro.
+  // Variação de kit (specs/041): o cálculo é por variação.
   if (!id && produtoParam) {
-    const existente = await buscarCalculoDoProduto(produtoParam);
+    const existente = await buscarCalculoDoProduto(produtoParam, variacaoParam);
     if (existente) redirect(`/admin/produtos/calculadora?id=${existente._id!.toString()}`);
   }
 
@@ -56,7 +59,13 @@ export default async function CalculadoraPrecoPage({
   const produto = produtoId ? await buscarProdutoPorId(produtoId) : null;
   if (!calculo && produtoParam && !produto) notFound();
 
-  const custoCadastro = produto?.custoProducao ? calcularCustoProducao(produto.custoProducao).totalCentavos : null;
+  const variacaoId = calculo ? calculo.variacaoId : variacaoParam;
+  const variacao = produto && variacaoId ? buscarVariacao(produto, variacaoId) : undefined;
+  if (!calculo && variacaoParam && !variacao) notFound();
+  const custoVariacao = variacao ? await custoProducaoDaVariacao(variacao) : null;
+
+  const custoBase = variacao ? custoVariacao : produto?.custoProducao;
+  const custoCadastro = custoBase ? calcularCustoProducao(custoBase).totalCentavos : null;
   const produtoVinculado = produto
     ? {
         id: produto._id!.toString(),
@@ -71,7 +80,7 @@ export default async function CalculadoraPrecoPage({
           {calculo
             ? `Calculadora de preço: ${calculo.nome}`
             : produto
-              ? `Calculadora de preço: ${produto.nome}`
+              ? `Calculadora de preço: ${nomeComVariacao(produto.nome, variacao?.nome)}`
               : planoAvulso
                 ? `Calculadora de preço: ${planoAvulso.nome}`
                 : kitAvulso
@@ -100,7 +109,7 @@ export default async function CalculadoraPrecoPage({
         }))}
       />
       <CalculadoraRapida
-        key={id ?? (produto ? `produto-${produtoVinculado!.id}` : planoAvulso ? `plano-${planoParam}` : kitAvulso ? `kit-${kitParam}` : "novo")}
+        key={id ?? (produto ? `produto-${produtoVinculado!.id}-${variacao?.id ?? ""}` : planoAvulso ? `plano-${planoParam}` : kitAvulso ? `kit-${kitParam}` : "novo")}
         planoImpressaoId={planoAvulso ? planoParam : undefined}
         taxasGlobais={taxasGlobais}
         produtoVinculado={produtoVinculado}
@@ -115,7 +124,19 @@ export default async function CalculadoraPrecoPage({
                 // Cálculos antigos (custo por peça) chegam já convertidos para a versão 2.
                 valores: normalizarValores(calculo.valores),
                 produtoId: calculo.produtoId,
+                variacaoId: calculo.variacaoId,
               }
+            : produto && variacao
+              ? {
+                  // Variação de kit (specs/041): custo agregado das peças e o preço dela como alvo.
+                  nome: nomeComVariacao(produto.nome, variacao.nome),
+                  linkModelo3d: produto.linkModelo3d,
+                  valores: custoVariacao
+                    ? valoresDoKit(custoVariacao, variacao.precosCanais?.shopee ?? variacao.preco)
+                    : valoresDoProduto({ ...produto, custoProducao: undefined, preco: variacao.preco, precosCanais: variacao.precosCanais }),
+                  produtoId: produtoVinculado!.id,
+                  variacaoId: variacao.id,
+                }
             : produto
               ? {
                   // Ainda não salvo: ao salvar, o cálculo nasce já ligado ao produto.
