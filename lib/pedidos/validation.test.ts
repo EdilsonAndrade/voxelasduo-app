@@ -131,4 +131,14 @@ describe("validarCheckout", () => {
   it("aceita combinar com a loja com valor zero", () => {
     expect(validarCheckout({ ...payloadValido, frete: { servico: "combinar", valorCentavos: 0 } })).toEqual({});
   });
+
+  it("retirada em mãos dispensa o endereço, mas exige telefone", () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { endereco, ...semEndereco } = payloadValido.cliente!;
+    const retirada = { servico: "retirada", valorCentavos: 0 };
+    expect(validarCheckout({ ...payloadValido, cliente: semEndereco, frete: retirada })).toEqual({});
+    expect(
+      validarCheckout({ ...payloadValido, cliente: { ...semEndereco, telefone: "" }, frete: retirada })
+    ).toHaveProperty("cliente.telefone");
+  });
 });

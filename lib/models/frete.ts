@@ -1,14 +1,19 @@
 /** Formas de entrega do checkout do site (spec 039). */
-export type ServicoFrete = "pac" | "sedex" | "combinar";
+/** `retirada` (retirar em mãos) só existe no link de pagamento — fora das opções do checkout do site. */
+export type ServicoFrete = "pac" | "sedex" | "combinar" | "retirada";
 
 /** Ordem de exibição no checkout. */
 export const SERVICOS_FRETE: ServicoFrete[] = ["pac", "sedex", "combinar"];
+
+/** Retirada em mãos: sem endereço e sem custo (link de pagamento). */
+export const SERVICO_RETIRADA = "retirada" satisfies ServicoFrete;
 
 /** Rótulos pt-BR das formas de entrega — centralizados para tradução futura. */
 export const ROTULO_SERVICO_FRETE: Record<ServicoFrete, string> = {
   pac: "PAC",
   sedex: "SEDEX",
   combinar: "Combinar com a loja",
+  retirada: "Retirar em mãos",
 };
 
 /** De onde veio o valor: fixo configurado, calculado por CEP/peso ou gratuito (combinar). */

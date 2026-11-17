@@ -6,7 +6,7 @@ import { resolverFretePedido } from "@/lib/frete/calculo";
 import { opcoesFreteVigentes } from "@/lib/frete/repository";
 import { idempotenciaDoLink, opcoesFreteDoLink, situacaoDoLink } from "@/lib/linksPagamento/regras";
 import { buscarLinkPorCodigo, vincularPedidoAoLink } from "@/lib/linksPagamento/repository";
-import type { ServicoFrete } from "@/lib/models/frete";
+import { SERVICO_RETIRADA, type ServicoFrete } from "@/lib/models/frete";
 import type { Pedido } from "@/lib/models/pedido";
 import { ErroEstoque, chaveLinhaPedido } from "@/lib/pedidos/estoque";
 import { criarPedido } from "@/lib/pedidos/repository";
@@ -17,6 +17,13 @@ const MENSAGEM_SITUACAO = {
   vencido: "Este link de pagamento venceu. Fale com a loja para receber um novo.",
   cancelado: "Este link de pagamento foi cancelado. Fale com a loja para receber um novo.",
 } as const;
+
+/** Remove o endereço do cliente (retirada em mãos) sem gravar `endereco: null`. */
+function semEndereco(cliente: NonNullable<CheckoutPayload["cliente"]>): CheckoutPayload["cliente"] {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { endereco, ...resto } = cliente;
+  return resto;
+}
 
 /** Formas de entrega do link (rota pública) — com frete grátis, PAC/SEDEX saem por R$ 0. */
 export async function GET(_request: Request, { params }: { params: Promise<{ codigo: string }> }) {
@@ -52,7 +59,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     quantidade: item.quantidade,
     ...(item.variacaoId ? { variacaoId: item.variacaoId } : {}),
   }));
-  const payload: CheckoutPayload = { ...corpo, idempotencia: idempotenciaDoLink(link.codigo), itens };
+  // Retirada em mãos: o endereço não é pedido nem gravado.
+  const retirada = corpo.frete?.servico === SERVICO_RETIRADA;
+  const cliente = retirada && corpo.cliente ? semEndereco(corpo.cliente) : corpo.cliente;
+  const payload: CheckoutPayload = { ...corpo, cliente, idempotencia: idempotenciaDoLink(link.codigo), itens };
   const erros = validarCheckout(payload);
   if (Object.keys(erros).length > 0) {
     return NextResponse.json({ erro: "Dados inválidos.", campos: erros }, { status: 400 });

@@ -1,4 +1,4 @@
-import { SERVICOS_FRETE, type ServicoFrete } from "@/lib/models/frete";
+import { SERVICOS_FRETE, SERVICO_RETIRADA, type ServicoFrete } from "@/lib/models/frete";
 
 export interface CheckoutItem {
   produtoId?: unknown;
@@ -70,19 +70,33 @@ export function validarCheckout(payload: CheckoutPayload): ErrosValidacao {
     erros["cliente.email"] = "Informe um e-mail válido.";
   }
 
+  // Retirada em mãos (link de pagamento): sem endereço, mas o telefone passa a ser obrigatório.
+  const retirada = payload.frete?.servico === SERVICO_RETIRADA;
   if (cliente.telefone !== undefined && cliente.telefone !== null && cliente.telefone !== "") {
     const digitos = somenteDigitos(String(cliente.telefone));
     if (digitos.length < 10 || digitos.length > 11) {
       erros["cliente.telefone"] = "Informe um telefone válido com DDD.";
     }
+  } else if (retirada) {
+    erros["cliente.telefone"] = "Informe um telefone com DDD para combinarmos a retirada.";
   }
 
-  const endereco = cliente.endereco;
-  if (typeof endereco !== "object" || endereco === null) {
-    erros["cliente.endereco"] = "Informe o endereço de entrega.";
-    return erros;
+  if (!retirada) {
+    const endereco = cliente.endereco;
+    if (typeof endereco !== "object" || endereco === null) {
+      erros["cliente.endereco"] = "Informe o endereço de entrega.";
+      return erros;
+    }
+    validarEndereco(endereco, erros);
   }
 
+  validarItensEFrete(payload, erros);
+  return erros;
+}
+
+type EnderecoPayload = NonNullable<NonNullable<CheckoutPayload["cliente"]>["endereco"]>;
+
+function validarEndereco(endereco: EnderecoPayload, erros: ErrosValidacao) {
   if (!textoValido(endereco.logradouro)) {
     erros["cliente.endereco.logradouro"] = "Informe a rua.";
   }
@@ -102,7 +116,9 @@ export function validarCheckout(payload: CheckoutPayload): ErrosValidacao {
   if (cep.length !== 8) {
     erros["cliente.endereco.cep"] = "Informe um CEP válido com 8 dígitos.";
   }
+}
 
+function validarItensEFrete(payload: CheckoutPayload, erros: ErrosValidacao) {
   if (!Array.isArray(payload.itens) || payload.itens.length === 0) {
     erros.itens = "Seu carrinho está vazio.";
   } else {
@@ -123,13 +139,11 @@ export function validarCheckout(payload: CheckoutPayload): ErrosValidacao {
   if (
     typeof frete !== "object" ||
     frete === null ||
-    !SERVICOS_FRETE.includes(frete.servico as ServicoFrete) ||
+    ![...SERVICOS_FRETE, SERVICO_RETIRADA].includes(frete.servico as ServicoFrete) ||
     typeof frete.valorCentavos !== "number" ||
     !Number.isInteger(frete.valorCentavos) ||
     frete.valorCentavos < 0
   ) {
     erros.frete = "Escolha a forma de entrega.";
   }
-
-  return erros;
 }

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useCarrinho } from "@/components/carrinho/carrinho-context";
 import { buscarEnderecoPorCep } from "@/lib/cep/buscarEnderecoPorCep";
-import type { OpcaoFrete, ServicoFrete } from "@/lib/models/frete";
+import { SERVICO_RETIRADA, type OpcaoFrete, type ServicoFrete } from "@/lib/models/frete";
 import { formatarPreco } from "@/lib/produtos/formato";
 import styles from "./checkout.module.css";
 
@@ -28,7 +28,7 @@ interface FormularioCheckoutProps {
   opcoesFrete: OpcaoFrete[];
   freteSelecionado: OpcaoFrete | null;
   erroOpcoesFrete: string | null;
-  aoEscolherFrete: (servico: ServicoFrete) => void;
+  aoEscolherFrete: (servico: ServicoFrete | null) => void;
   aoAtualizarOpcoesFrete: (opcoes: OpcaoFrete[]) => void;
   aoRecarregarOpcoesFrete: () => void;
   /**
@@ -74,6 +74,23 @@ export default function FormularioCheckout({
 
   const [buscandoCep, setBuscandoCep] = useState(false);
 
+  // Link de pagamento: o cliente escolhe primeiro se recebe em casa ou retira em mãos.
+  const permiteRetirada = Boolean(linkPagamento) && opcoesFrete.some((o) => o.servico === SERVICO_RETIRADA);
+  const retirada = freteSelecionado?.servico === SERVICO_RETIRADA;
+  const [modoRecebimento, setModoRecebimento] = useState<"entrega" | "retirada" | null>(null);
+  const opcoesEntrega = opcoesFrete.filter((o) => o.servico !== SERVICO_RETIRADA);
+  const mostrarEndereco = !permiteRetirada || modoRecebimento === "entrega";
+
+  function escolherModo(modo: "entrega" | "retirada") {
+    setModoRecebimento(modo);
+    setErros((atual) => {
+      const { recebimento: _removido, ...resto } = atual;
+      return resto;
+    });
+    if (modo === "retirada") aoEscolherFrete(SERVICO_RETIRADA);
+    else if (retirada) aoEscolherFrete(null);
+  }
+
   function atualizar(campo: keyof typeof formulario, valor: string) {
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
   }
@@ -102,6 +119,10 @@ export default function FormularioCheckout({
     if (enviando) {
       return;
     }
+    if (permiteRetirada && !modoRecebimento) {
+      setErros({ recebimento: "Escolha se vai receber em casa ou retirar em mãos." });
+      return;
+    }
     setEnviando(true);
     setErroGeral(null);
     setErroEstoque(null);
@@ -116,15 +137,19 @@ export default function FormularioCheckout({
           nome: formulario.nome,
           email: formulario.email,
           telefone: formulario.telefone,
-          endereco: {
-            logradouro: formulario.logradouro,
-            numero: formulario.numero,
-            complemento: formulario.complemento,
-            bairro: formulario.bairro,
-            cidade: formulario.cidade,
-            estado: formulario.estado.toUpperCase(),
-            cep: formulario.cep,
-          },
+          ...(retirada
+            ? {}
+            : {
+                endereco: {
+                  logradouro: formulario.logradouro,
+                  numero: formulario.numero,
+                  complemento: formulario.complemento,
+                  bairro: formulario.bairro,
+                  cidade: formulario.cidade,
+                  estado: formulario.estado.toUpperCase(),
+                  cep: formulario.cep,
+                },
+              }),
         },
         ...(linkPagamento
           ? {}
@@ -208,6 +233,45 @@ export default function FormularioCheckout({
         </div>
       )}
 
+      {permiteRetirada && (
+        <section className={styles.secao}>
+          <fieldset className={styles.recebimento}>
+            <legend className={`${styles.secaoTitulo} ${styles.secaoTituloRosa}`}>como você quer receber?</legend>
+            <div className={styles.recebimentoOpcoes}>
+              <label className={styles.recebimentoOpcao}>
+                <input
+                  type="radio"
+                  name="recebimento"
+                  value="entrega"
+                  checked={modoRecebimento === "entrega"}
+                  onChange={() => escolherModo("entrega")}
+                />
+                <span className={styles.recebimentoNome}>Receber em casa</span>
+                <span className={styles.recebimentoDica}>enviamos pelos Correios — precisa do endereço</span>
+              </label>
+              <label className={styles.recebimentoOpcao}>
+                <input
+                  type="radio"
+                  name="recebimento"
+                  value="retirada"
+                  checked={modoRecebimento === "retirada"}
+                  onChange={() => escolherModo("retirada")}
+                />
+                <span className={styles.recebimentoNome}>
+                  Retirar em mãos <span className={styles.recebimentoSelo}>sem frete</span>
+                </span>
+                <span className={styles.recebimentoDica}>combinamos local e horário pelo telefone</span>
+              </label>
+            </div>
+          </fieldset>
+          {erroDe("recebimento") && (
+            <p className={styles.erroCampo} role="alert">
+              {erroDe("recebimento")}
+            </p>
+          )}
+        </section>
+      )}
+
       <section className={styles.secao}>
         <p className={`${styles.secaoTitulo} ${styles.secaoTituloRosa}`}>seus dados</p>
         <div className={styles.campos}>
@@ -242,7 +306,7 @@ export default function FormularioCheckout({
           </div>
           <div className={styles.campo}>
             <label className={styles.rotulo} htmlFor="telefone">
-              telefone
+              telefone {retirada && <span>*</span>}
             </label>
             <input
               id="telefone"
@@ -260,6 +324,8 @@ export default function FormularioCheckout({
         </div>
       </section>
 
+      {mostrarEndereco && (
+        <>
       <section className={styles.secao}>
         <p className={styles.secaoTitulo}>sua casa</p>
         <div className={styles.campos}>
@@ -380,14 +446,14 @@ export default function FormularioCheckout({
               tentar de novo
             </button>
           </>
-        ) : opcoesFrete.length === 0 ? (
+        ) : opcoesEntrega.length === 0 ? (
           <p className={styles.statusCampo}>carregando formas de entrega…</p>
         ) : (
           <fieldset className={styles.opcoesEntrega}>
             <legend className={styles.rotulo}>
               forma de entrega <span>*</span>
             </legend>
-            {opcoesFrete.map((opcao) => (
+            {opcoesEntrega.map((opcao) => (
               <label key={opcao.servico} className={styles.opcaoEntrega}>
                 <input
                   type="radio"
@@ -411,6 +477,8 @@ export default function FormularioCheckout({
         )}
         {erroDe("frete") && <p className={styles.erroCampo}>{erroDe("frete")}</p>}
       </section>
+        </>
+      )}
 
       <button type="submit" className={styles.submit} disabled={enviando}>
         {enviando ? "confirmando…" : "Confirmar pedido"}

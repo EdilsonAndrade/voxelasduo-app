@@ -85,8 +85,17 @@ describe("frete e código", () => {
   ];
 
   it("zera PAC/SEDEX só com frete grátis", () => {
-    expect(opcoesFreteDoLink(opcoes, false)).toBe(opcoes);
-    expect(opcoesFreteDoLink(opcoes, true).map((o) => o.valorCentavos)).toEqual([0, 0, 0]);
+    expect(opcoesFreteDoLink(opcoes, false).map((o) => o.valorCentavos)).toEqual([1990, 2550, 0, 0]);
+    expect(opcoesFreteDoLink(opcoes, true).map((o) => o.valorCentavos)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("sempre oferece retirar em mãos", () => {
+    expect(opcoesFreteDoLink(opcoes, false).at(-1)).toEqual({
+      servico: "retirada",
+      rotulo: "Retirar em mãos",
+      valorCentavos: 0,
+      origem: "gratis",
+    });
   });
 
   it("gera código de 10 caracteres e idempotência por link", () => {

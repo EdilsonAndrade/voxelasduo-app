@@ -254,9 +254,13 @@ export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
     digitosTelefone.length === 10 || digitosTelefone.length === 11
       ? `https://wa.me/55${digitosTelefone}`
       : undefined;
-  const complemento = endereco.complemento ? ` — ${endereco.complemento}` : "";
-  const enderecoLinha1 = `${endereco.logradouro}, ${endereco.numero}${complemento}`;
-  const enderecoLinha2 = `${endereco.bairro} — ${endereco.cidade}/${endereco.estado} — CEP ${endereco.cep}`;
+  const complemento = endereco?.complemento ? ` — ${endereco.complemento}` : "";
+  const enderecoLinha1 = endereco
+    ? `${endereco.logradouro}, ${endereco.numero}${complemento}`
+    : "Sem endereço — retirada em mãos";
+  const enderecoLinha2 = endereco
+    ? `${endereco.bairro} — ${endereco.cidade}/${endereco.estado} — CEP ${endereco.cep}`
+    : "";
   const linkAdmin = `${urlBaseSite()}/admin/pedidos?status=pago`;
 
   const text = [
@@ -301,7 +305,7 @@ export async function notificarAdminVendaSite(pedido: Pedido): Promise<void> {
           : escaparHtml(telefone)
       }</p>
       <p style="margin:20px 0 8px;font-weight:700;">Entregar em</p>
-      <p style="margin:0;padding:14px;background-color:#FFF6ED;border-radius:8px;">${escaparHtml(enderecoLinha1)}<br />${escaparHtml(enderecoLinha2)}</p>
+      <p style="margin:0;padding:14px;background-color:#FFF6ED;border-radius:8px;">${escaparHtml(enderecoLinha1)}${enderecoLinha2 ? `<br />${escaparHtml(enderecoLinha2)}` : ""}</p>
       <p style="margin:20px 0 0;"><a href="${linkAdmin}">Ver pedidos pagos no admin</a></p>
     `,
   });

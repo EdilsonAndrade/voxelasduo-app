@@ -1,4 +1,4 @@
-import type { OpcaoFrete } from "@/lib/models/frete";
+import { ROTULO_SERVICO_FRETE, SERVICO_RETIRADA, type OpcaoFrete } from "@/lib/models/frete";
 import type { StatusPedido } from "@/lib/models/pedido";
 import {
   LIMITE_TEXTO_LINK,
@@ -135,10 +135,18 @@ export function situacaoDoLink(
   return "ativo";
 }
 
-/** Formas de entrega do link: com frete grátis, PAC e SEDEX saem por R$ 0. */
+/**
+ * Formas de entrega do link: com frete grátis, PAC e SEDEX saem por R$ 0.
+ * O link sempre aceita retirar em mãos (sem endereço, sem custo).
+ */
 export function opcoesFreteDoLink(opcoes: OpcaoFrete[], freteGratis: boolean): OpcaoFrete[] {
-  if (!freteGratis) return opcoes;
-  return opcoes.map((opcao) => ({ ...opcao, valorCentavos: 0, origem: "gratis" }));
+  const base: OpcaoFrete[] = freteGratis
+    ? opcoes.map((opcao) => ({ ...opcao, valorCentavos: 0, origem: "gratis" }))
+    : opcoes;
+  return [
+    ...base.filter((opcao) => opcao.servico !== SERVICO_RETIRADA),
+    { servico: SERVICO_RETIRADA, rotulo: ROTULO_SERVICO_FRETE[SERVICO_RETIRADA], valorCentavos: 0, origem: "gratis" },
+  ];
 }
 
 /** Chave de idempotência do pedido do link — garante um pedido só por link. */

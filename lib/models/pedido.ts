@@ -33,7 +33,8 @@ export interface ClientePedido {
   nome: string;
   email: string;
   telefone?: string;
-  endereco: {
+  /** Ausente quando o cliente retira em mãos (link de pagamento). */
+  endereco?: {
     logradouro: string;
     numero: string;
     complemento?: string;
