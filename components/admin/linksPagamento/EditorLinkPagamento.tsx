@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import SelectBusca from "@/components/admin/SelectBusca";
 import styles from "@/components/admin/admin.module.css";
+import type { LinkInicialEditor, OpcaoCatalogoLink } from "@/lib/linksPagamento/catalogo";
 import { percentualDesconto, precoComDesconto } from "@/lib/linksPagamento/regras";
 import { VALIDADE_PADRAO_DIAS } from "@/lib/models/linkPagamento";
 import { formatarPreco } from "@/lib/produtos/formato";
@@ -11,21 +12,7 @@ import { centavosParaTexto, textoParaCentavos } from "@/lib/produtos/precoLista"
 import { textoWhatsApp, urlDoLink } from "./compartilhar";
 import l from "./linksPagamento.module.css";
 
-/** Produto (ou variação de kit, ou cálculo que ainda não virou produto) que pode entrar no link. */
-export interface OpcaoCatalogoLink {
-  /** `${produtoId}:${variacaoId ?? ""}` ou `calculo:${calculoId}` */
-  valor: string;
-  /** Vazio quando o item vem só da calculadora. */
-  produtoId: string;
-  variacaoId?: string;
-  /** Cálculo de preço sem produto — vira produto rascunho quando o link é gerado. */
-  calculoId?: string;
-  nome: string;
-  precoCentavos: number;
-  estoque: number;
-  /** Custo de produção da unidade — `null` = sem custo cadastrado. */
-  custoCentavos: number | null;
-}
+export type { OpcaoCatalogoLink } from "@/lib/linksPagamento/catalogo";
 
 interface Linha {
   uid: number;
@@ -47,12 +34,35 @@ function numero(texto: string): number {
   return Number(texto.replace(",", ".").trim());
 }
 
+function linhasIniciais(inicial: LinkInicialEditor | undefined, porValor: Map<string, OpcaoCatalogoLink>): Linha[] {
+  if (!inicial || inicial.itens.length === 0) return [novaLinha()];
+  return inicial.itens.map((item) => {
+    const opcao = porValor.get(item.valor);
+    return {
+      ...novaLinha(),
+      valor: item.valor,
+      quantidade: String(item.quantidade),
+      preco: centavosParaTexto(item.precoCentavos),
+      desconto:
+        opcao && opcao.precoCentavos !== item.precoCentavos
+          ? String(percentualDesconto(opcao.precoCentavos, item.precoCentavos)).replace(".", ",")
+          : "",
+    };
+  });
+}
+
 export default function EditorLinkPagamento({
   catalogo,
   taxaSite,
+  inicial,
+  linkId,
 }: {
   catalogo: OpcaoCatalogoLink[];
   taxaSite: { percentual: number; fixaCentavos: number };
+  /** Dados para editar (com `linkId`) ou duplicar (sem `linkId`) um link. */
+  inicial?: LinkInicialEditor;
+  /** Presente = edita esse link (mesmo código) em vez de criar outro. */
+  linkId?: string;
 }) {
   const porValor = useMemo(() => new Map(catalogo.map((o) => [o.valor, o])), [catalogo]);
   const opcoes = useMemo(
@@ -66,11 +76,11 @@ export default function EditorLinkPagamento({
     [catalogo]
   );
 
-  const [linhas, setLinhas] = useState<Linha[]>([novaLinha()]);
-  const [clienteNome, setClienteNome] = useState("");
-  const [observacao, setObservacao] = useState("");
-  const [validadeDias, setValidadeDias] = useState(String(VALIDADE_PADRAO_DIAS));
-  const [freteGratis, setFreteGratis] = useState(false);
+  const [linhas, setLinhas] = useState<Linha[]>(() => linhasIniciais(inicial, porValor));
+  const [clienteNome, setClienteNome] = useState(inicial?.clienteNome ?? "");
+  const [observacao, setObservacao] = useState(inicial?.observacao ?? "");
+  const [validadeDias, setValidadeDias] = useState(String(inicial?.validadeDias ?? VALIDADE_PADRAO_DIAS));
+  const [freteGratis, setFreteGratis] = useState(inicial?.freteGratis ?? false);
   const [descontoGeral, setDescontoGeral] = useState("");
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -160,8 +170,8 @@ export default function EditorLinkPagamento({
         };
       });
     try {
-      const resposta = await fetch("/api/admin/links-pagamento", {
-        method: "POST",
+      const resposta = await fetch(linkId ? `/api/admin/links-pagamento/${linkId}` : "/api/admin/links-pagamento", {
+        method: linkId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clienteNome,
@@ -178,12 +188,14 @@ export default function EditorLinkPagamento({
       };
       if (!resposta.ok || !dados.link) {
         setErros(dados.campos ?? {});
-        setErroGeral(`${dados.erro ?? "Não foi possível gerar o link."} (status ${resposta.status})`);
+        setErroGeral(
+          `${dados.erro ?? (linkId ? "Não foi possível salvar o link." : "Não foi possível gerar o link.")} (status ${resposta.status})`
+        );
         return;
       }
       setCriado({ codigo: dados.link.codigo, totalCentavos: dados.link.totais.totalCentavos });
     } catch {
-      setErroGeral("Não foi possível gerar o link. Verifique sua conexão.");
+      setErroGeral(`Não foi possível ${linkId ? "salvar" : "gerar"} o link. Verifique sua conexão.`);
     } finally {
       setEnviando(false);
     }
@@ -207,7 +219,9 @@ export default function EditorLinkPagamento({
     const url = urlDoLink(window.location.origin, criado.codigo);
     return (
       <div className={l.pronto}>
-        <p className={l.prontoTitulo}>Link gerado · {formatarPreco(criado.totalCentavos)} em produtos</p>
+        <p className={l.prontoTitulo}>
+          {linkId ? "Link atualizado" : "Link gerado"} · {formatarPreco(criado.totalCentavos)} em produtos
+        </p>
         <div className={l.url}>
           <input readOnly value={url} aria-label="Link de pagamento" onFocus={(e) => e.currentTarget.select()} />
           <button
@@ -400,7 +414,7 @@ export default function EditorLinkPagamento({
           </p>
         )}
         <button type="button" className={styles.btnPrimary} onClick={gerar} disabled={enviando}>
-          {enviando ? "Gerando…" : "Gerar link de pagamento"}
+          {linkId ? (enviando ? "Salvando…" : "Salvar alterações") : enviando ? "Gerando…" : "Gerar link de pagamento"}
         </button>
       </section>
     </div>

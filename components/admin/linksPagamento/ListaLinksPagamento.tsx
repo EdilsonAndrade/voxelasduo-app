@@ -76,6 +76,8 @@ export default function ListaLinksPagamento({ links }: { links: LinkPagamentoRes
           <tbody>
             {links.map((link) => {
               const usavel = link.situacao === "ativo";
+              // Edita enquanto não virou pedido nem foi cancelado (vencido volta a valer ao salvar).
+              const editavel = !link.pedidoId && link.situacao !== "cancelado";
               return (
                 <tr key={link.id}>
                   <td>{link.clienteNome ?? "—"}</td>
@@ -105,8 +107,17 @@ export default function ListaLinksPagamento({ links }: { links: LinkPagamentoRes
                   </td>
                   <td>{new Date(link.validoAte).toLocaleDateString("pt-BR")}</td>
                   <td>
+                    <div className={l.acoesTabela}>
+                      {editavel && (
+                        <Link href={`/admin/links-pagamento/${link.id}/editar`} className={styles.btnGhost}>
+                          Editar
+                        </Link>
+                      )}
+                      <Link href={`/admin/links-pagamento/novo?copiar=${link.id}`} className={styles.btnGhost}>
+                        Duplicar
+                      </Link>
                     {usavel && (
-                      <div className={l.acoesTabela}>
+                      <>
                         <button type="button" className={styles.btnGhost} onClick={() => copiar(link.codigo)}>
                           {copiado === link.codigo ? "Copiado" : "Copiar link"}
                         </button>
@@ -133,8 +144,9 @@ export default function ListaLinksPagamento({ links }: { links: LinkPagamentoRes
                         >
                           {cancelando === link.id ? "Cancelando…" : "Cancelar"}
                         </button>
-                      </div>
+                      </>
                     )}
+                    </div>
                   </td>
                 </tr>
               );

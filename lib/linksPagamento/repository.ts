@@ -29,7 +29,8 @@ export class ErroLinkPagamento extends Error {
   }
 }
 
-export async function criarLinkPagamento(entrada: LinkEntrada): Promise<LinkPagamento> {
+/** Confere os produtos/variações e monta os itens gravados no link (nome, foto e preço do site de hoje). */
+async function montarItens(entrada: LinkEntrada): Promise<ItemLinkPagamento[]> {
   const produtos = await buscarProdutosPorIds(entrada.itens.map((i) => i.produtoId));
   const campos: Record<string, string> = {};
   const itens: ItemLinkPagamento[] = [];
@@ -62,7 +63,15 @@ export async function criarLinkPagamento(entrada: LinkEntrada): Promise<LinkPaga
   });
 
   if (Object.keys(campos).length > 0) throw new ErroLinkPagamento(campos);
+  return itens;
+}
 
+function validadeAPartirDeHoje(agora: Date, dias: number): Date {
+  return new Date(agora.getTime() + dias * 24 * 60 * 60 * 1000);
+}
+
+export async function criarLinkPagamento(entrada: LinkEntrada): Promise<LinkPagamento> {
+  const itens = await montarItens(entrada);
   const agora = new Date();
   const colecao = await colecaoLinks();
   // Colisão de código é improvável (31^10); tenta de novo algumas vezes por segurança.
@@ -73,7 +82,7 @@ export async function criarLinkPagamento(entrada: LinkEntrada): Promise<LinkPaga
       ...(entrada.observacao ? { observacao: entrada.observacao } : {}),
       itens,
       freteGratis: entrada.freteGratis,
-      validoAte: new Date(agora.getTime() + entrada.validadeDias * 24 * 60 * 60 * 1000),
+      validoAte: validadeAPartirDeHoje(agora, entrada.validadeDias),
       criadoEm: agora,
       atualizadoEm: agora,
     };
@@ -85,6 +94,62 @@ export async function criarLinkPagamento(entrada: LinkEntrada): Promise<LinkPaga
     }
   }
   throw new Error("Não foi possível gerar um código único para o link.");
+}
+
+/** Erro de edição de link que já gerou pedido ou foi cancelado — vira 409. */
+export class ErroLinkTravado extends Error {}
+
+/**
+ * Edita o link mantendo o mesmo código (a URL já enviada continua valendo).
+ * Só enquanto não gerou pedido e não foi cancelado. A validade conta a partir de hoje.
+ * `null` = link não encontrado.
+ */
+export async function atualizarLinkPagamento(id: string, entrada: LinkEntrada): Promise<LinkPagamento | null> {
+  if (!ObjectId.isValid(id)) return null;
+  const colecao = await colecaoLinks();
+  const atual = await colecao.findOne({ _id: new ObjectId(id) });
+  if (!atual) return null;
+  if (atual.pedidoId || atual.canceladoEm) {
+    throw new ErroLinkTravado(
+      atual.pedidoId
+        ? "Este link já virou pedido e não pode mais ser editado. Use “Duplicar” para gerar um novo."
+        : "Este link foi cancelado e não pode mais ser editado. Use “Duplicar” para gerar um novo."
+    );
+  }
+
+  const itens = await montarItens(entrada);
+  const agora = new Date();
+  // Nome/recado apagados na tela saem do documento (Mongo recusa `$unset` vazio).
+  const desdefinir: Record<string, ""> = {};
+  if (!entrada.clienteNome) desdefinir.clienteNome = "";
+  if (!entrada.observacao) desdefinir.observacao = "";
+  const atualizado = await colecao.findOneAndUpdate(
+    { _id: atual._id, pedidoId: { $exists: false }, canceladoEm: { $exists: false } },
+    {
+      $set: {
+        itens,
+        freteGratis: entrada.freteGratis,
+        validoAte: validadeAPartirDeHoje(agora, entrada.validadeDias),
+        atualizadoEm: agora,
+        ...(entrada.clienteNome ? { clienteNome: entrada.clienteNome } : {}),
+        ...(entrada.observacao ? { observacao: entrada.observacao } : {}),
+      },
+      ...(Object.keys(desdefinir).length > 0 ? { $unset: desdefinir } : {}),
+    },
+    { returnDocument: "after" }
+  );
+  // O cliente pagou enquanto o link era editado.
+  if (!atualizado) throw new ErroLinkTravado("Este link acabou de virar pedido e não pode mais ser editado.");
+  return atualizado;
+}
+
+export async function buscarLinkPorId(id: string): Promise<LinkComPedido | null> {
+  if (!ObjectId.isValid(id)) return null;
+  const colecao = await colecaoLinks();
+  const link = await colecao.findOne({ _id: new ObjectId(id) });
+  if (!link) return null;
+  const [comPedido] = await anexarPedidos([link]);
+  return comPedido;
 }
 
 export interface LinkComPedido {
