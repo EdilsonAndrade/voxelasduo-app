@@ -129,6 +129,12 @@ export interface CriarPedidoInput {
    */
   precosCombinados?: Map<string, number>;
   linkPagamentoId?: ObjectId;
+  /**
+   * Link de pagamento: as peças já foram produzidas/combinadas com o cliente,
+   * então a quantidade em estoque não bloqueia o pedido — só produto ou
+   * variação que não existe mais.
+   */
+  ignorarEstoque?: boolean;
 }
 
 export interface ItemPedidoDetalhado {
@@ -171,7 +177,12 @@ export async function criarPedido(input: CriarPedidoInput): Promise<PedidoCriado
     [...quantidadePorProduto.keys()].map((chave) => separarChaveLinhaPedido(chave).produtoId)
   );
 
-  const problemas = validarEstoque(quantidadePorProduto, produtos);
+  const problemas = validarEstoque(quantidadePorProduto, produtos).filter(
+    (problema) =>
+      !input.ignorarEstoque ||
+      !produtos.has(problema.produtoId) ||
+      (problema.variacaoId !== undefined && !buscarVariacao(produtos.get(problema.produtoId)!, problema.variacaoId))
+  );
   if (problemas.length > 0) {
     throw new ErroEstoque(problemas);
   }

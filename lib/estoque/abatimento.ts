@@ -7,7 +7,8 @@ import {
   type MotivoInconsistenciaEstoque,
 } from "@/lib/models/estoqueSincronizacao";
 import type { Pedido } from "@/lib/models/pedido";
-import { abaterEstoqueAtomico } from "@/lib/produtos/repository";
+import { abaterEstoqueAtomico, buscarProdutoPorId } from "@/lib/produtos/repository";
+import { buscarVariacao } from "@/lib/produtos/variacoes";
 import { abaterEstoqueVariacaoAtomico } from "@/lib/produtos/variacoesRepository";
 import { sincronizarAnuncioProduto } from "./sincronizacao";
 
@@ -63,15 +64,36 @@ export async function registrarItemExternoSemProduto(
  * abatimento vira inconsistência para revisão manual (FR-004) sem impedir
  * o abatimento/sincronização dos demais itens do mesmo pedido.
  */
+async function abaterItem(produtoId: string, variacaoId: string | undefined, quantidade: number) {
+  // Variação de kit (specs/041): abate a variação e o total do produto juntos.
+  return variacaoId
+    ? abaterEstoqueVariacaoAtomico(produtoId, variacaoId, quantidade)
+    : abaterEstoqueAtomico(produtoId, quantidade);
+}
+
+/**
+ * Link de pagamento: as peças já foram produzidas/combinadas, então faltar
+ * estoque não é inconsistência — abate só o que houver (sem ficar negativo).
+ */
+async function abaterDisponivel(produtoId: string, variacaoId: string | undefined, quantidade: number) {
+  const produto = await buscarProdutoPorId(produtoId);
+  if (!produto) return { sucesso: false, motivoFalha: "produto_removido" as const };
+  const disponivel = variacaoId ? (buscarVariacao(produto, variacaoId)?.estoque ?? 0) : produto.estoque;
+  const abater = Math.min(quantidade, Math.max(0, disponivel));
+  if (abater === 0) return { sucesso: true };
+  return abaterItem(produtoId, variacaoId, abater);
+}
+
 export async function abaterEstoquePedido(pedido: Pedido): Promise<void> {
   if (!pedido._id) return;
   const pedidoId = pedido._id;
 
   for (const item of pedido.itens) {
-    // Variação de kit (specs/041): abate a variação e o total do produto juntos.
-    const resultado = item.variacaoId
-      ? await abaterEstoqueVariacaoAtomico(item.produtoId.toString(), item.variacaoId, item.quantidade)
-      : await abaterEstoqueAtomico(item.produtoId.toString(), item.quantidade);
+    const produtoId = item.produtoId.toString();
+    let resultado = await abaterItem(produtoId, item.variacaoId, item.quantidade);
+    if (!resultado.sucesso && resultado.motivoFalha === "estoque_insuficiente" && pedido.linkPagamentoId) {
+      resultado = await abaterDisponivel(produtoId, item.variacaoId, item.quantidade);
+    }
 
     if (resultado.sucesso) {
       // A sincronização com os canais externos nunca deve derrubar o

@@ -283,7 +283,7 @@ export default function EditorLinkPagamento({
                   {opcao && !opcao.calculoId && (
                     <span className={l.dica}>
                       Site {formatarPreco(opcao.precoCentavos)} · estoque {opcao.estoque}
-                      {quantidade > opcao.estoque ? " · quantidade maior que o estoque" : ""}
+                      {quantidade > opcao.estoque ? " · acima do estoque (não bloqueia o link)" : ""}
                     </span>
                   )}
                 </div>

@@ -2,7 +2,10 @@ import { ObjectId } from "mongodb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pedido } from "@/lib/models/pedido";
 
-const { abaterEstoqueAtomico } = vi.hoisted(() => ({ abaterEstoqueAtomico: vi.fn() }));
+const { abaterEstoqueAtomico, buscarProdutoPorId } = vi.hoisted(() => ({
+  abaterEstoqueAtomico: vi.fn(),
+  buscarProdutoPorId: vi.fn(),
+}));
 const { sincronizarAnuncioProduto } = vi.hoisted(() => ({
   sincronizarAnuncioProduto: vi.fn().mockResolvedValue(undefined),
 }));
@@ -11,7 +14,7 @@ const { insertOne, createIndex } = vi.hoisted(() => ({
   createIndex: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/lib/produtos/repository", () => ({ abaterEstoqueAtomico }));
+vi.mock("@/lib/produtos/repository", () => ({ abaterEstoqueAtomico, buscarProdutoPorId }));
 vi.mock("./sincronizacao", () => ({ sincronizarAnuncioProduto }));
 vi.mock("@/lib/db/mongodb", () => ({
   default: vi.fn().mockResolvedValue({
@@ -126,5 +129,31 @@ describe("abaterEstoquePedido", () => {
       canalOrigem: undefined,
     });
     expect(insertOne).toHaveBeenCalledTimes(1);
+  });
+
+  it("pedido de link de pagamento: falta de estoque abate só o disponível e não vira inconsistência", async () => {
+    const produtoId = new ObjectId();
+    abaterEstoqueAtomico
+      .mockResolvedValueOnce({ sucesso: false, motivoFalha: "estoque_insuficiente" })
+      .mockResolvedValueOnce({ sucesso: true, produto: { _id: produtoId } });
+    buscarProdutoPorId.mockResolvedValue({ _id: produtoId, estoque: 1 });
+    const pedido = { ...criarPedido([{ produtoId, quantidade: 3 }]), linkPagamentoId: new ObjectId() };
+
+    await abaterEstoquePedido(pedido);
+
+    expect(abaterEstoqueAtomico).toHaveBeenLastCalledWith(produtoId.toString(), 1);
+    expect(insertOne).not.toHaveBeenCalled();
+  });
+
+  it("pedido de link de pagamento sem estoque nenhum: não abate e não vira inconsistência", async () => {
+    const produtoId = new ObjectId();
+    abaterEstoqueAtomico.mockResolvedValueOnce({ sucesso: false, motivoFalha: "estoque_insuficiente" });
+    buscarProdutoPorId.mockResolvedValue({ _id: produtoId, estoque: 0 });
+    const pedido = { ...criarPedido([{ produtoId, quantidade: 2 }]), linkPagamentoId: new ObjectId() };
+
+    await abaterEstoquePedido(pedido);
+
+    expect(abaterEstoqueAtomico).toHaveBeenCalledTimes(1);
+    expect(insertOne).not.toHaveBeenCalled();
   });
 });

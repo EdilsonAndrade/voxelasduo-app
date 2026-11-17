@@ -108,6 +108,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
       frete,
       precosCombinados,
       linkPagamentoId: link._id!,
+      // Itens do link já foram produzidos/combinados: o estoque não bloqueia.
+      ignorarEstoque: true,
     });
     pedido = resultado.pedido;
     duplicado = resultado.duplicado;
