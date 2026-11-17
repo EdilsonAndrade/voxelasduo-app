@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import EditorLinkPagamento, { type OpcaoCatalogoLink } from "@/components/admin/linksPagamento/EditorLinkPagamento";
 import styles from "@/components/admin/admin.module.css";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
+import { calculosParaLink } from "@/lib/linksPagamento/calculos";
 import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import { listarProdutos } from "@/lib/produtos/repository";
 import { nomeComVariacao, temVariacoes } from "@/lib/produtos/variacoes";
@@ -46,6 +47,19 @@ export default async function NovoLinkPagamentoPage() {
       custoCentavos: custoTotal !== null && Number.isFinite(custoTotal) ? custoTotal : null,
     });
   }
+  // Cálculos que ainda não viraram produto: viram rascunho quando o link é gerado.
+  const taxaSite = { percentual: taxas.siteTaxaPercentual, fixaCentavos: taxas.siteTaxaFixaCentavos };
+  for (const calculo of await calculosParaLink(taxaSite)) {
+    catalogo.push({
+      valor: `calculo:${calculo.calculoId}`,
+      produtoId: "",
+      calculoId: calculo.calculoId,
+      nome: calculo.nome,
+      precoCentavos: calculo.precoCentavos,
+      estoque: 0,
+      custoCentavos: calculo.custoCentavos,
+    });
+  }
   catalogo.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
   return (
@@ -59,7 +73,7 @@ export default async function NovoLinkPagamentoPage() {
       </p>
       <EditorLinkPagamento
         catalogo={catalogo}
-        taxaSite={{ percentual: taxas.siteTaxaPercentual, fixaCentavos: taxas.siteTaxaFixaCentavos }}
+        taxaSite={taxaSite}
       />
     </div>
   );

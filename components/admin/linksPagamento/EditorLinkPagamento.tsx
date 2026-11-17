@@ -11,12 +11,15 @@ import { centavosParaTexto, textoParaCentavos } from "@/lib/produtos/precoLista"
 import { textoWhatsApp, urlDoLink } from "./compartilhar";
 import l from "./linksPagamento.module.css";
 
-/** Produto (ou variação de kit) que pode entrar no link. */
+/** Produto (ou variação de kit, ou cálculo que ainda não virou produto) que pode entrar no link. */
 export interface OpcaoCatalogoLink {
-  /** `${produtoId}:${variacaoId ?? ""}` */
+  /** `${produtoId}:${variacaoId ?? ""}` ou `calculo:${calculoId}` */
   valor: string;
+  /** Vazio quando o item vem só da calculadora. */
   produtoId: string;
   variacaoId?: string;
+  /** Cálculo de preço sem produto — vira produto rascunho quando o link é gerado. */
+  calculoId?: string;
   nome: string;
   precoCentavos: number;
   estoque: number;
@@ -56,7 +59,9 @@ export default function EditorLinkPagamento({
     () =>
       catalogo.map((o) => ({
         valor: o.valor,
-        rotulo: `${o.nome} · ${formatarPreco(o.precoCentavos)}${o.estoque <= 0 ? " (sem estoque)" : ""}`,
+        rotulo: `${o.nome} · ${formatarPreco(o.precoCentavos)}${
+          o.calculoId ? " (só na calculadora)" : o.estoque <= 0 ? " (sem estoque)" : ""
+        }`,
       })),
     [catalogo]
   );
@@ -148,7 +153,7 @@ export default function EditorLinkPagamento({
       .map((linha) => {
         const opcao = porValor.get(linha.valor)!;
         return {
-          produtoId: opcao.produtoId,
+          ...(opcao.calculoId ? { calculoId: opcao.calculoId } : { produtoId: opcao.produtoId }),
           ...(opcao.variacaoId ? { variacaoId: opcao.variacaoId } : {}),
           quantidade: Math.trunc(numero(linha.quantidade)),
           precoCentavos: textoParaCentavos(linha.preco) ?? 0,
@@ -255,7 +260,13 @@ export default function EditorLinkPagamento({
                     placeholder="Escolha o produto ou kit"
                     rotuloAcessivel="Produto"
                   />
-                  {opcao && (
+                  {opcao?.calculoId && (
+                    <span className={l.dica}>
+                      Só na calculadora · site {formatarPreco(opcao.precoCentavos)} · ao gerar o link vira produto
+                      rascunho com estoque igual à quantidade
+                    </span>
+                  )}
+                  {opcao && !opcao.calculoId && (
                     <span className={l.dica}>
                       Site {formatarPreco(opcao.precoCentavos)} · estoque {opcao.estoque}
                       {quantidade > opcao.estoque ? " · quantidade maior que o estoque" : ""}

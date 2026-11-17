@@ -17,9 +17,8 @@ import type {
 } from "@/lib/models/calculoPreco";
 import { ANUNCIO_PADRAO, valoresPadrao } from "@/lib/produtos/calculadoraPadrao";
 import { normalizarValores } from "@/lib/produtos/calculadoraValores";
-import { detalharVenda, faixaUnica } from "@/lib/produtos/calculadoraRapida";
 import type { CanalVenda } from "@/lib/produtos/canaisCalculadora";
-import { paraCustoProducao } from "@/lib/produtos/custoCalculadora";
+import { DESCRICAO_RASCUNHO_CALCULO, rascunhoDoCalculo } from "@/lib/produtos/produtoDoCalculo";
 import { calcularResultado } from "@/lib/produtos/resultadoCalculadora";
 import Resumo from "./calculadora/Resumo";
 import SecaoCanalVenda from "./calculadora/SecaoCanalVenda";
@@ -228,42 +227,21 @@ export default function CalculadoraRapida({
   }
 
   async function criarProduto() {
-    if (!podeCriarProduto || !res.custo || res.precoSiteCentavos === null) return;
+    const rascunho = podeCriarProduto ? rascunhoDoCalculo(valores, res, taxaSite) : null;
+    if (!rascunho) return;
     setSalvando(true);
     setErroSalvar(null);
     setAviso(null);
     try {
-      const precosCanais: { shopee?: number; mercadoLivre?: number } = {};
-      const shopee = res.canais.shopee?.precoCentavos;
-      const mercadoLivre = res.canais.mercadoLivre?.precoCentavos;
-      if (shopee != null) precosCanais.shopee = shopee;
-      if (mercadoLivre != null) precosCanais.mercadoLivre = mercadoLivre;
-
-      // O cadastro guarda a margem em % do preço, a mesma régua da calculadora.
-      const vendaSite = detalharVenda({
-        precoCentavos: res.precoSiteCentavos,
-        faixas: faixaUnica(taxaSite.percentual, taxaSite.fixaCentavos),
-        custoCentavos: res.custo.totalCentavos,
-        anuncioPercentual: 0,
-        impostoPercentual: res.impostoPercentual,
-      });
-      const margemPreco = Math.min(99, Math.max(0, Math.round(vendaSite.margemPrecoPercentual)));
-
       const resposta = await fetch("/api/produtos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome: nome.trim(),
-          descricao: "Rascunho criado pela calculadora de preço — completar a descrição.",
-          preco: res.precoSiteCentavos,
+          descricao: DESCRICAO_RASCUNHO_CALCULO,
           estoque: 0,
           fotos: [],
-          custoProducao: paraCustoProducao(valores.impressao, res.custo),
-          taxasCanais: {
-            shopeeTaxaPercentual: res.canais.shopee?.venda?.faixa.percentual ?? numero(valores.canais.shopee.taxaPercentual),
-            margemDesejadaPercentual: margemPreco,
-          },
-          precosCanais,
+          ...rascunho,
           linkModelo3d: linkModelo.trim(),
           publicado: false,
         }),

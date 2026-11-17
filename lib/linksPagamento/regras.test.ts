@@ -14,6 +14,14 @@ import {
 const ID = "64b7f0c2a1b2c3d4e5f60718";
 
 describe("validarLinkEntrada", () => {
+  it("aceita item que ainda está só na calculadora", () => {
+    const { erros, dados } = validarLinkEntrada({
+      itens: [{ calculoId: ID, quantidade: 1, precoCentavos: 3000 }],
+    });
+    expect(erros).toEqual({});
+    expect(dados?.itens).toEqual([{ produtoId: "", calculoId: ID, quantidade: 1, precoCentavos: 3000 }]);
+  });
+
   it("aceita link válido e usa validade padrão", () => {
     const { erros, dados } = validarLinkEntrada({
       clienteNome: " Ana ",

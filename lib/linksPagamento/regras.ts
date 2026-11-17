@@ -10,7 +10,10 @@ import {
 
 /** Item como chega do admin (antes de conferir no banco). */
 export interface ItemLinkEntrada {
+  /** Vazio enquanto o item vem só da calculadora (`calculoId`) — vira produto ao gerar o link. */
   produtoId: string;
+  /** Cálculo de preço que ainda não virou produto. */
+  calculoId?: string;
   variacaoId?: string;
   quantidade: number;
   precoCentavos: number;
@@ -60,17 +63,18 @@ export function validarLinkEntrada(corpo: unknown): ResultadoValidacaoLink {
   const vistos = new Set<string>();
   itensBrutos.forEach((bruto, indice) => {
     const item = (bruto && typeof bruto === "object" ? bruto : {}) as Record<string, unknown>;
-    const produtoId = texto(item.produtoId);
-    const variacaoId = texto(item.variacaoId);
+    const calculoId = texto(item.calculoId);
+    const produtoId = calculoId ? "" : texto(item.produtoId);
+    const variacaoId = calculoId ? "" : texto(item.variacaoId);
     const quantidade = inteiro(item.quantidade);
     const precoCentavos = inteiro(item.precoCentavos);
-    if (!/^[a-f0-9]{24}$/i.test(produtoId)) erros[`itens[${indice}].produtoId`] = "Escolha o produto.";
+    if (!/^[a-f0-9]{24}$/i.test(calculoId || produtoId)) erros[`itens[${indice}].produtoId`] = "Escolha o produto.";
     if (!(quantidade >= 1 && quantidade <= 999)) erros[`itens[${indice}].quantidade`] = "Quantidade de 1 a 999.";
     if (!(precoCentavos >= 1)) erros[`itens[${indice}].precoCentavos`] = "O preço deve ser maior que zero.";
-    const chave = `${produtoId}:${variacaoId}`;
+    const chave = calculoId ? `calculo:${calculoId}` : `${produtoId}:${variacaoId}`;
     if (vistos.has(chave)) erros[`itens[${indice}].produtoId`] = "Item repetido: some a quantidade na mesma linha.";
     vistos.add(chave);
-    itens.push({ produtoId, ...(variacaoId ? { variacaoId } : {}), quantidade, precoCentavos });
+    itens.push({ produtoId, ...(calculoId ? { calculoId } : {}), ...(variacaoId ? { variacaoId } : {}), quantidade, precoCentavos });
   });
 
   if (Object.keys(erros).length > 0) return { erros, dados: null };

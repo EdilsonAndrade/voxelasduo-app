@@ -143,6 +143,23 @@ export async function atualizarCalculoPreco(id: string, dados: DadosCalculoPreco
   );
 }
 
+/** Cálculos que ainda não viraram produto — os mais recentes primeiro. */
+export async function listarCalculosSemProduto(): Promise<CalculoPreco[]> {
+  const colecao = await colecaoCalculos();
+  return colecao.find({ produtoId: { $exists: false } }).sort({ atualizadoEm: -1 }).toArray();
+}
+
+/** Liga o produto rascunho ao cálculo — só se o cálculo ainda não tinha produto. */
+export async function vincularProdutoAoCalculo(id: string, produtoId: string): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  const colecao = await colecaoCalculos();
+  const { modifiedCount } = await colecao.updateOne(
+    { _id: new ObjectId(id), produtoId: { $exists: false } },
+    { $set: { produtoId, atualizadoEm: new Date() } }
+  );
+  return modifiedCount === 1;
+}
+
 export async function excluirCalculoPreco(id: string): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
   const colecao = await colecaoCalculos();
