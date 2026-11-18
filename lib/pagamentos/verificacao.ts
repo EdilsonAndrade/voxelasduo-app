@@ -6,6 +6,7 @@ import { buscarPagamento } from "./mercadopago";
 import { atualizarStatusTentativa, buscarPedidoPorId, registrarFalhaPagamento } from "./repository";
 import { mapearStatusMercadoPago } from "./status";
 import { falha, MENSAGENS_FALHA_PAGAMENTO } from "./falhas";
+import { registrarRecebimento } from "./recebimento";
 
 export type ResultadoVerificacao =
   | "pago"
@@ -104,6 +105,7 @@ export async function verificarPagamentoPedido(
     if (promocao === "cancelado") {
       return concluir(pedidoId, origem, "aprovado_pedido_cancelado");
     }
+    await registrarRecebimento(pedidoId, pagamento);
     return { resultado: "pago", mensagem: "Pagamento aprovado — pedido marcado como pago e e-mails enviados." };
   }
 

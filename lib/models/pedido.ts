@@ -72,6 +72,24 @@ export interface PagamentoPedido {
    * exibido no admin. Removido quando o pedido é promovido a "pago".
    */
   ultimaFalha?: FalhaPagamento;
+  /** O que o Mercado Pago efetivamente cobrou/repassou no pagamento aprovado. */
+  recebimento?: RecebimentoPagamento;
+}
+
+/** Valores reais do pagamento aprovado, lidos da API do Mercado Pago (centavos). */
+export interface RecebimentoPagamento {
+  /** Valor da compra (`transaction_amount`). */
+  valorCentavos: number;
+  /** Tarifas pagas pela loja (`fee_details` com `fee_payer = collector`). */
+  taxaCentavos: number;
+  /** Juros do parcelamento pagos pelo cliente — não saem do bolso da loja. */
+  jurosClienteCentavos: number;
+  /** Cupom do Mercado Pago (`coupon_amount`). */
+  cupomCentavos: number;
+  /** O que cai na conta (`net_received_amount`). */
+  liquidoCentavos: number;
+  parcelas: number;
+  consultadoEm: Date;
 }
 
 export type CodigoFalhaPagamento =

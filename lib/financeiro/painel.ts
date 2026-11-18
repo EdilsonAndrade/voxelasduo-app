@@ -39,6 +39,27 @@ export interface VendaPainel {
   depreciacaoCentavos: number;
   /** Unidades vendidas sem custo conhecido (contam como custo zero). */
   unidadesSemCusto: number;
+  /** Dados para conferir a venda na tabela "venda a venda" (não entram nas contas). */
+  detalhe?: DetalheVenda;
+}
+
+export interface DetalheVenda {
+  /** "Pedido #1042 · Maria" ou o cliente da venda lançada. */
+  titulo: string;
+  href?: string;
+  freteCentavos: number;
+  /** Desconto dado no link de pagamento (preço do site − preço combinado). */
+  descontoCentavos: number;
+  /** `real` = lida do Mercado Pago; `estimada` = taxa cadastrada; `informada` = digitada na venda lançada. */
+  taxa: "real" | "estimada" | "informada";
+  /** Só com taxa real do Mercado Pago. */
+  mercadoPago?: {
+    clientePagouCentavos: number;
+    jurosClienteCentavos: number;
+    cupomCentavos: number;
+    liquidoCentavos: number;
+    parcelas: number;
+  };
 }
 
 export interface Totais {

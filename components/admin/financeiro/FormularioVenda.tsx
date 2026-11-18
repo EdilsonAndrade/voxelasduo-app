@@ -101,6 +101,7 @@ export default function FormularioVenda({
   const [linhas, setLinhas] = useState<Linha[]>(() => linhasDe(inicial, porValor));
   const [taxa, setTaxa] = useState(inicial ? centavosParaCampo(inicial.taxaCentavos) : "");
   const [taxaEditada, setTaxaEditada] = useState(Boolean(inicial));
+  const [taxaPercentual, setTaxaPercentual] = useState("");
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -325,6 +326,7 @@ export default function FormularioVenda({
             onChange={(e) => {
               setTaxaEditada(true);
               setTaxa(e.target.value);
+              setTaxaPercentual("");
             }}
             placeholder="0,00"
           />
@@ -334,6 +336,22 @@ export default function FormularioVenda({
               : "O que a maquininha ou o banco descontou. Pix e dinheiro: deixe 0."}
           </span>
           {erros.taxaCentavos && <span className={styles.erroCampo}>{erros.taxaCentavos}</span>}
+        </label>
+        <label className={styles.campo}>
+          ou em % do vendido
+          <input
+            inputMode="decimal"
+            value={taxaPercentual !== "" ? taxaPercentual : total > 0 ? ((taxaCentavos / total) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) : ""}
+            onChange={(e) => {
+              const texto = e.target.value;
+              setTaxaPercentual(texto);
+              setTaxaEditada(true);
+              const pct = Number(texto.replace(",", "."));
+              setTaxa(Number.isFinite(pct) ? centavosParaCampo(Math.round((total * pct) / 100)) : "");
+            }}
+            placeholder="0"
+          />
+          <span className={styles.dicaCampo}>Preenche o valor em R$ pelo total vendido.</span>
         </label>
         <label className={styles.campo}>
           Observação <span className={styles.dicaCampo}>opcional</span>

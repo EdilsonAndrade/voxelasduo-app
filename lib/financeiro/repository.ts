@@ -14,6 +14,7 @@ import {
   type LancamentoVendaJson,
 } from "@/lib/models/financeiro";
 import type { Pedido, StatusPedido } from "@/lib/models/pedido";
+import { buscarERegistrarRecebimento } from "@/lib/pagamentos/recebimento";
 import { colecaoPedidos } from "@/lib/pedidos/repository";
 import { faixasMercadoLivre } from "@/lib/produtos/calculadoraRapida";
 import { valoresPadraoV2 } from "@/lib/produtos/calculadoraValores";
@@ -252,6 +253,13 @@ function vendaDoLancamento(l: LancamentoVenda): VendaPainel {
     custoCentavos: custo,
     depreciacaoCentavos: depreciacao,
     unidadesSemCusto: semCusto,
+    detalhe: {
+      titulo: l.cliente ? `Venda lançada · ${l.cliente}` : "Venda lançada",
+      href: `/admin/financeiro/vendas/${l._id!.toString()}`,
+      freteCentavos: 0,
+      descontoCentavos: 0,
+      taxa: "informada",
+    },
   };
 }
 
@@ -271,7 +279,11 @@ function vendaDoPedido(
   let depreciacao = 0;
   let semCusto = 0;
   let taxaItens = 0;
+  let desconto = 0;
   for (const item of p.itens) {
+    if (item.precoOriginal != null && item.precoOriginal > item.precoUnitario) {
+      desconto += (item.precoOriginal - item.precoUnitario) * item.quantidade;
+    }
     const opcao = custos.get(chaveProduto(item.produtoId.toString(), item.variacaoId));
     if (opcao?.custoCentavos == null) semCusto += item.quantidade;
     else {
@@ -281,7 +293,10 @@ function vendaDoPedido(
     if (origem === "shopee") taxaItens += comissaoCanal(taxas.shopee, item.precoUnitario) * item.quantidade;
     if (origem === "mercado_livre") taxaItens += comissaoCanal(taxas.mercadoLivre, item.precoUnitario) * item.quantidade;
   }
-  const taxa = origem === "site" || origem === "link" ? comissaoCanal(taxas.site, p.valorTotal) : taxaItens;
+  const mp = p.pagamento?.recebimento;
+  const viaMercadoPago = origem === "site" || origem === "link";
+  const taxa = mp ? mp.taxaCentavos : viaMercadoPago ? comissaoCanal(taxas.site, p.valorTotal) : taxaItens;
+  const nome = p.cliente?.nome?.split(" ")[0];
   return {
     data: p.criadoEm,
     origem,
@@ -290,7 +305,46 @@ function vendaDoPedido(
     custoCentavos: custo,
     depreciacaoCentavos: depreciacao,
     unidadesSemCusto: semCusto,
+    detalhe: {
+      titulo: `Pedido ${p.numero ? `#${p.numero}` : p._id!.toString().slice(-6)}${nome ? ` · ${nome}` : ""}`,
+      freteCentavos: frete,
+      descontoCentavos: desconto,
+      taxa: mp ? "real" : "estimada",
+      mercadoPago: mp && {
+        clientePagouCentavos: mp.valorCentavos + mp.jurosClienteCentavos,
+        jurosClienteCentavos: mp.jurosClienteCentavos,
+        cupomCentavos: mp.cupomCentavos,
+        liquidoCentavos: mp.liquidoCentavos,
+        parcelas: mp.parcelas,
+      },
+    },
   };
+}
+
+/** Quantos pedidos antigos buscar no Mercado Pago por carregamento do painel. */
+const LIMITE_TARIFAS_POR_CARGA = 30;
+
+function pagamentoAprovadoId(p: Pedido): string | undefined {
+  const aprovada = p.pagamento?.tentativas?.findLast((t) => t.status === "aprovado");
+  return aprovada?.referenciaExterna ?? p.pagamento?.referenciaExterna;
+}
+
+/**
+ * Pedidos do site/link pagos antes de a tarifa real ser guardada: busca no
+ * Mercado Pago e grava (uma vez só). Falhas ficam na taxa estimada e tentam
+ * de novo no próximo carregamento.
+ */
+async function completarTarifasMercadoPago(pedidos: Pedido[]): Promise<void> {
+  const faltando = pedidos
+    .filter((p) => !p.origemExterna && !p.pagamento?.recebimento && pagamentoAprovadoId(p))
+    .slice(0, LIMITE_TARIFAS_POR_CARGA);
+  const resultados = await Promise.all(
+    faltando.map((p) => buscarERegistrarRecebimento(p._id!.toString(), pagamentoAprovadoId(p)!))
+  );
+  faltando.forEach((p, i) => {
+    const recebimento = resultados[i];
+    if (recebimento) p.pagamento = { ...p.pagamento, recebimento };
+  });
 }
 
 export interface DadosPainel {
@@ -307,12 +361,26 @@ export async function carregarDadosPainel(): Promise<DadosPainel> {
       c
         .find(
           { status: { $in: STATUS_PAGOS } },
-          { projection: { itens: 1, valorTotal: 1, frete: 1, canalOrigem: 1, linkPagamentoId: 1, criadoEm: 1 } }
+          {
+            projection: {
+              itens: 1,
+              valorTotal: 1,
+              frete: 1,
+              canalOrigem: 1,
+              linkPagamentoId: 1,
+              criadoEm: 1,
+              numero: 1,
+              "cliente.nome": 1,
+              pagamento: 1,
+              origemExterna: 1,
+            },
+          }
         )
         .toArray()
     ),
     listarImpressoras(),
   ]);
+  await completarTarifasMercadoPago(pedidos as Pedido[]);
   const custos = new Map(opcoes.map((o) => [o.valor, o]));
   const efetivas = resolverTaxasCanais(taxas);
   const taxasCanais = {

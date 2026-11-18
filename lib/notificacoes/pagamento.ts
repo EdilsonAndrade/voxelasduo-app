@@ -5,6 +5,7 @@ import { buscarPagamento } from "@/lib/pagamentos/mercadopago";
 import { atualizarStatusTentativa, registrarFalhaPagamento } from "@/lib/pagamentos/repository";
 import { mapearStatusMercadoPago } from "@/lib/pagamentos/status";
 import { falha } from "@/lib/pagamentos/falhas";
+import { registrarRecebimento } from "@/lib/pagamentos/recebimento";
 
 /**
  * Processa um aviso de pagamento do Mercado Pago (tópico "payment"). O aviso
@@ -45,6 +46,8 @@ export async function processarPagamentoMercadoPago(pagamentoId: string): Promis
 
     if (promocao === "cancelado") {
       await registrarFalhaPagamento(pedidoId, { ...falha("aprovado_pedido_cancelado"), origem: "notificacao", em: new Date() });
+    } else if (status === "aprovado") {
+      await registrarRecebimento(pedidoId, pagamento);
     } else if (status === "recusado" || status === "expirado") {
       await registrarFalhaPagamento(pedidoId, { ...falha(status), origem: "notificacao", em: new Date() });
     }

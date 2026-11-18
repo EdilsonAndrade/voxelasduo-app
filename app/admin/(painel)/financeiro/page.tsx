@@ -3,6 +3,7 @@ import Link from "next/link";
 import AbasFinanceiro from "@/components/admin/financeiro/AbasFinanceiro";
 import GraficoMeses from "@/components/admin/financeiro/GraficoMeses";
 import GraficoOrigens from "@/components/admin/financeiro/GraficoOrigens";
+import TabelaVendas from "@/components/admin/financeiro/TabelaVendas";
 import ReguaImpressoras from "@/components/admin/financeiro/ReguaImpressoras";
 import styles from "@/components/admin/financeiro/financeiro.module.css";
 import { dataDoDia } from "@/lib/financeiro/datas";
@@ -119,9 +120,17 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         </section>
       </div>
 
+      <section className={styles.cartao}>
+        <h2 className={styles.graficoTitulo}>Venda a venda</h2>
+        <p className={styles.graficoSub}>
+          {ROTULO_PERIODO[periodo]} · confira com o extrato: taxa “Mercado Pago” é a cobrada de verdade; “estimada” usa a tabela do canal.
+        </p>
+        <TabelaVendas vendas={doPeriodo} />
+      </section>
+
       <p className={styles.subtitulo}>
         Custos dos pedidos usam o cadastro atual do produto. Taxa do Mercado Livre é estimada (14% + R$ 6,50 abaixo de R$ 79), a da Shopee
-        segue a tabela por faixa e a do site usa a taxa cadastrada em Taxas dos canais. Frete não conta como receita.
+        segue a tabela por faixa e a do site/link vem do Mercado Pago (ou da taxa cadastrada, se a consulta falhar). Frete não conta como receita.
       </p>
     </main>
   );
