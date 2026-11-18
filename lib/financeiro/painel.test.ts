@@ -88,3 +88,19 @@ describe("calcularPayback", () => {
     expect(calcularPayback([], [], agora).percentual).toBeNull();
   });
 });
+
+describe("despesas", () => {
+  const despesas = [
+    { data: dataDoDia("2026-11-03")!, valorCentavos: 20000, operacional: false }, // filamento: já está no custo
+    { data: dataDoDia("2026-11-05")!, valorCentavos: 7000, operacional: true }, // MEI
+  ];
+
+  it("só despesa do negócio desconta do lucro do mês e do retorno", () => {
+    const vendas = [venda("2026-11-01")];
+    const nov = porMes(vendas, agora, 1, despesas)[0];
+    expect(nov.lucroCentavos).toBe(6000 - 7000);
+    expect(nov.despesasCentavos).toBe(7000);
+    const p = calcularPayback(vendas, [{ id: "a", nome: "A1", dataCompra: dataDoDia("2026-01-01")!, valorCentavos: 300000 }], agora, despesas);
+    expect(p.retornoCentavos).toBe(6500 - 7000);
+  });
+});

@@ -4,6 +4,7 @@ import styles from "./financeiro.module.css";
 const ABAS = [
   { chave: "painel", href: "/admin/financeiro", rotulo: "Painel" },
   { chave: "vendas", href: "/admin/financeiro/vendas", rotulo: "Vendas lançadas" },
+  { chave: "despesas", href: "/admin/financeiro/despesas", rotulo: "Despesas" },
   { chave: "impressoras", href: "/admin/financeiro/impressoras", rotulo: "Impressoras" },
 ] as const;
 

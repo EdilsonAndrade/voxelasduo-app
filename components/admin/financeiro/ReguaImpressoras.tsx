@@ -76,7 +76,7 @@ export default function ReguaImpressoras(p: ReguaImpressorasProps) {
           <div className={styles.reguaLegenda}>
             <span>
               <span className={styles.marca} style={{ background: "var(--fin-positivo)" }} />
-              Retorno: lucro + desgaste das máquinas já embutido no custo
+              Retorno: lucro + desgaste das máquinas já embutido no custo − despesas do negócio
             </span>
             <span>Ordem de compra — a mais antiga é paga primeiro</span>
             {p.retornoMedioMesCentavos !== 0 && <span>Ritmo recente: {formatarPreco(p.retornoMedioMesCentavos)}/mês</span>}

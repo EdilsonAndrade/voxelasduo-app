@@ -110,7 +110,7 @@ export const ROTULO_PERIODO: Record<Periodo, string> = {
   tudo: "Desde o início",
 };
 
-export function filtrarPeriodo(vendas: VendaPainel[], periodo: Periodo, agora: Date): VendaPainel[] {
+export function filtrarPeriodo<T extends { data: Date }>(vendas: T[], periodo: Periodo, agora: Date): T[] {
   if (periodo === "tudo") return vendas;
   if (periodo === "30d") {
     const inicio = agora.getTime() - 30 * 24 * 60 * 60 * 1000;
@@ -121,18 +121,35 @@ export function filtrarPeriodo(vendas: VendaPainel[], periodo: Periodo, agora: D
   return vendas.filter((v) => mesDe(v.data).startsWith(prefixo));
 }
 
+/**
+ * Um gasto lançado. `operacional` = despesa do negócio (imposto, anúncio…),
+ * que desconta do lucro; insumo (filamento, embalagem) não desconta, porque
+ * já está no custo de cada peça.
+ */
+export interface DespesaPainel {
+  data: Date;
+  valorCentavos: number;
+  operacional: boolean;
+}
+
+/** Soma só as despesas que descontam do lucro. */
+export const somarOperacionais = (despesas: DespesaPainel[]) =>
+  despesas.reduce((s, d) => s + (d.operacional ? d.valorCentavos : 0), 0);
+
 export interface MesPainel {
   mes: string;
   rotulo: string;
   receitaCentavos: number;
+  /** Lucro das vendas já menos as despesas do negócio do mês. */
   lucroCentavos: number;
+  despesasCentavos: number;
   vendas: number;
 }
 
 /** Receita e lucro de cada um dos últimos `meses` meses (mês sem venda = zero). */
-export function porMes(vendas: VendaPainel[], agora: Date, meses = 12): MesPainel[] {
+export function porMes(vendas: VendaPainel[], agora: Date, meses = 12, despesas: DespesaPainel[] = []): MesPainel[] {
   const lista = ultimosMeses(agora, meses);
-  const mapa = new Map(lista.map((mes) => [mes, { receita: 0, lucro: 0, vendas: 0 }]));
+  const mapa = new Map(lista.map((mes) => [mes, { receita: 0, lucro: 0, despesas: 0, vendas: 0 }]));
   for (const v of vendas) {
     const linha = mapa.get(mesDe(v.data));
     if (!linha) continue;
@@ -140,9 +157,22 @@ export function porMes(vendas: VendaPainel[], agora: Date, meses = 12): MesPaine
     linha.lucro += lucroDa(v);
     linha.vendas += 1;
   }
+  for (const d of despesas) {
+    const linha = mapa.get(mesDe(d.data));
+    if (!linha || !d.operacional) continue;
+    linha.despesas += d.valorCentavos;
+    linha.lucro -= d.valorCentavos;
+  }
   return lista.map((mes) => {
     const l = mapa.get(mes)!;
-    return { mes, rotulo: rotuloMes(mes), receitaCentavos: l.receita, lucroCentavos: l.lucro, vendas: l.vendas };
+    return {
+      mes,
+      rotulo: rotuloMes(mes),
+      receitaCentavos: l.receita,
+      lucroCentavos: l.lucro,
+      despesasCentavos: l.despesas,
+      vendas: l.vendas,
+    };
   });
 }
 
@@ -189,9 +219,11 @@ export interface Payback {
 export function calcularPayback(
   vendas: VendaPainel[],
   impressoras: { id: string; nome: string; dataCompra: Date; valorCentavos: number }[],
-  agora: Date
+  agora: Date,
+  despesas: DespesaPainel[] = []
 ): Payback {
-  const { retornoCentavos } = somar(vendas);
+  // Despesas do negócio saem do mesmo bolso que pagaria as impressoras.
+  const retornoCentavos = somar(vendas).retornoCentavos - somarOperacionais(despesas);
   const ordenadas = [...impressoras].sort((a, b) => a.dataCompra.getTime() - b.dataCompra.getTime());
   const investido = ordenadas.reduce((s, i) => s + i.valorCentavos, 0);
 
@@ -203,7 +235,9 @@ export function calcularPayback(
   });
 
   const meses = new Set(ultimosMeses(agora, 4));
-  const recente = somar(vendas.filter((v) => meses.has(mesDe(v.data)))).retornoCentavos;
+  const recente =
+    somar(vendas.filter((v) => meses.has(mesDe(v.data)))).retornoCentavos -
+    somarOperacionais(despesas.filter((d) => meses.has(mesDe(d.data))));
   const retornoMedio = Math.round(recente / 4);
   const falta = Math.max(0, investido - retornoCentavos);
 

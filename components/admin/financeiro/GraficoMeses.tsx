@@ -97,6 +97,12 @@ export default function GraficoMeses({ meses }: { meses: MesPainel[] }) {
           Lucro {formatarPreco(mes.lucroCentavos)}
           <br />
           Receita {formatarPreco(mes.receitaCentavos)} · {mes.vendas} {mes.vendas === 1 ? "venda" : "vendas"}
+          {mes.despesasCentavos > 0 && (
+            <>
+              <br />
+              Despesas −{formatarPreco(mes.despesasCentavos)}
+            </>
+          )}
         </div>
       )}
       <details className={styles.tabelaDados}>
@@ -107,6 +113,7 @@ export default function GraficoMeses({ meses }: { meses: MesPainel[] }) {
               <th>Mês</th>
               <th className={styles.num}>Vendas</th>
               <th className={styles.num}>Receita</th>
+              <th className={styles.num}>Despesas</th>
               <th className={styles.num}>Lucro</th>
             </tr>
           </thead>
@@ -116,6 +123,7 @@ export default function GraficoMeses({ meses }: { meses: MesPainel[] }) {
                 <td>{m.rotulo}</td>
                 <td className={styles.num}>{m.vendas}</td>
                 <td className={styles.num}>{formatarPreco(m.receitaCentavos)}</td>
+                <td className={styles.num}>{m.despesasCentavos ? `−${formatarPreco(m.despesasCentavos)}` : "—"}</td>
                 <td className={`${styles.num} ${m.lucroCentavos < 0 ? styles.negativo : ""}`}>{formatarPreco(m.lucroCentavos)}</td>
               </tr>
             ))}

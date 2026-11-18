@@ -15,9 +15,11 @@ import {
   porOrigem,
   ROTULO_PERIODO,
   somar,
+  somarOperacionais,
   type Periodo,
 } from "@/lib/financeiro/painel";
 import { carregarDadosPainel } from "@/lib/financeiro/repository";
+import { ehInsumo } from "@/lib/models/financeiro";
 import { formatarPreco } from "@/lib/produtos/formato";
 
 export const dynamic = "force-dynamic";
@@ -31,24 +33,34 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   const { periodo: param } = await searchParams;
   const periodo: Periodo = PERIODOS.includes(param as Periodo) ? (param as Periodo) : "mes";
   const agora = new Date();
-  const { vendas, impressoras } = await carregarDadosPainel();
+  const { vendas, impressoras, despesas: despesasJson } = await carregarDadosPainel();
+  const despesas = despesasJson.map((d) => ({
+    data: dataDoDia(d.data)!,
+    valorCentavos: d.valorCentavos,
+    operacional: !ehInsumo(d.categoria),
+  }));
 
   const doPeriodo = filtrarPeriodo(vendas, periodo, agora);
   const totais = somar(doPeriodo);
+  const despesasPeriodo = somarOperacionais(filtrarPeriodo(despesas, periodo, agora));
+  const lucroFinal = totais.lucroCentavos - despesasPeriodo;
+  const margem = totais.receitaCentavos > 0 ? Math.round((lucroFinal / totais.receitaCentavos) * 1000) / 10 : null;
   const payback = calcularPayback(
     vendas,
     impressoras.map((i) => ({ ...i, dataCompra: dataDoDia(i.dataCompra)! })),
-    agora
+    agora,
+    despesas
   );
 
   const numeros = [
     { rotulo: "Vendido", valor: totais.receitaCentavos, detalhe: `${totais.vendas} ${totais.vendas === 1 ? "venda" : "vendas"}` },
     { rotulo: "Taxas", valor: -totais.taxaCentavos, detalhe: "Mercado Pago, marketplaces, maquininha" },
     { rotulo: "Custo de produção", valor: -totais.custoCentavos, detalhe: "filamento, energia, máquina, mão de obra" },
+    { rotulo: "Despesas", valor: -despesasPeriodo, detalhe: "impostos, anúncios, ferramentas…" },
     {
-      rotulo: totais.lucroCentavos < 0 ? "Prejuízo" : "Lucro",
-      valor: totais.lucroCentavos,
-      detalhe: totais.margemPercentual !== null ? `${totais.margemPercentual.toLocaleString("pt-BR")}% do vendido` : "—",
+      rotulo: lucroFinal < 0 ? "Prejuízo" : "Lucro",
+      valor: lucroFinal,
+      detalhe: margem !== null ? `${margem.toLocaleString("pt-BR")}% do vendido` : "—",
     },
   ];
 
@@ -110,8 +122,8 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
       <div className={styles.graficos}>
         <section className={styles.cartao}>
           <h2 className={styles.graficoTitulo}>Lucro por mês</h2>
-          <p className={styles.graficoSub}>Últimos 12 meses, todas as origens. Abaixo da linha = prejuízo.</p>
-          <GraficoMeses meses={porMes(vendas, agora, 12)} />
+          <p className={styles.graficoSub}>Últimos 12 meses, já descontadas as despesas do negócio. Abaixo da linha = prejuízo.</p>
+          <GraficoMeses meses={porMes(vendas, agora, 12, despesas)} />
         </section>
         <section className={styles.cartao}>
           <h2 className={styles.graficoTitulo}>De onde vem o lucro</h2>

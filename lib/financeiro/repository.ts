@@ -5,6 +5,10 @@ import { ML_FIXA_ABAIXO_79_CENTAVOS, ML_PERCENTUAL_ESTIMADO } from "@/lib/kits/p
 import {
   IMPRESSORAS_COLLECTION,
   LANCAMENTOS_VENDA_COLLECTION,
+  DESPESAS_COLLECTION,
+  type Despesa,
+  type DespesaJson,
+  type DespesaPayload,
   type Impressora,
   type ImpressoraJson,
   type ImpressoraPayload,
@@ -29,6 +33,13 @@ const garantirIndices = criarGarantiaDeIndices();
 async function colecaoLancamentos() {
   const client = await getMongoClient();
   const colecao = client.db(DB_NAME).collection<LancamentoVenda>(LANCAMENTOS_VENDA_COLLECTION);
+  await garantirIndices(() => colecao.createIndex({ data: -1 }));
+  return colecao;
+}
+
+async function colecaoDespesas() {
+  const client = await getMongoClient();
+  const colecao = client.db(DB_NAME).collection<Despesa>(DESPESAS_COLLECTION);
   await garantirIndices(() => colecao.createIndex({ data: -1 }));
   return colecao;
 }
@@ -347,14 +358,77 @@ async function completarTarifasMercadoPago(pedidos: Pedido[]): Promise<void> {
   });
 }
 
+// ---------------------------------------------------------------- despesas
+
+function despesaJson(d: Despesa): DespesaJson {
+  return {
+    id: d._id!.toString(),
+    data: diaDe(d.data),
+    categoria: d.categoria,
+    descricao: d.descricao,
+    valorCentavos: d.valorCentavos,
+    ...(d.observacao ? { observacao: d.observacao } : {}),
+  };
+}
+
+export async function listarDespesas(): Promise<DespesaJson[]> {
+  const colecao = await colecaoDespesas();
+  return (await colecao.find({}).sort({ data: -1, criadoEm: -1 }).toArray()).map(despesaJson);
+}
+
+export async function criarDespesa(dados: DespesaPayload): Promise<DespesaJson> {
+  const agora = new Date();
+  const doc: Despesa = {
+    data: dataDoDia(dados.data)!,
+    categoria: dados.categoria,
+    descricao: dados.descricao,
+    valorCentavos: dados.valorCentavos,
+    ...(dados.observacao ? { observacao: dados.observacao } : {}),
+    criadoEm: agora,
+    atualizadoEm: agora,
+  };
+  const colecao = await colecaoDespesas();
+  const { insertedId } = await colecao.insertOne(doc);
+  return despesaJson({ ...doc, _id: insertedId });
+}
+
+export async function atualizarDespesa(id: string, dados: DespesaPayload): Promise<DespesaJson | null> {
+  if (!ObjectId.isValid(id)) return null;
+  const colecao = await colecaoDespesas();
+  const atualizada = await colecao.findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    {
+      $set: {
+        data: dataDoDia(dados.data)!,
+        categoria: dados.categoria,
+        descricao: dados.descricao,
+        valorCentavos: dados.valorCentavos,
+        atualizadoEm: new Date(),
+        ...(dados.observacao ? { observacao: dados.observacao } : {}),
+      },
+      ...(dados.observacao ? {} : { $unset: { observacao: "" as const } }),
+    },
+    { returnDocument: "after" }
+  );
+  return atualizada ? despesaJson(atualizada) : null;
+}
+
+export async function excluirDespesa(id: string): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  const colecao = await colecaoDespesas();
+  const { deletedCount } = await colecao.deleteOne({ _id: new ObjectId(id) });
+  return deletedCount === 1;
+}
+
 export interface DadosPainel {
   vendas: VendaPainel[];
   impressoras: ImpressoraJson[];
+  despesas: DespesaJson[];
 }
 
-/** Todas as vendas (pedidos pagos + lançamentos à mão) e as impressoras. */
+/** Todas as vendas (pedidos pagos + lançamentos à mão), as impressoras e as despesas. */
 export async function carregarDadosPainel(): Promise<DadosPainel> {
-  const [{ opcoes, taxas }, lancamentos, pedidos, impressoras] = await Promise.all([
+  const [{ opcoes, taxas }, lancamentos, pedidos, impressoras, despesas] = await Promise.all([
     montarCatalogoVenda(),
     colecaoLancamentos().then((c) => c.find({}).toArray()),
     colecaoPedidos().then((c) =>
@@ -379,6 +453,7 @@ export async function carregarDadosPainel(): Promise<DadosPainel> {
         .toArray()
     ),
     listarImpressoras(),
+    listarDespesas(),
   ]);
   await completarTarifasMercadoPago(pedidos as Pedido[]);
   const custos = new Map(opcoes.map((o) => [o.valor, o]));
@@ -398,5 +473,6 @@ export async function carregarDadosPainel(): Promise<DadosPainel> {
       ...lancamentos.map(vendaDoLancamento),
     ],
     impressoras,
+    despesas,
   };
 }

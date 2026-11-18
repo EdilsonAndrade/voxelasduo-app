@@ -4,6 +4,38 @@ import type { ObjectId } from "mongodb";
 export const LANCAMENTOS_VENDA_COLLECTION = "lancamentosVenda";
 /** Impressoras compradas — base do "as impressoras já se pagaram?". */
 export const IMPRESSORAS_COLLECTION = "impressoras";
+/** Gastos do negócio: insumos comprados e despesas que não são de uma peça. */
+export const DESPESAS_COLLECTION = "despesas";
+
+export const CATEGORIAS_DESPESA = [
+  "filamento",
+  "embalagem",
+  "insumos",
+  "impostos",
+  "anuncios",
+  "ferramentas",
+  "manutencao",
+  "outros",
+] as const;
+export type CategoriaDespesa = (typeof CATEGORIAS_DESPESA)[number];
+
+export const ROTULO_CATEGORIA_DESPESA: Record<CategoriaDespesa, string> = {
+  filamento: "Filamento",
+  embalagem: "Embalagem",
+  insumos: "Outros insumos",
+  impostos: "Impostos / MEI",
+  anuncios: "Anúncios",
+  ferramentas: "Ferramentas",
+  manutencao: "Peças e manutenção",
+  outros: "Outros",
+};
+
+/**
+ * Insumos já entram no custo de cada peça pela calculadora — a compra só
+ * aparece no "quanto já gastamos", nunca desconta do lucro (senão conta duas vezes).
+ */
+export const CATEGORIAS_INSUMO: readonly CategoriaDespesa[] = ["filamento", "embalagem", "insumos"];
+export const ehInsumo = (categoria: CategoriaDespesa) => CATEGORIAS_INSUMO.includes(categoria);
 
 export const MEIOS_PAGAMENTO = ["pix", "dinheiro", "cartao", "link", "outro"] as const;
 export type MeioPagamento = (typeof MEIOS_PAGAMENTO)[number];
@@ -65,6 +97,26 @@ export interface Impressora {
   atualizadoEm: Date;
 }
 
+export interface Despesa {
+  _id?: ObjectId;
+  data: Date;
+  categoria: CategoriaDespesa;
+  descricao: string;
+  valorCentavos: number;
+  observacao?: string;
+  criadoEm: Date;
+  atualizadoEm: Date;
+}
+
+export interface DespesaPayload {
+  /** `AAAA-MM-DD` */
+  data: string;
+  categoria: CategoriaDespesa;
+  descricao: string;
+  valorCentavos: number;
+  observacao?: string;
+}
+
 /** Corpo de criação/edição de um item. */
 export interface ItemLancamentoPayload {
   origem: OrigemItemVenda;
@@ -106,4 +158,9 @@ export interface LancamentoVendaJson extends Omit<LancamentoVenda, "_id" | "data
 export interface ImpressoraJson extends Omit<Impressora, "_id" | "dataCompra" | "criadoEm" | "atualizadoEm"> {
   id: string;
   dataCompra: string;
+}
+
+export interface DespesaJson extends Omit<Despesa, "_id" | "data" | "criadoEm" | "atualizadoEm"> {
+  id: string;
+  data: string;
 }

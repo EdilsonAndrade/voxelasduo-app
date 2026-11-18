@@ -1,8 +1,11 @@
 import { ObjectId } from "mongodb";
 import {
+  CATEGORIAS_DESPESA,
   LIMITES_LANCAMENTO,
   MEIOS_PAGAMENTO,
   ORIGENS_ITEM_VENDA,
+  type CategoriaDespesa,
+  type DespesaPayload,
   type ImpressoraPayload,
   type ItemLancamentoPayload,
   type LancamentoPayload,
@@ -122,4 +125,23 @@ export function validarImpressora(payload: unknown): { erros: Erros; dados?: Imp
 
   if (Object.keys(erros).length > 0) return { erros };
   return { erros, dados: { nome, dataCompra, valorCentavos: valor!, ...(observacao ? { observacao } : {}) } };
+}
+
+export function validarDespesa(payload: unknown): { erros: Erros; dados?: DespesaPayload } {
+  const corpo = (typeof payload === "object" && payload !== null ? payload : {}) as Record<string, unknown>;
+  const erros: Erros = {};
+  const data = texto(corpo.data);
+  if (!dataDoDia(data)) erros.data = "Informe a data do gasto.";
+  const categoria = texto(corpo.categoria) as CategoriaDespesa;
+  if (!CATEGORIAS_DESPESA.includes(categoria)) erros.categoria = "Escolha a categoria.";
+  const descricao = texto(corpo.descricao);
+  if (!descricao) erros.descricao = "Diga o que foi comprado ou pago.";
+  else if (descricao.length > LIMITES_LANCAMENTO.textoMax) erros.descricao = "Descrição muito longa.";
+  const valor = centavos(corpo.valorCentavos);
+  if (!valor) erros.valorCentavos = "Informe o valor gasto.";
+  const observacao = texto(corpo.observacao);
+  if (observacao.length > 300) erros.observacao = "Observação muito longa.";
+
+  if (Object.keys(erros).length > 0) return { erros };
+  return { erros, dados: { data, categoria, descricao, valorCentavos: valor!, ...(observacao ? { observacao } : {}) } };
 }
