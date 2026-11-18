@@ -22,13 +22,19 @@ export interface CalculoParaLink {
   nome: string;
   precoCentavos: number;
   custoCentavos: number;
+  /** Parte do custo que é desgaste da impressora. */
+  depreciacaoCentavos: number;
 }
 
-function rascunho(calculo: CalculoPreco, taxaSite: TaxaSite): (RascunhoDoCalculo & { custoCentavos: number }) | null {
+type Rascunho = RascunhoDoCalculo & { custoCentavos: number; depreciacaoCentavos: number };
+
+function rascunho(calculo: CalculoPreco, taxaSite: TaxaSite): Rascunho | null {
   const valores = normalizarValores(calculo.valores);
   const res = calcularResultado(valores, taxaSite);
   const dados = rascunhoDoCalculo(valores, res, taxaSite);
-  return dados && res.custo ? { ...dados, custoCentavos: res.custo.totalCentavos } : null;
+  return dados && res.custo
+    ? { ...dados, custoCentavos: res.custo.totalCentavos, depreciacaoCentavos: res.custo.desgasteCentavos }
+    : null;
 }
 
 /** Cálculos sem produto que já têm preço do site — os incompletos ficam de fora. */
@@ -37,7 +43,15 @@ export async function calculosParaLink(taxaSite: TaxaSite): Promise<CalculoParaL
   return calculos.flatMap((calculo) => {
     const dados = rascunho(calculo, taxaSite);
     return dados
-      ? [{ calculoId: calculo._id!.toString(), nome: calculo.nome, precoCentavos: dados.preco, custoCentavos: dados.custoCentavos }]
+      ? [
+          {
+            calculoId: calculo._id!.toString(),
+            nome: calculo.nome,
+            precoCentavos: dados.preco,
+            custoCentavos: dados.custoCentavos,
+            depreciacaoCentavos: dados.depreciacaoCentavos,
+          },
+        ]
       : [];
   });
 }
@@ -78,7 +92,7 @@ export async function resolverCalculosDoLink(entrada: LinkEntrada, taxaSite: Tax
     let produtoId = calculo.produtoId;
     if (!produtoId) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { custoCentavos, ...dados } = rascunho(calculo, taxaSite)!;
+      const { custoCentavos, depreciacaoCentavos, ...dados } = rascunho(calculo, taxaSite)!;
       const produto = await criarProduto({
         nome: calculo.nome,
         slug: await slugLivreNaCategoria(SLUG_CATEGORIA_PADRAO, gerarSlug(calculo.nome)),
