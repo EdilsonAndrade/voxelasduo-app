@@ -205,7 +205,12 @@ export interface PecaVariacao {
   /** Inteiro de 1 a 999. */
   quantidade: number;
   /** Valores no momento em que a variação foi salva — exibidos se o produto for apagado. */
-  ultimo: { nome: string; custoCentavos: number | null };
+  ultimo: {
+    nome: string;
+    custoCentavos: number | null;
+    /** Embalagem da peça, descontada do custo dela — ausente em variações salvas antes de EDI-141. */
+    embalagemCentavos?: number | null;
+  };
 }
 
 /**

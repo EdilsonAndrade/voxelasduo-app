@@ -7,7 +7,7 @@ import { valoresDoComponente } from "@/lib/kits/componentes";
 import { configSugestaoVariacao } from "@/lib/produtos/sugestaoVariacaoConfig";
 import { buscarProdutoPorId, listarProdutos } from "@/lib/produtos/repository";
 import { motivoPecaInvalida, temVariacoes } from "@/lib/produtos/variacoes";
-import { custoDaPeca } from "@/lib/produtos/variacoesRepository";
+import { custoDaPeca, embalagemDaPeca } from "@/lib/produtos/variacoesRepository";
 import { produtoParaFormulario } from "@/lib/produtos/produtoFormulario";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
 import { listarCategoriasResumo } from "@/lib/categorias/repository";
@@ -72,6 +72,7 @@ export default async function EditarProdutoPage({
             id: p._id!.toString(),
             nome: p.nome,
             custoCentavos: custoDaPeca(p),
+            embalagemCentavos: embalagemDaPeca(p),
             pesoGramas: valoresDoComponente(p).pesoGramas,
             bloqueio: motivoPecaInvalida(p),
           }))}

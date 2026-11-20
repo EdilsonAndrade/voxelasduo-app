@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import getMongoClient, { DB_NAME } from "@/lib/db/mongodb";
 import { custoSemEmbalagem, valoresDoComponente } from "@/lib/kits/componentes";
+import { calcularCustoProducao } from "@/lib/produtos/custoProducao";
 import { calcularTotaisKit } from "@/lib/kits/precificacaoKit";
 import { custoProducaoDoKit } from "@/lib/kits/produtoDoKit";
 import type { CustoProducao } from "@/lib/models/produto";
@@ -9,6 +10,7 @@ import type { ResultadoAbatimentoEstoque } from "./repository";
 import {
   custoDaVariacao,
   derivarPrecoEstoque,
+  embalagemEfetiva,
   gerarIdVariacao,
   motivoPecaInvalida,
   type VariacaoEntrada,
@@ -33,11 +35,30 @@ export function custoDaPeca(produto: Pick<Produto, "custoProducao">): number | n
   return produto.custoProducao ? custoSemEmbalagem(produto.custoProducao) : null;
 }
 
+/**
+ * Embalagem da peça (a parte que `custoDaPeca` tira do custo, já com a taxa de
+ * falha) — vira a embalagem da variação quando o kit não tem uma própria.
+ */
+export function embalagemDaPeca(produto: Pick<Produto, "custoProducao">): number | null {
+  if (!produto.custoProducao) return null;
+  const total = calcularCustoProducao(produto.custoProducao).totalCentavos;
+  const semEmbalagem = custoSemEmbalagem(produto.custoProducao);
+  if (semEmbalagem === null || !Number.isFinite(total)) return null;
+  return Math.max(0, total - semEmbalagem);
+}
+
 export interface CustoVariacaoDetalhado {
   variacaoId: string;
   custoCentavos: number;
   incompleto: boolean;
-  pecas: { produtoId: string; nome: string; quantidade: number; custoCentavos: number | null; removido: boolean }[];
+  pecas: {
+    produtoId: string;
+    nome: string;
+    quantidade: number;
+    custoCentavos: number | null;
+    embalagemCentavos: number | null;
+    removido: boolean;
+  }[];
 }
 
 /** Custo de cada variação com os valores atuais das peças (peça apagada usa o último valor conhecido). */
@@ -51,6 +72,7 @@ export async function custosDasVariacoes(variacoes: VariacaoKit[]): Promise<Cust
         nome: produto?.nome ?? peca.ultimo.nome,
         quantidade: peca.quantidade,
         custoCentavos: produto ? custoDaPeca(produto) : peca.ultimo.custoCentavos,
+        embalagemCentavos: produto ? embalagemDaPeca(produto) : (peca.ultimo.embalagemCentavos ?? null),
         removido: !produto,
       };
     });
@@ -90,7 +112,10 @@ export async function salvarVariacoes(produtoId: string, entradas: VariacaoEntra
     nome: entrada.nome,
     pecas: entrada.pecas.map((peca) => {
       const produto = pecas.get(peca.produtoId)!;
-      return { ...peca, ultimo: { nome: produto.nome, custoCentavos: custoDaPeca(produto) } };
+      return {
+        ...peca,
+        ultimo: { nome: produto.nome, custoCentavos: custoDaPeca(produto), embalagemCentavos: embalagemDaPeca(produto) },
+      };
     }),
     embalagemCentavos: entrada.embalagemCentavos,
     preco: entrada.preco,
@@ -175,13 +200,19 @@ export async function custoProducaoDaVariacao(variacao: VariacaoKit): Promise<Cu
       valores: produto
         ? valoresDoComponente(produto)
         : { nome: peca.ultimo.nome, precoCentavos: 0, pesoGramas: null, tempoMinutos: null, custoCentavos: peca.ultimo.custoCentavos },
+      embalagemCentavos: produto ? embalagemDaPeca(produto) : (peca.ultimo.embalagemCentavos ?? null),
       maoDeObraHoras: produto?.custoProducao?.tempoMaoDeObraHoras,
     };
   });
-  const totais = calcularTotaisKit(itens, variacao.embalagemCentavos);
+  // Sem embalagem própria, o kit usa a maior embalagem das peças (mesma regra da tela).
+  const embalagem = embalagemEfetiva(
+    itens.map((i) => ({ quantidade: i.quantidade, custoCentavos: i.valores.custoCentavos, embalagemCentavos: i.embalagemCentavos })),
+    variacao.embalagemCentavos
+  ).centavos;
+  const totais = calcularTotaisKit(itens, embalagem);
   return custoProducaoDoKit(
     totais,
     itens.map((i) => ({ nome: i.valores.nome, quantidade: i.quantidade, maoDeObraHoras: i.maoDeObraHoras })),
-    variacao.embalagemCentavos
+    embalagem
   );
 }

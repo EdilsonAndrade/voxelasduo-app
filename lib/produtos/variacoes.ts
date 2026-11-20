@@ -158,23 +158,51 @@ export interface CustoVariacao {
   custoCentavos: number;
   /** Alguma peça sem custo cadastrado — o custo é uma estimativa por baixo. */
   incompleto: boolean;
+  /** Embalagem usada na conta (a do kit ou a herdada da peça). */
+  embalagemCentavos: number;
+  /** `true` = o kit não tem embalagem própria e usou a da peça. */
+  embalagemHerdada: boolean;
+}
+
+/** Peça da variação, do jeito que entra na conta do custo. */
+export interface PecaCusto {
+  quantidade: number;
+  /** Custo da peça **sem** a embalagem dela — `null` = sem custo cadastrado. */
+  custoCentavos: number | null;
+  /** Embalagem da peça, descontada do custo dela. */
+  embalagemCentavos?: number | null;
+}
+
+/**
+ * Embalagem que a variação usa de fato: a do kit quando informada; sem ela, a
+ * maior embalagem entre as peças — o kit sempre vai embalado, e sem isso o
+ * custo (e o preço sugerido) sairiam abaixo do real.
+ */
+export function embalagemEfetiva(pecas: PecaCusto[], embalagemCentavos: number): { centavos: number; herdada: boolean } {
+  if (embalagemCentavos > 0) return { centavos: Math.round(embalagemCentavos), herdada: false };
+  const maior = Math.max(0, ...pecas.filter((p) => p.quantidade > 0).map((p) => p.embalagemCentavos ?? 0));
+  return { centavos: Math.round(maior), herdada: maior > 0 };
 }
 
 /**
  * Custo da variação (FR-003): peças sem a embalagem delas × quantidade + a
- * embalagem do kit — a mesma regra do montador de kits (specs/037).
+ * embalagem do kit — a mesma regra do montador de kits (specs/037). Sem
+ * embalagem do kit, entra a maior embalagem das peças (ver `embalagemEfetiva`).
  */
-export function custoDaVariacao(
-  pecas: { quantidade: number; custoCentavos: number | null }[],
-  embalagemCentavos: number
-): CustoVariacao {
-  let custoCentavos = embalagemCentavos;
+export function custoDaVariacao(pecas: PecaCusto[], embalagemCentavos: number): CustoVariacao {
+  const embalagem = embalagemEfetiva(pecas, embalagemCentavos);
+  let custoCentavos = embalagem.centavos;
   let incompleto = false;
   for (const peca of pecas) {
     if (peca.custoCentavos === null) incompleto = true;
     else custoCentavos += peca.custoCentavos * peca.quantidade;
   }
-  return { custoCentavos: Math.round(custoCentavos), incompleto };
+  return {
+    custoCentavos: Math.round(custoCentavos),
+    incompleto,
+    embalagemCentavos: embalagem.centavos,
+    embalagemHerdada: embalagem.herdada,
+  };
 }
 
 /** Peça que não pode entrar numa variação: produto com variações ou gerado por kit. */

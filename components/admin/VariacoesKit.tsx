@@ -21,6 +21,8 @@ export interface PecaCatalogo {
   nome: string;
   /** Custo sem a embalagem da peça — `null` = sem custo cadastrado. */
   custoCentavos: number | null;
+  /** Embalagem da peça, descontada do custo — vira a embalagem do kit quando ele não tem uma. */
+  embalagemCentavos: number | null;
   /** Peso da peça em gramas (custo de produção ou ficha técnica) — `null` = não cadastrado. */
   pesoGramas: number | null;
   /** Motivo para não poder ser peça — `null` = pode. */
@@ -32,6 +34,7 @@ interface PecaForm {
   /** Nome guardado na variação — usado se o produto saiu do catálogo. */
   nome: string;
   custoCentavos: number | null;
+  embalagemCentavos: number | null;
   /** `null` = peça sem peso cadastrado (ou removida do catálogo). */
   pesoGramas: number | null;
   quantidade: string;
@@ -74,6 +77,7 @@ function paraFormulario(variacao: VariacaoKit, catalogo: Map<string, PecaCatalog
         produtoId: p.produtoId,
         nome: atual?.nome ?? `${p.ultimo.nome} (removido)`,
         custoCentavos: atual ? atual.custoCentavos : p.ultimo.custoCentavos,
+        embalagemCentavos: atual ? atual.embalagemCentavos : (p.ultimo.embalagemCentavos ?? null),
         pesoGramas: atual ? atual.pesoGramas : null,
         quantidade: String(p.quantidade),
       };
@@ -169,7 +173,17 @@ export default function VariacoesKit({
     alterar(variacao.chave, {
       pecas: existente
         ? variacao.pecas.map((p) => (p.produtoId === id ? { ...p, quantidade: String((parseInt(p.quantidade, 10) || 0) + 1) } : p))
-        : [...variacao.pecas, { produtoId: id, nome: peca.nome, custoCentavos: peca.custoCentavos, pesoGramas: peca.pesoGramas, quantidade: "1" }],
+        : [
+            ...variacao.pecas,
+            {
+              produtoId: id,
+              nome: peca.nome,
+              custoCentavos: peca.custoCentavos,
+              embalagemCentavos: peca.embalagemCentavos,
+              pesoGramas: peca.pesoGramas,
+              quantidade: "1",
+            },
+          ],
     });
   }
 
@@ -260,7 +274,11 @@ export default function VariacoesKit({
         {variacoes.map((variacao, i) => {
           const erroDe = (nome: string) => campos[`variacoes[${i}].${nome}`];
           const custo = custoDaVariacao(
-            variacao.pecas.map((p) => ({ quantidade: Number(p.quantidade) || 0, custoCentavos: p.custoCentavos })),
+            variacao.pecas.map((p) => ({
+              quantidade: Number(p.quantidade) || 0,
+              custoCentavos: p.custoCentavos,
+              embalagemCentavos: p.embalagemCentavos,
+            })),
             Number.isFinite(centavos(variacao.embalagemReais)) ? centavos(variacao.embalagemReais) : 0
           );
           const preco = centavos(variacao.precoReais);
@@ -377,6 +395,11 @@ export default function VariacoesKit({
                     value={variacao.embalagemReais}
                     onChange={(e) => alterar(variacao.chave, { embalagemReais: e.target.value })}
                   />
+                  {custo.embalagemHerdada && (
+                    <span className={styles.mlLinkAviso}>
+                      Vazio: entra a embalagem da peça, {formatarPreco(custo.embalagemCentavos)}.
+                    </span>
+                  )}
                   {erroDe("embalagemCentavos") && <span className={styles.fieldError}>{erroDe("embalagemCentavos")}</span>}
                 </div>
                 <div className={styles.field}>
@@ -445,8 +468,16 @@ export default function VariacoesKit({
               )}
 
               <div className={v.resumo}>
-                <span>
+                <span
+                  title={
+                    custo.embalagemCentavos > 0
+                      ? `Peças sem a embalagem delas + embalagem ${custo.embalagemHerdada ? "da peça" : "do kit"} ${formatarPreco(custo.embalagemCentavos)}.`
+                      : "Peças sem a embalagem delas — nenhuma embalagem na conta."
+                  }
+                >
                   Custo <strong>{formatarPreco(custo.custoCentavos)}</strong>
+                  {custo.embalagemCentavos > 0 &&
+                    ` (com embalagem ${custo.embalagemHerdada ? "da peça" : "do kit"} ${formatarPreco(custo.embalagemCentavos)})`}
                   {custo.incompleto && " (incompleto: há peça sem custo)"}
                 </span>
                 {variacao.pecas.length > 0 && (

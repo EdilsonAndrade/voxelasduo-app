@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   custoDaVariacao,
+  embalagemEfetiva,
   derivarPrecoEstoque,
   fotoDaVariacao,
   motivoPecaInvalida,
@@ -75,10 +76,61 @@ describe("custoDaVariacao", () => {
     expect(custoDaVariacao([{ quantidade: 2, custoCentavos: 600 }, { quantidade: 1, custoCentavos: 964 }], 500)).toEqual({
       custoCentavos: 2664,
       incompleto: false,
+      embalagemCentavos: 500,
+      embalagemHerdada: false,
     });
   });
   it("marca incompleto quando falta custo de alguma peça", () => {
-    expect(custoDaVariacao([{ quantidade: 1, custoCentavos: null }], 500)).toEqual({ custoCentavos: 500, incompleto: true });
+    expect(custoDaVariacao([{ quantidade: 1, custoCentavos: null }], 500)).toEqual({
+      custoCentavos: 500,
+      incompleto: true,
+      embalagemCentavos: 500,
+      embalagemHerdada: false,
+    });
+  });
+  it("sem embalagem do kit, usa a embalagem da peça (o kit vai embalado de qualquer jeito)", () => {
+    expect(custoDaVariacao([{ quantidade: 1, custoCentavos: 305, embalagemCentavos: 500 }], 0)).toEqual({
+      custoCentavos: 805,
+      incompleto: false,
+      embalagemCentavos: 500,
+      embalagemHerdada: true,
+    });
+  });
+  it("com várias peças, herda só a maior embalagem — uma embalagem por kit", () => {
+    expect(
+      custoDaVariacao(
+        [
+          { quantidade: 2, custoCentavos: 305, embalagemCentavos: 500 },
+          { quantidade: 1, custoCentavos: 400, embalagemCentavos: 120 },
+        ],
+        0
+      )
+    ).toEqual({ custoCentavos: 1510, incompleto: false, embalagemCentavos: 500, embalagemHerdada: true });
+  });
+  it("embalagem do kit informada manda na da peça", () => {
+    expect(custoDaVariacao([{ quantidade: 1, custoCentavos: 305, embalagemCentavos: 500 }], 120)).toEqual({
+      custoCentavos: 425,
+      incompleto: false,
+      embalagemCentavos: 120,
+      embalagemHerdada: false,
+    });
+  });
+  it("peça sem embalagem cadastrada não inventa embalagem", () => {
+    expect(custoDaVariacao([{ quantidade: 1, custoCentavos: 305 }], 0)).toEqual({
+      custoCentavos: 305,
+      incompleto: false,
+      embalagemCentavos: 0,
+      embalagemHerdada: false,
+    });
+  });
+});
+
+describe("embalagemEfetiva", () => {
+  it("ignora peças com quantidade zerada", () => {
+    expect(embalagemEfetiva([{ quantidade: 0, custoCentavos: 305, embalagemCentavos: 900 }], 0)).toEqual({
+      centavos: 0,
+      herdada: false,
+    });
   });
 });
 
