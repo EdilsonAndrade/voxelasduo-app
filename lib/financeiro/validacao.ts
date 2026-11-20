@@ -12,6 +12,15 @@ import {
   type MeioPagamento,
   type OrigemItemVenda,
 } from "@/lib/models/financeiro";
+import {
+  CATEGORIAS_INSUMO_CADASTRO,
+  LIMITES_INSUMO,
+  UNIDADES_INSUMO,
+  type CategoriaInsumo,
+  type CompraInsumoPayload,
+  type InsumoPayload,
+  type UnidadeInsumo,
+} from "@/lib/models/insumo";
 import { dataDoDia } from "./datas";
 
 type Erros = Record<string, string>;
@@ -144,4 +153,74 @@ export function validarDespesa(payload: unknown): { erros: Erros; dados?: Despes
 
   if (Object.keys(erros).length > 0) return { erros };
   return { erros, dados: { data, categoria, descricao, valorCentavos: valor!, ...(observacao ? { observacao } : {}) } };
+}
+
+// ----------------------------------------------------------------- insumos
+
+function quantidadeInsumo(valor: unknown): number | null {
+  return typeof valor === "number" && Number.isFinite(valor) && valor > 0 && valor <= LIMITES_INSUMO.quantidadeMax
+    ? valor
+    : null;
+}
+
+function valorInsumo(valor: unknown): number | null {
+  return typeof valor === "number" && Number.isInteger(valor) && valor > 0 && valor <= LIMITES_INSUMO.valorMaxCentavos
+    ? valor
+    : null;
+}
+
+/** Valida a compra em si (quantidade, valor e data) — usada no cadastro e na recompra. */
+function validarCompra(corpo: Record<string, unknown>, erros: Erros): CompraInsumoPayload | null {
+  const data = texto(corpo.data);
+  if (!dataDoDia(data)) erros.data = "Informe a data da compra.";
+  const quantidade = quantidadeInsumo(corpo.quantidade);
+  if (quantidade === null) erros.quantidade = "Informe quanto veio na compra.";
+  const valorTotalCentavos = valorInsumo(corpo.valorTotalCentavos);
+  if (valorTotalCentavos === null) erros.valorTotalCentavos = "Informe quanto você pagou.";
+  const observacao = texto(corpo.observacao);
+  if (observacao.length > LIMITES_INSUMO.observacaoMax) erros.observacao = "Observação muito longa.";
+
+  if (quantidade === null || valorTotalCentavos === null || !dataDoDia(data)) return null;
+  return { data, quantidade, valorTotalCentavos, ...(observacao ? { observacao } : {}) };
+}
+
+/** Valida o cadastro (ou a edição) de um insumo, já com a compra que ele representa. */
+export function validarInsumo(payload: unknown): { erros: Erros; dados?: InsumoPayload } {
+  const corpo = (typeof payload === "object" && payload !== null ? payload : {}) as Record<string, unknown>;
+  const erros: Erros = {};
+
+  const nome = texto(corpo.nome);
+  if (!nome) erros.nome = "Dê um nome ao insumo.";
+  else if (nome.length > LIMITES_INSUMO.nomeMax) erros.nome = "Nome muito longo.";
+  const marca = texto(corpo.marca);
+  if (marca.length > LIMITES_INSUMO.marcaMax) erros.marca = "Marca muito longa.";
+  const categoria = texto(corpo.categoria) as CategoriaInsumo;
+  if (!CATEGORIAS_INSUMO_CADASTRO.includes(categoria)) erros.categoria = "Escolha a categoria.";
+  const unidade = texto(corpo.unidade) as UnidadeInsumo;
+  if (!UNIDADES_INSUMO.includes(unidade)) erros.unidade = "Escolha como ele é medido.";
+
+  const compra = validarCompra(corpo, erros);
+  if (Object.keys(erros).length > 0 || !compra) return { erros };
+  return {
+    erros,
+    dados: {
+      nome,
+      ...(marca ? { marca } : {}),
+      categoria,
+      unidade,
+      quantidade: compra.quantidade,
+      valorTotalCentavos: compra.valorTotalCentavos,
+      data: compra.data,
+      ...(compra.observacao ? { observacao: compra.observacao } : {}),
+    },
+  };
+}
+
+/** Valida uma nova compra do mesmo insumo — sobrescreve o custo atual. */
+export function validarCompraInsumo(payload: unknown): { erros: Erros; dados?: CompraInsumoPayload } {
+  const corpo = (typeof payload === "object" && payload !== null ? payload : {}) as Record<string, unknown>;
+  const erros: Erros = {};
+  const compra = validarCompra(corpo, erros);
+  if (Object.keys(erros).length > 0 || !compra) return { erros };
+  return { erros, dados: compra };
 }

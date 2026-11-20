@@ -29,6 +29,7 @@ import SecaoPrecificacao from "./calculadora/SecaoPrecificacao";
 import { SecaoAds, SecaoConcorrente, SecaoProducao } from "./calculadora/SecoesEstrategia";
 import { numero, reais } from "./calculadora/formato";
 import { pisoDigitado } from "@/lib/produtos/verbaDesconto";
+import type { InsumoCalculadora } from "@/lib/financeiro/insumos";
 
 /** Cálculo salvo reaberto na calculadora — ausente = cálculo novo. */
 export interface CalculoInicial {
@@ -61,6 +62,7 @@ export default function CalculadoraRapida({
   calculoInicial,
   produtoVinculado,
   planoImpressaoId,
+  insumos = [],
 }: {
   taxasGlobais: TaxasCanaisConfig;
   calculoInicial?: CalculoInicial;
@@ -68,6 +70,8 @@ export default function CalculadoraRapida({
   produtoVinculado?: ProdutoVinculado;
   /** Item avulso do Tempo de Impressão que abriu a calculadora: vira o plano do produto criado aqui. */
   planoImpressaoId?: string;
+  /** Insumos do catálogo (financeiro), para escolher nos custos extras. */
+  insumos?: InsumoCalculadora[];
 }) {
   const router = useRouter();
   const [valores, setValores] = useState<CalculadoraValoresV2>(() =>
@@ -392,7 +396,12 @@ export default function CalculadoraRapida({
           alterar={alterarImpressao}
           resumo={custo ? `${reais(custo.totalCentavos)} por unidade` : "faltam dados"}
         />
-        <SecaoCustosExtras impressao={valores.impressao} alterar={alterarImpressao} resumo={custo ? reais(extrasCentavos) : undefined} />
+        <SecaoCustosExtras
+          impressao={valores.impressao}
+          alterar={alterarImpressao}
+          resumo={custo ? reais(extrasCentavos) : undefined}
+          insumos={insumos}
+        />
         <SecaoPrecificacao
           precificacao={valores.precificacao}
           alterar={alterarPrecificacao}

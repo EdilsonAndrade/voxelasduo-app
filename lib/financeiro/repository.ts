@@ -368,6 +368,7 @@ function despesaJson(d: Despesa): DespesaJson {
     descricao: d.descricao,
     valorCentavos: d.valorCentavos,
     ...(d.observacao ? { observacao: d.observacao } : {}),
+    ...(d.insumoId ? { insumoId: d.insumoId } : {}),
   };
 }
 

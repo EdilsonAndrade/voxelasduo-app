@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { centavosParaCampo, reaisParaCentavos } from "@/lib/controleVendas/formato";
@@ -85,6 +86,10 @@ export default function Despesas({ despesas }: { despesas: DespesaJson[] }) {
     <>
       <form className={`${styles.cartao} ${styles.form}`} onSubmit={salvar} noValidate>
         <h2 className={styles.graficoTitulo}>{rascunho.id ? "Editar gasto" : "Lançar gasto"}</h2>
+        <p className={styles.dicaCampo}>
+          Comprou filamento, embalagem ou outro insumo? Lance na aba <Link href="/admin/financeiro/insumos">Insumos</Link> — lá
+          o gasto entra aqui sozinho e o custo por unidade fica pronto para a calculadora.
+        </p>
         <div className={styles.linhaCampos}>
           <label className={styles.campo}>
             Data
@@ -193,11 +198,18 @@ export default function Despesas({ despesas }: { despesas: DespesaJson[] }) {
                   </td>
                   <td>
                     <span className={styles.selo}>{ROTULO_CATEGORIA_DESPESA[d.categoria]}</span>
-                    <div className={styles.dicaCampo}>{ehInsumo(d.categoria) ? "insumo" : "desconta do lucro"}</div>
+                    <div className={styles.dicaCampo}>
+                      {d.insumoId ? "compra de insumo do catálogo" : ehInsumo(d.categoria) ? "insumo" : "desconta do lucro"}
+                    </div>
                   </td>
                   <td className={styles.num}>{formatarPreco(d.valorCentavos)}</td>
                   <td>
                     <div className={styles.acoesLinha}>
+                      {d.insumoId ? (
+                        <Link href="/admin/financeiro/insumos" className={styles.botao}>
+                          Ver no catálogo
+                        </Link>
+                      ) : (
                       <button
                         type="button"
                         className={styles.botao}
@@ -216,6 +228,7 @@ export default function Despesas({ despesas }: { despesas: DespesaJson[] }) {
                       >
                         Editar
                       </button>
+                      )}
                       <button type="button" className={styles.botaoPerigo} onClick={() => excluir(d)}>
                         Excluir
                       </button>

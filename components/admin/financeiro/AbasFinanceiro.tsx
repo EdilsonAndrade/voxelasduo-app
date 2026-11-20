@@ -5,6 +5,7 @@ const ABAS = [
   { chave: "painel", href: "/admin/financeiro", rotulo: "Painel" },
   { chave: "vendas", href: "/admin/financeiro/vendas", rotulo: "Vendas lançadas" },
   { chave: "despesas", href: "/admin/financeiro/despesas", rotulo: "Despesas" },
+  { chave: "insumos", href: "/admin/financeiro/insumos", rotulo: "Insumos" },
   { chave: "impressoras", href: "/admin/financeiro/impressoras", rotulo: "Impressoras" },
 ] as const;
 

@@ -104,6 +104,8 @@ export interface Despesa {
   descricao: string;
   valorCentavos: number;
   observacao?: string;
+  /** Compra de um insumo do catálogo — lançada pela aba Insumos. */
+  insumoId?: string;
   criadoEm: Date;
   atualizadoEm: Date;
 }

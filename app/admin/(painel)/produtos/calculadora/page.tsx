@@ -4,6 +4,8 @@ import CalculadoraRapida from "@/components/admin/CalculadoraRapida";
 import CalculosSalvos from "@/components/admin/CalculosSalvos";
 import styles from "@/components/admin/admin.module.css";
 import { buscarTaxasCanais } from "@/lib/configuracoes/repository";
+import { paraCalculadora } from "@/lib/financeiro/insumos";
+import { listarInsumos } from "@/lib/financeiro/insumosRepository";
 import { dadosDoKitParaCalculadora } from "@/lib/kits/repository";
 import { valoresDoKit, valoresDoProduto, valoresDoTempoImpressao } from "@/lib/produtos/calculadoraDoProduto";
 import { totalMinutos } from "@/lib/producao/planosImpressao";
@@ -40,13 +42,16 @@ export default async function CalculadoraPrecoPage({
     if (existente) redirect(`/admin/produtos/calculadora?id=${existente._id!.toString()}`);
   }
 
-  const [taxasGlobais, calculos, calculo, planoAvulso] = await Promise.all([
+  const [taxasGlobais, calculos, calculo, planoAvulso, insumosCadastrados] = await Promise.all([
     buscarTaxasCanais(),
     listarCalculosPreco(),
     id ? buscarCalculoPreco(id) : null,
     // Item do Tempo de Impressão que ainda não é produto (specs/035).
     !id && !produtoParam && planoParam ? buscarPlano(planoParam) : null,
+    // Catálogo de insumos: filamento fica fora (o preço do kg é digitado na seção Impressão).
+    listarInsumos(),
   ]);
+  const insumos = insumosCadastrados.filter((i) => i.categoria !== "filamento").map(paraCalculadora);
 
   if (id && !calculo) notFound();
   if (planoParam && !id && !produtoParam) {
@@ -113,6 +118,7 @@ export default async function CalculadoraPrecoPage({
         planoImpressaoId={planoAvulso ? planoParam : undefined}
         taxasGlobais={taxasGlobais}
         produtoVinculado={produtoVinculado}
+        insumos={insumos}
         calculoInicial={
           calculo
             ? {

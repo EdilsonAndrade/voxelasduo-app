@@ -40,6 +40,8 @@ export interface ExtraCalculadora {
   quantidade: string;
   precoReais: string;
   categoria: CategoriaExtra;
+  /** Insumo do catálogo que preencheu o preço — o valor fica congelado no cálculo. */
+  insumoId?: string;
 }
 
 export type ImpressoraReferencia = "a1mini" | "a1" | "p1s" | "x1c" | "outra";
